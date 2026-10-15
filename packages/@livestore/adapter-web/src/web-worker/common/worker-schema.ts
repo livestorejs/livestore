@@ -8,7 +8,7 @@ import {
   SyncState,
   UnknownError,
 } from '@livestore/common'
-import { StreamEventsOptionsFields } from '@livestore/common/leader-thread'
+import { StateRebuildBatchSizeSchema, StreamEventsOptionsFields } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { Rpc, RpcGroup, Schema, Transferable } from '@livestore/utils/effect'
 import * as WebmeshWorker from '@livestore/webmesh/worker'
@@ -53,6 +53,8 @@ export class LeaderWorkerOuterInitialMessage extends Rpc.make('InitialMessage', 
 
 export class LeaderWorkerOuterRpcs extends RpcGroup.make(LeaderWorkerOuterInitialMessage) {}
 
+export const LeaderWorkerParams = Schema.Struct({ stateRebuildBatchSize: StateRebuildBatchSizeSchema })
+
 // TODO unify this code with schema from node adapter
 export class LeaderWorkerInnerInitialMessage extends Rpc.make('InitialMessage', {
   payload: {
@@ -62,6 +64,7 @@ export class LeaderWorkerInnerInitialMessage extends Rpc.make('InitialMessage', 
     clientId: Schema.String,
     debugInstanceId: Schema.String,
     syncPayloadEncoded: Schema.UndefinedOr(Schema.Json),
+    params: LeaderWorkerParams,
   },
   success: Schema.Void,
   error: UnknownError,

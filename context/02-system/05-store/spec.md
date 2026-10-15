@@ -44,14 +44,35 @@ contract — see
 `syncPayload` + `syncPayloadSchema` (encoded before crossing to the
 adapter), `confirmUnsavedChanges` (web `beforeunload`), `disableDevtools`
 (default `'auto'`), `params.{leaderPushBatchSize, eventQueryBatchSize,
-simulation}`, `debug.instanceId`, `shutdownDeferred`, `signal`
+stateRebuildBatchSize}`, `debug.instanceId`, `shutdownDeferred`, `signal`
 (`AbortSignal`), `logger`/`logLevel`, `unusedCacheTime` (registry, below).
 `storeId` must match `/^[a-zA-Z0-9_-]+$/` (`create-store.ts:456`).
 
+`stateRebuildBatchSize` is a per-client runtime setting rather than schema
+identity. It accepts positive integers, defaults to 100, and controls
+the number of eventlog events read and committed per state-rebuild batch.
+
 ## Commit Path
 
+`store.commit` accepts events directly or a synchronous callback returning a
+readonly array of schema events, optionally preceded by commit options. The
+callback describes a complete batch; LiveStore copies the returned array and
+enters the pipeline only after the callback returns successfully. An empty array
+is a no-op. A callback that throws propagates its error before entering the
+pipeline and leaves the store usable. Non-array returns, including promises,
+are rejected. The callback does not receive an event emitter
+([decision 0002](./.decisions/0002-commit-callback-return-array.md)).
+
 The pipeline is fully synchronous, run via `Effect.runSyncWith`
-(`store.ts:945`):
+(`store.ts:945`). **This synchronicity is an invariant** (Q1, see
+[`.decisions/0001-client-session-shutdown-drain.md`](./.decisions/0001-client-session-shutdown-drain.md)):
+no step on the commit path — including the `ClientSessionSyncProcessor.push`
+enqueue (step 3) — may block or suspend on a lock/permit, because a suspension
+turns the commit effect async and makes `runSyncWith` throw `AsyncFiberError`
+out of `store.commit`. This is why `push` serializes against rebase by
+non-blocking reconciliation rather than a permit
+([`../03-sync/02-processors/spec.md`](../03-sync/02-processors/spec.md), #1465).
+The steps:
 
 1. Validate and encode events against their definitions; assign client
    sequence numbers.
@@ -74,9 +95,17 @@ per-commit root span with links.
 ## Lifecycle
 
 - Every public operation guards on `isShutdown` (`checkShutdown`).
-- `shutdown` closes the store's `lifetimeScope` with a 1s timeout + warning
-  (`create-store.ts:336-342`); intentional shutdown is distinguished from
-  failure via the Exit cause (LS.SYS.STORE-R07).
+- `shutdown` first drains admitted client-session events to the leader, then
+  closes the store's `lifetimeScope`. **Durability contract (Q2, see
+  [`.decisions/0001-client-session-shutdown-drain.md`](./.decisions/0001-client-session-shutdown-drain.md)):
+  a successful orderly `shutdown()` flushes every admitted client commit to the
+  leader; a hard crash may still lose un-acked client commits** — the client
+  session is the only tier without persist-before-admit (LS.SYS.STORE-DQ1). The
+  caller's 1s timeout limits how long `shutdown()` blocks; the detached cleanup
+  is itself hard-bounded (`SHUTDOWN_DRAIN_HARD_TIMEOUT_MS`, `create-store.ts`),
+  after which the lifetime scope is force-closed so an unresponsive leader
+  cannot leak it. Intentional shutdown is distinguished from failure via the
+  Exit cause (LS.SYS.STORE-R07, LS.SYS.SYNC.PROC-R03).
 - During boot, `batchUpdates` is the identity function and is swapped to the
   adapter-provided implementation after boot (`create-store.ts:399,430`) —
   events committed during boot are unbatched.
@@ -114,4 +143,9 @@ RFC 0001, the implementation is the contract:
   confirmation surface cannot be specified independently. A concrete design, if
   pursued, belongs in an RFC (per
   [decision 0004](../../.decisions/0004-rfc-vrs-boundary.md)). `../03-sync/`
-  LS.SYS.SYNC-DQ1 cross-references this.
+  LS.SYS.SYNC-DQ1 cross-references this. **Persist-before-admit for client
+  sessions** — making client commits crash-durable, not merely flushed on
+  orderly shutdown — is the separate future target that would subsume the
+  shutdown drain (LS.SYS.SYNC.PROC-R03); it is gated by LS-DQ1 and tracked as
+  #1425. Until then, the orderly-shutdown flush is the accepted durability
+  contract (Q2), not a stopgap for a specific release.

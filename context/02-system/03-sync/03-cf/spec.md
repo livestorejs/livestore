@@ -32,17 +32,30 @@ arbitrates pushes and fans out live pull streams to subscribers
   `currentHead`, `backendId`). `<V>` = `PERSISTENCE_FORMAT_VERSION`
   (currently 7, `cf-worker/shared.ts:135`); bumping it renames the tables —
   a soft reset that orphans old data (LS.SYS.SYNC.CF-R03).
-- **Push arbitration** (`cf-worker/do/push.ts:63-87`): inside
-  `ctx.blockConcurrencyWhile`, accept iff
+- **Push arbitration** (`cf-worker/do/push.ts`): Durable Object context
+  initialization is single-flight, yielding one shared head reference and push
+  semaphore per instance. Under that semaphore, accept iff
   `batch[0].parentSeqNum === currentHead` (else `ServerAheadError` with
   `minimumExpectedNum`), append client-supplied sequence numbers, advance
-  `currentHead`. Empty batches short-circuit to an ack. There is no
-  explicit idempotency/dedup beyond the head check (TODO `push.ts:65`).
-- **Fan-out** (`push.ts:90-187`): after the serialized section, an
-  uninterruptible background fiber re-chunks the batch and emits to two
-  subscriber sets — hibernatable WebSockets (per-socket `pullRequestIds`
-  attachments; hand-crafted RPC chunk frames) and DO-RPC subscriptions (an
-  in-memory map fed by live pulls).
+  `currentHead`, and publish the matching pull response before honoring
+  interruption or admitting the next push. Persistence remains inside
+  `ctx.blockConcurrencyWhile`; the larger admission-to-publication transition
+  is serialized and uninterruptible. Empty batches short-circuit to an ack.
+  There is no explicit idempotency/dedup beyond the head check (see
+  [.decisions/0002-atomic-push-publication.md](./.decisions/0002-atomic-push-publication.md)).
+- **Fan-out** (`push.ts`): accepted batches are re-chunked and emitted in
+  admission order to two subscriber sets — hibernatable WebSockets (per-socket `pullRequestIds`
+  attachments; hand-crafted RPC chunk frames) and DO-RPC subscriptions (a
+  durable KV registry fed by live pulls). A terminal WebSocket RPC `Exit`
+  removes its request ID from the attachment so later pushes target only active
+  pulls; a connection-level RPC `Defect` clears all of the socket's request IDs
+  because the client terminates every outstanding request. Each DO-RPC callback
+  carries the subscription's `storeId` (`push.ts` → `emitStreamResponse` →
+  `syncUpdateRpc(payload, storeId)`), so a client DO that was evicted and
+  reconstructed can re-boot its store — whose boot catches up — before
+  delivering, instead of dropping the update; the client-side re-boot is
+  `04-runtime`'s adapter concern
+  ([.decisions/0003-reverse-rpc-storeid-recovery.md](./.decisions/0003-reverse-rpc-storeid-recovery.md)).
 - **BackendId** (`layer.ts:98-114`): `nanoid()` on first context build,
   persisted in `contextTable`; pull/push carrying a different backendId
   fail with `BackendIdMismatchError` (client records it lazily from pull
@@ -59,8 +72,30 @@ arbitrates pushes and fans out live pull streams to subscribers
 | Transport | Schema | Liveness | Notes |
 | --- | --- | --- | --- |
 | WebSocket | `ws-rpc-schema.ts` | server-held stream (`live` flag + `Stream.never`), pushed chunks | default; DO auto ping/pong; hibernation-aware |
-| HTTP | `http-rpc-schema.ts` | client-side polling (~5 s default) | 10 s hard request timeout; explicit `Ping` RPC; push `payload` not threaded (see gaps) |
+| HTTP | `http-rpc-schema.ts` | client-side polling (~5 s default) | 10 s hard request timeout; explicit `Ping` RPC |
 | DO-RPC | `do-rpc-schema.ts` | RPC callback queue (`rpcContext` presence = live) | for same-Cloudflare-app callers (`adapter-cloudflare`); explicit `Ping` |
+
+**DO-RPC transport failures** (`client/transport/do-rpc-client.ts`): a rejected
+stub call or stream read fails only its request as an `RpcClientError`. Read
+failures additionally carry `DoRpcReadError`, preserving the original cause.
+A `retryable`, non-`overloaded` rejection becomes `IsOfflineError`. A transferred
+stream disconnect without flags also becomes offline: application errors travel
+in encoded RPC exits, whereas Cloudflare can strip flags from stream failures.
+Explicit overload and non-retryable `remote` errors remain terminal, as do
+unknown call rejections and malformed protocol data.
+
+Catch-up has a 60-second deadline for each awaited page or completion; a stall
+or EOF without an RPC exit becomes offline. The deadline excludes the subsequent
+live callback queue, which may remain idle indefinitely. Cancellation releases
+the reader without waiting for a remote acknowledgment and interrupts the server
+producer when it reaches the backend. A pull waits a jittered exponential backoff
+(1 s doubling to 30 s) before surfacing offline. Attempts span pull calls and
+reset on completed catch-up. The leader resumes from its last applied cursor.
+Every call gets a fresh stub from `getSyncBackendStub()`
+([.decisions/0006-do-rpc-transport-failures.md](./.decisions/0006-do-rpc-transport-failures.md)).
+
+All three transports thread the client `payload` (per-connection auth/multi-tenancy
+context) into the DO `onPush`/`onPull` callbacks.
 
 Message payloads share `sync-message-types.ts`
 (PullRequest/PullResponse/PushRequest/PushAck/Ping/Pong + unwired admin
@@ -74,24 +109,63 @@ Server-side embedding of a LiveStore client inside Cloudflare (Durable
 Object hosting a store) is `04-runtime/`'s adapter concern
 (`adapter-cloudflare`), not part of this provider node.
 
+## Optional telemetry
+
+The existing `makeDurableObject` option `otel` accepts either an Effect tracer
+layer or a `{ baseUrl, serviceName? }` endpoint configuration. The latter creates
+an Effect OTLP exporter layer. Omit `otel` to avoid creating an exporter or sending telemetry.
+Applications choose the integration and destination; no Cloudflare-specific
+tracer package or paid feature is required by the library.
+
+LiveStore builds the layer in a fresh scope per sync operation. Construction runs
+on the operation path; resource finalization runs in the background so export
+cleanup cannot delay acknowledgments or change sync outcomes. The layer defines
+its exporter lifecycle. LiveStore does not manage SDK providers or schedule their
+`forceFlush()` calls. A supplied layer must not shut down a shared provider.
+The built-in endpoint exporter uses Effect's three-second shutdown timeout.
+
+WebSocket pushes and finite pull history receive exported RPC boundary spans
+attached directly to a sampled caller, bypassing Effect RPC's unexported
+subscription envelope. When the caller has no sampled context, the boundary
+starts a backend root so server-side telemetry remains independently observable.
+Expected `ServerAheadError` and `BackendIdMismatchError` recovery results remain
+typed failures without marking these RPC boundaries as OpenTelemetry errors.
+DO-RPC pull streams receive tracing inside their separate execution runtime.
+Finite history closes before waiting for live updates, so the endpoint exporter
+does not retain timers for the lifetime of an idle subscription.
+
+Delivery remains best-effort: Durable Objects have no shutdown callback on
+hibernation or eviction. This integration does not join Cloudflare-native trace
+IDs to external traces or change the sync protocol. See
+[decision 0005](.decisions/0005-optional-telemetry-ownership.md).
+
+## Self-Hosted Runtime (celld)
+
+The worker and Durable Object run unchanged on
+[celld](https://github.com/denoland/celld), a self-hosted runtime for Workers
+and Durable Objects. celld reads only JSON Wrangler configs. Validated on
+2026-10-02 against celld v0.6.1 on macOS (local runs, not CI): the
+sync-provider suite for all three transports with DO SQLite and D1 storage,
+including the DO hibernation suites, on `celld dev`; acknowledged pushes
+surviving a SIGKILL and restart; takeover by a second node on an S3-compatible
+bucket (MinIO) with no lost acknowledged push; and two-browser sync of
+`web-todomvc-sync-celld` (livestore-contrib). celld v0.4.1 and earlier stall
+WebSocket sync because they drop timers pending after a hibernatable WebSocket
+handler returns ([denoland/celld#189](https://github.com/denoland/celld/issues/189)).
+LiveStore guarantees no compatibility with later celld versions.
+
 ## Known Gaps (Non-Obligations)
 
 Current reality a consumer must not read as guaranteed behavior:
 
-- **Hibernated DO-RPC clients drop live updates.** When the client DO was
-  hibernated, the pull-stream queue is gone and the update is only logged,
-  not applied (`client/transport/do-rpc-client.ts:189-197`; issue #1415).
 - **Cross-store subscription bleed risk.** The DO-RPC client's
   `requestIdQueueMap` is module-global with a scoping TODO
   (`do-rpc-client.ts:30`; issue #1416).
-- **HTTP push drops `payload`.** The per-push payload (used for
-  auth/multi-tenancy) is passed as `undefined` server-side over HTTP but
-  threaded on WS/DO-RPC (`cf-worker/transport/http-rpc-server.ts:47`;
-  issue #1417).
-- **Live-subscriber leaks on abnormal disconnect.** WS `Interrupt` emits
-  no Exit and DO-RPC `Interrupt` handling is a TODO
-  (`cf-worker/durable-object.ts:136`, `cf-worker/do/pull.ts:19`;
-  issue #1418).
+- **Live-subscriber teardown is graceful-only.** A DO-RPC client drops its
+  subscription on graceful `store.shutdown()`
+  ([.decisions/0004](./.decisions/0004-do-rpc-graceful-unsubscribe.md)), but a
+  client evicted and never returning keeps its row by design (never reaped on
+  silence — 0003; issue #1601).
 - **Admin RPCs are defined but unwired** in all three transports
   (`AdminResetRoom`/`AdminInfo`).
 - **No head↔eventlog consistency check at load** (`layer.ts:96`), and

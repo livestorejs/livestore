@@ -141,7 +141,7 @@ export const cmdText: (
   )
 })
 
-export class CmdError extends Schema.TaggedErrorClass<CmdError>('~@livestore/utils-dev/CmdError')('CmdError', {
+export class CmdError extends Schema.TaggedError<CmdError>('~@livestore/utils-dev/CmdError')('CmdError', {
   command: Schema.String,
   args: Schema.Array(Schema.String),
   cwd: Schema.String,
@@ -242,9 +242,7 @@ const runWithLogging = ({
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
       const runningProcess = yield* Effect.acquireRelease(spawner.spawn(command), (proc) =>
         proc.isRunning.pipe(
-          Effect.flatMap((running) =>
-            running === true ? proc.kill().pipe(Effect.catch(() => Effect.void)) : Effect.void,
-          ),
+          Effect.flatMap((running) => (running === true ? proc.kill().pipe(Effect.ignore) : Effect.void)),
           Effect.ignore,
         ),
       )

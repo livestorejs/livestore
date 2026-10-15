@@ -1,11 +1,13 @@
 import {
   type Adapter,
+  type AdapterArgs,
   ClientSessionLeaderThreadProxy,
   type LockStatus,
   type MakeSqliteDb,
   makeClientSession,
   migrateDb,
   type SqliteDb,
+  StateHead,
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
@@ -68,7 +70,7 @@ export const makeTestAdapter = ({
 } = {}): Adapter =>
   ((adapterArgs) =>
     Effect.gen(function* () {
-      const { schema, storeId, syncPayloadEncoded, syncPayloadSchema } = adapterArgs
+      const { schema, storeId, syncPayloadEncoded, syncPayloadSchema, params } = adapterArgs
       const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
       const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
       const shutdownChannel = yield* makeShutdownChannel(storeId)
@@ -93,6 +95,7 @@ export const makeTestAdapter = ({
         syncOptions: sync,
         syncPayloadEncoded,
         syncPayloadSchema,
+        params,
         testing,
         shutdownChannel,
       }).pipe(UnknownError.mapToUnknownError)
@@ -129,6 +132,7 @@ const makeLocalLeaderThread = ({
   syncOptions,
   syncPayloadEncoded,
   syncPayloadSchema,
+  params,
   testing,
   shutdownChannel,
 }: {
@@ -139,6 +143,7 @@ const makeLocalLeaderThread = ({
   syncOptions: SyncOptions | undefined
   syncPayloadEncoded: Schema.Json | undefined
   syncPayloadSchema: Schema.Decoder<Schema.Json> | undefined
+  params: AdapterArgs['params']
   testing?: { overrides?: TestingOverrides }
   shutdownChannel: ShutdownChannel.ShutdownChannel
 }) =>
@@ -174,7 +179,8 @@ const makeLocalLeaderThread = ({
         shutdownChannel,
         syncPayloadEncoded,
         syncPayloadSchema,
-      }),
+        params,
+      }).pipe(Layer.provide(StateHead.layer({ dbState }))),
     )
 
     return yield* Effect.gen(function* () {

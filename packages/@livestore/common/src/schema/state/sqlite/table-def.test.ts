@@ -182,6 +182,54 @@ describe('table function overloads', () => {
     expect(userTable.sqliteDef.columns.email.nullable).toBe(true)
   })
 
+  it('keeps a date codec so the column round-trips through its encoded form', () => {
+    const StampSchema = Schema.Struct({
+      id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+      createdAt: Schema.DateFromString,
+      seenAt: Schema.DateFromMillis,
+      bornAt: Schema.Date,
+      deletedAt: Schema.NullOr(Schema.DateFromString),
+      archivedAt: Schema.optional(Schema.DateFromString),
+    })
+
+    const { columns } = State.SQLite.table({ name: 'stamps', schema: StampSchema }).sqliteDef
+    const date = new Date('2026-01-02T03:04:05.678Z')
+    const roundTrip = (column: { schema: Schema.Codec<any, any> }, value: unknown) =>
+      Schema.decodeUnknownSync(column.schema)(Schema.encodeUnknownSync(column.schema)(value))
+
+    expect(columns.createdAt.columnType).toBe('text')
+    expect(Schema.encodeUnknownSync(columns.createdAt.schema)(date)).toBe(date.toISOString())
+    expect(roundTrip(columns.createdAt, date)).toEqual(date)
+
+    expect(columns.seenAt.columnType).toBe('integer')
+    expect(Schema.encodeUnknownSync(columns.seenAt.schema)(date)).toBe(date.getTime())
+    expect(roundTrip(columns.seenAt, date)).toEqual(date)
+
+    expect(columns.bornAt.columnType).toBe('text')
+    expect(Schema.encodeUnknownSync(columns.bornAt.schema)(date)).toBe(date.toISOString())
+    expect(roundTrip(columns.bornAt, date)).toEqual(date)
+
+    expect(columns.deletedAt.nullable).toBe(true)
+    expect(roundTrip(columns.deletedAt, date)).toEqual(date)
+    expect(roundTrip(columns.deletedAt, null)).toBeNull()
+
+    expect(columns.archivedAt.nullable).toBe(true)
+    expect(roundTrip(columns.archivedAt, date)).toEqual(date)
+  })
+
+  it('stores a codec field in its encoded form, like getColumnDefForSchema does', () => {
+    const CounterSchema = Schema.Struct({
+      id: Schema.String,
+      count: Schema.FiniteFromString,
+    })
+
+    const { columns } = State.SQLite.table({ name: 'counters', schema: CounterSchema }).sqliteDef
+
+    expect(columns.count.columnType).toBe('text')
+    expect(Schema.encodeUnknownSync(columns.count.schema)(42)).toBe('42')
+    expect(Schema.decodeSync(columns.count.schema)('42')).toBe(42)
+  })
+
   it('should handle Schema.Int as integer column', () => {
     const CounterSchema = Schema.Struct({
       id: Schema.String,
@@ -221,6 +269,24 @@ describe('table function overloads', () => {
     expect(userTable.sqliteDef.columns.email.columnType).toBe('text')
     expect(userTable.sqliteDef.columns.email.nullable).toBe(true)
     expect(userTable.sqliteDef.columns.age.columnType).toBe('integer')
+  })
+
+  it('preserves Date field codecs in Schema.Class tables', () => {
+    class Stamp extends Schema.Class<Stamp>('Stamp')({
+      id: Schema.String,
+      createdAt: Schema.DateFromString,
+      seenAt: Schema.DateFromMillis,
+    }) {}
+
+    const { columns } = State.SQLite.table({ name: 'stamps', schema: Stamp }).sqliteDef
+    const date = new Date('2026-01-02T03:04:05.678Z')
+
+    expect(columns.createdAt.columnType).toBe('text')
+    expect(Schema.decodeSync(columns.createdAt.schema)(date.toISOString())).toEqual(date)
+    expect(Schema.encodeUnknownSync(columns.createdAt.schema)(date)).toBe(date.toISOString())
+    expect(columns.seenAt.columnType).toBe('integer')
+    expect(Schema.decodeSync(columns.seenAt.schema)(date.getTime())).toEqual(date)
+    expect(Schema.encodeUnknownSync(columns.seenAt.schema)(date)).toBe(date.getTime())
   })
 
   it('should support schemas that transform flat columns into nested types', () => {

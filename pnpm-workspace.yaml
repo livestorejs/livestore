@@ -4,6 +4,7 @@
 packages:
   - docs
   - docs/src/content/_assets/code
+  - examples/*
   - packages/@livestore/adapter-cloudflare
   - packages/@livestore/adapter-web
   - packages/@livestore/common
@@ -32,13 +33,13 @@ packages:
   - tests/wa-sqlite
 
 overrides:
-  effect: 4.0.0-beta.99
-  '@effect/platform-browser': 4.0.0-beta.99
-  '@effect/platform-bun': 4.0.0-beta.99
-  '@effect/platform-node': 4.0.0-beta.99
-  '@effect/platform-node-shared': 4.0.0-beta.99
-  '@effect/opentelemetry': 4.0.0-beta.99
-  '@effect/vitest': 4.0.0-beta.99
+  effect: 4.0.3
+  '@effect/platform-browser': 4.0.3
+  '@effect/platform-bun': 4.0.3
+  '@effect/platform-node': 4.0.3
+  '@effect/platform-node-shared': 4.0.3
+  '@effect/opentelemetry': 4.0.3
+  '@effect/vitest': 4.0.3
   react: 19.2.3
   react-dom: 19.2.3
   '@tanstack/router-core': 1.145.7
@@ -70,8 +71,14 @@ packageExtensions:
     dependencies:
       typedoc-plugin-markdown: ^4.8.1
 
+peerDependencyRules:
+  allowedVersions:
+    typescript: '>=6.0.0'
+    eslint: '>=10.0.0'
+    vitest: '>=4.0.0'
+    unplugin: '>=3.0.0'
+
 allowBuilds:
-  '@parcel/watcher': true
   '@myobie/pty': false
   esbuild: false
   fsevents: false
@@ -79,6 +86,7 @@ allowBuilds:
   node-pty: false
   sharp: false
   unix-dgram: false
+  '@parcel/watcher': true
   '@mixedbread/cli': true
   cbor-extract: true
   dtrace-provider: true
@@ -87,15 +95,21 @@ allowBuilds:
   workerd: true
 
 minimumReleaseAgeExclude:
-  - '@effect/platform'
   - '@types/node'
   - effect
-  - '@effect/opentelemetry@4.0.0-beta.99'
-  - '@effect/platform-browser@4.0.0-beta.99'
-  - '@effect/platform-bun@4.0.0-beta.99'
-  - '@effect/platform-node@4.0.0-beta.99'
-  - '@effect/platform-node-shared@4.0.0-beta.99'
-  - '@effect/vitest@4.0.0-beta.99'
+  - '@effect/platform-node'
+  - '@effect/vitest'
+  - '@effect/opentelemetry'
+  - '@effect/atom-react'
+  - effect@4.0.3
+  - '@effect/ai-openai@4.0.3'
+  - '@effect/opentelemetry@4.0.3'
+  - '@effect/platform-browser@4.0.3'
+  - '@effect/platform-bun@4.0.3'
+  - '@effect/platform-node@4.0.3'
+  - '@effect/platform-node-shared@4.0.3'
+  - '@effect/sql-sqlite-node@4.0.3'
+  - '@effect/vitest@4.0.3'
 
 supportedArchitectures:
   os: [linux, darwin]

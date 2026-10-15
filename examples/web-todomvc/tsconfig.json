@@ -2,13 +2,11 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
 
     /* Bundler mode */
-    "moduleResolution": "bundler",
-    "types": ["vite/client", "@cloudflare/workers-types", "wicg-file-system-access"],
+    "types": ["vite/client", "@cloudflare/workers-types"],
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "verbatimModuleSyntax": true,
@@ -18,7 +16,6 @@
     "jsx": "react-jsx",
 
     /* Linting */
-    "strict": true,
     "strictNullChecks": true,
     "noUncheckedIndexedAccess": true,
     // "noUnusedLocals": true,
@@ -27,5 +24,10 @@
     "exactOptionalPropertyTypes": true
   },
   "include": ["./src"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
+  "references": [
+    { "path": "../../packages/@livestore/adapter-web" },
+    { "path": "../../packages/@livestore/livestore" },
+    { "path": "../../packages/@livestore/react" }
+  ]
 }

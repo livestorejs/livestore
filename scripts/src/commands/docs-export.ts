@@ -80,15 +80,15 @@ ${llmsList}`
 export const exportMarkdownCommand = Cli.Command.make(
   'export-markdown',
   {
-    out: Cli.Flag.string('out').pipe(
+    out: Cli.Flag.String('out').pipe(
       Cli.Flag.optional,
       Cli.Flag.withDescription('Destination directory for the exported markdown tree'),
     ),
-    workspaceRoot: Cli.Flag.string('workspace-root').pipe(
+    workspaceRoot: Cli.Flag.String('workspace-root').pipe(
       Cli.Flag.optional,
       Cli.Flag.withDescription('Workspace root (defaults to WORKSPACE_ROOT)'),
     ),
-    includeLlms: Cli.Flag.boolean('include-llms').pipe(
+    includeLlms: Cli.Flag.Boolean('include-llms').pipe(
       Cli.Flag.withDefault(false),
       Cli.Flag.withDescription('Also emit llms.txt alongside index.md'),
     ),
@@ -101,13 +101,10 @@ export const exportMarkdownCommand = Cli.Command.make(
     }),
 )
 
-export class SnippetManifestMissing extends Schema.TaggedErrorClass<SnippetManifestMissing>()(
-  'SnippetManifestMissing',
-  {
-    message: Schema.String,
-    checked: Schema.Array(Schema.String),
-  },
-) {}
+export class SnippetManifestMissing extends Schema.TaggedError<SnippetManifestMissing>()('SnippetManifestMissing', {
+  message: Schema.String,
+  checked: Schema.Array(Schema.String),
+}) {}
 
 type DocMeta = {
   readonly id: string

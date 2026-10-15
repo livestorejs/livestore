@@ -7,8 +7,8 @@ export const threadTables = {
       id: State.SQLite.text({ primaryKey: true }),
       subject: State.SQLite.text(),
       participants: State.SQLite.text(), // JSON array of email addresses
-      lastActivity: State.SQLite.integer({ schema: Schema.DateFromNumber }),
-      createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      lastActivity: State.SQLite.integer({ schema: Schema.DateFromMillis }),
+      createdAt: State.SQLite.integer({ schema: Schema.DateFromMillis }),
     },
   }),
 
@@ -20,9 +20,9 @@ export const threadTables = {
       content: State.SQLite.text(),
       sender: State.SQLite.text(), // Email address
       senderName: State.SQLite.text({ nullable: true }), // Display name
-      timestamp: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      timestamp: State.SQLite.integer({ schema: Schema.DateFromMillis }),
       messageType: State.SQLite.text({
-        schema: Schema.Literal('received', 'sent', 'draft'),
+        schema: Schema.Literals(['received', 'sent', 'draft']),
       }),
     },
   }),
@@ -32,7 +32,7 @@ export const threadTables = {
     columns: {
       threadId: State.SQLite.text(),
       labelId: State.SQLite.text(),
-      appliedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      appliedAt: State.SQLite.integer({ schema: Schema.DateFromMillis }),
     },
   }),
 }
@@ -44,7 +44,7 @@ export const threadEvents = {
       id: Schema.String,
       subject: Schema.String,
       participants: Schema.Array(Schema.String), // Array of email addresses
-      createdAt: Schema.Date,
+      createdAt: Schema.DateFromString,
     }),
   }),
 
@@ -56,7 +56,7 @@ export const threadEvents = {
       content: Schema.String,
       sender: Schema.String,
       senderName: Schema.String.pipe(Schema.NullOr),
-      timestamp: Schema.Date,
+      timestamp: Schema.DateFromString,
     }),
   }),
 
@@ -66,7 +66,7 @@ export const threadEvents = {
     schema: Schema.Struct({
       threadId: Schema.String,
       labelId: Schema.String,
-      appliedAt: Schema.Date,
+      appliedAt: Schema.DateFromString,
     }),
   }),
 
@@ -76,7 +76,7 @@ export const threadEvents = {
     schema: Schema.Struct({
       threadId: Schema.String,
       labelId: Schema.String,
-      removedAt: Schema.Date,
+      removedAt: Schema.DateFromString,
     }),
   }),
 }

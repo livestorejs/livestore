@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import AutoSizer from 'react-virtualized-auto-sizer'
+import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { FixedSizeList } from 'react-window'
 
 import { useDebouncedScrollState } from '../../../livestore/queries.ts'
@@ -14,8 +14,8 @@ export const FilteredList = ({ filteredIssueIds }: { filteredIssueIds: readonly 
 
   return (
     <div className="grow">
-      <AutoSizer>
-        {({ height, width }: { width: number; height: number }) => (
+      <AutoSizer
+        renderProp={({ height = 0, width = 0 }) => (
           <FixedSizeList
             height={height}
             itemCount={filteredIssueIds.length}
@@ -29,7 +29,7 @@ export const FilteredList = ({ filteredIssueIds }: { filteredIssueIds: readonly 
             {VirtualRow}
           </FixedSizeList>
         )}
-      </AutoSizer>
+      />
     </div>
   )
 }

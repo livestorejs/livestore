@@ -37,7 +37,7 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
         env: this.env,
         bindingName: 'THREAD_CLIENT_DO',
       },
-      syncBackendStub: this.env.SYNC_BACKEND_DO.getByName(storeId),
+      getSyncBackendStub: () => this.env.SYNC_BACKEND_DO.getByName(storeId),
       livePull: true,
     })
     this.hasStore = true
@@ -146,9 +146,9 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
     return this.subscribeToStore()
   }
 
-  async syncUpdateRpc(payload: unknown) {
+  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
     // Make sure to wake up the store before processing the sync update
     await this.subscribeToStore()
-    await handleSyncUpdateRpc(payload)
+    await handleSyncUpdateRpc(this.ctx as SyncBackend.CfTypes.DurableObjectState, payload)
   }
 }

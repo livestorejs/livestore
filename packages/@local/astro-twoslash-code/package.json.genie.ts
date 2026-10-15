@@ -5,15 +5,18 @@ const runtimeDeps = catalog.compose({
   workspace: workspaceMember('packages/@local/astro-twoslash-code'),
   dependencies: {
     workspace: [utilsPkg],
-    external: catalog.pick(
-      '@effect/platform-node',
-      'astro-expressive-code',
-      'expressive-code',
-      'expressive-code-twoslash',
-      'hast',
-      'hast-util-to-html',
-      'typescript',
-    ),
+    external: {
+      ...catalog.pick(
+        '@effect/platform-node',
+        'astro-expressive-code',
+        'expressive-code',
+        'expressive-code-twoslash',
+        'hast',
+        'hast-util-to-html',
+      ),
+      // Twoslash requires TypeScript's legacy runtime API, which is absent from TypeScript 7.
+      typescript: '6.0.3',
+    },
   },
   devDependencies: {
     external: effectDevDeps('@astrojs/starlight', '@types/hast', '@types/node', 'astro', 'vitest'),

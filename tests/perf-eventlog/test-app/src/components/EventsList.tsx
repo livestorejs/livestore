@@ -163,6 +163,7 @@ export const SimpleEventsStream: React.FC<EventsListProps> = ({ batchSize, until
     return () => {
       cancelled = true
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- restart when any explicit stream input changes
   }, [preferredBatchSize, until, store])
 
   return (

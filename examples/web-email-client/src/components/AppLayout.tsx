@@ -1,8 +1,7 @@
+import { queryDb } from '@livestore/livestore'
 import type React from 'react'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-
-import { queryDb } from '@livestore/livestore'
 
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
@@ -11,6 +10,21 @@ import { ThreadList } from './ThreadList.tsx'
 import { ThreadView } from './ThreadView.tsx'
 
 const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
+
+const ThreadError: React.FC = () => (
+  <div className="grid place-items-center h-full">
+    <p className="text-gray-500">Failed to load thread</p>
+  </div>
+)
+
+const ThreadLoading: React.FC = () => (
+  <div className="grid place-items-center h-full">
+    <p className="text-gray-500">Loading thread...</p>
+  </div>
+)
+
+const threadErrorFallback = <ThreadError />
+const threadLoadingFallback = <ThreadLoading />
 
 export const AppLayout: React.FC = () => {
   const mailboxStore = useMailboxStore()
@@ -57,18 +71,3 @@ export const AppLayout: React.FC = () => {
     </div>
   )
 }
-
-const ThreadError: React.FC = () => (
-  <div className="grid place-items-center h-full">
-    <p className="text-gray-500">Failed to load thread</p>
-  </div>
-)
-
-const ThreadLoading: React.FC = () => (
-  <div className="grid place-items-center h-full">
-    <p className="text-gray-500">Loading thread...</p>
-  </div>
-)
-
-const threadErrorFallback = <ThreadError />
-const threadLoadingFallback = <ThreadLoading />

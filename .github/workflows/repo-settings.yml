@@ -23,7 +23,6 @@ permissions:
   contents: read
 
 env:
-  CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
   CI: 'true'
   FORCE_SETUP: '1'
 
@@ -36,22 +35,12 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - name: Prepare CI helper scripts
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts_src='genie/ci-scripts'
-          scripts_dst='${{ runner.temp }}/genie-ci-scripts'
-          if [ ! -d "$scripts_src" ]; then
-            echo "::error::CI helper script directory is missing: $scripts_src"
-            exit 1
-          fi
-          rm -rf "$scripts_dst"
-          mkdir -p "$scripts_dst"
-          cp -R "$scripts_src/." "$scripts_dst/"
-          chmod +x "$scripts_dst"/*.sh
+        with:
+          persist-credentials: false
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           extra-conf: |
             experimental-features = nix-command flakes
@@ -62,8 +51,25 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Prepare CI helper scripts
+        shell: bash
+        run: |
+          cd "${GITHUB_WORKSPACE:-$PWD}" && set -euo pipefail
+          scripts_src='genie/ci-scripts'
+          scripts_dst='${{ runner.temp }}/composition-state/ci-runtime'
+          if [ ! -d "$scripts_src" ]; then
+            echo "::error::CI helper script directory is missing: $scripts_src"
+            exit 1
+          fi
+          rm -rf "$scripts_dst"
+          mkdir -p "$scripts_dst"
+          cp -R "$scripts_src/." "$scripts_dst/"
+          rm -f "$scripts_dst"/*.genie.ts
+          chmod +x "$scripts_dst"/*.sh
       - name: Provide cachix CLI from nixpkgs
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
@@ -72,13 +78,19 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
           skipPush: true
+      - name: Restore megarepo store
+        id: restore-megarepo-store
+        uses: actions/cache/restore@v4
+        with:
+          path: '${{ runner.temp }}/megarepo-store'
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Sync megarepo dependencies
         env:
-          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          GITHUB_TOKEN: ${{ github.token }}
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
           if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
             echo '\''::error::megarepo.lock missing members["effect-utils"].commit'\''
@@ -90,13 +102,19 @@ jobs:
             printf '\''MEGAREPO_STORE=%s\n'\'' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
           fi
 
-          nix run --no-write-lock-file --override-input flake-utils "https://codeload.github.com/numtide/flake-utils/tar.gz/11707dc2f618dd54ca8739b309ec4fc024de578b" --override-input nixpkgs "https://codeload.github.com/NixOS/nixpkgs/tar.gz/5b63481602d9b0a714d5791c53bebe829d6b1a3c" "https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all'
+          nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all'
         shell: bash
+      - name: Save megarepo store
+        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: '${{ runner.temp }}/megarepo-store'
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Use pinned devenv from lock
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          cd "${GITHUB_WORKSPACE:-$PWD}" && DEVENV_REV=$(jq -r .nodes.devenv.locked.rev 'devenv.lock')
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            printf '::error::%s missing .nodes.devenv.locked.rev\n' 'devenv.lock'
             exit 1
           fi
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
@@ -105,74 +123,38 @@ jobs:
       - name: Isolate pnpm state
         shell: bash
         run: |
-          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
-          echo "PNPM_CONFIG_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
-          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+          cd "${GITHUB_WORKSPACE:-$PWD}" && set -euo pipefail
+          mkdir -p "${{ runner.temp }}/composition-state/pnpm-store-pure-v1" "${{ runner.temp }}/composition-state/pnpm-home" .devenv
+          member_store=.devenv/pnpm-store-pure-v1
+          if [ -L "$member_store" ]; then
+            if [ "$(readlink "$member_store")" != "${{ runner.temp }}/composition-state/pnpm-store-pure-v1" ]; then
+              echo "::error::owned member pnpm store symlink has the wrong target: $member_store" >&2
+              exit 1
+            fi
+          elif [ -e "$member_store" ]; then
+            echo "::error::refusing non-symlink owned member pnpm store path: $member_store" >&2
+            exit 1
+          else
+            ln -s "${{ runner.temp }}/composition-state/pnpm-store-pure-v1" "$member_store"
+          fi
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/composition-state/pnpm-store-pure-v1" >> "$GITHUB_ENV"
+          echo "PNPM_CONFIG_STORE_DIR=${{ runner.temp }}/composition-state/pnpm-store-pure-v1" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ runner.temp }}/composition-state/pnpm-home" >> "$GITHUB_ENV"
       - id: restore-pnpm-state
         name: Restore pnpm state
         uses: actions/cache/restore@v4
         with:
           path: |
-            ${{ github.workspace }}/.pnpm-home
-            ${{ runner.temp }}/pnpm-store/${{ github.job }}
-          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+            ${{ runner.temp }}/composition-state/pnpm-home
+            ${{ runner.temp }}/composition-state/pnpm-store-pure-v1
+          key: "livestore-pnpm-state-v1-v3-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'Resolve devenv' 'DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
-          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '\''::error::devenv.lock missing .nodes.devenv.locked.rev'\''
-            exit 1
-          fi
-
-          resolve_devenv() {
-            nix build \
-              --accept-flake-config \
-              --option extra-substituters https://devenv.cachix.org \
-              --option extra-trusted-public-keys devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= \
-              --no-link \
-              --print-out-paths \
-              "github:cachix/devenv/$DEVENV_REV#devenv"
-          }
-
-          # Temporary: capture diagnostics dir for #272 root-cause analysis.
-          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
-          mkdir -p "$DIAG_ROOT"
-          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
-
-          {
-            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            echo "runner_name=${RUNNER_NAME:-unknown}"
-            echo "runner_os=${RUNNER_OS:-unknown}"
-            echo "runner_arch=${RUNNER_ARCH:-unknown}"
-            echo "github_job=${GITHUB_JOB:-unknown}"
-            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            nix --version || true
-          } > "$DIAG_ROOT/environment.txt" 2>&1
-
-          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
-            echo "::error::resolve_devenv failed. Last 30 lines of log:"
-            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
-            exit 1
-          fi
-          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-
-          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing targeted path..."
-            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
-            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
-              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
-              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
-              exit 1
-            fi
-            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-          fi
-
-          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
-          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"'
+          __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'Resolve devenv' '__genie_ci_retry_script='\''${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'\''
+          bash "$__genie_ci_retry_script" '\''resolve devenv (devenv.lock)'\'' '\''cd "${GITHUB_WORKSPACE:-$PWD}" && '\''"'\''"'\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\''"'\''"'\'' '\''"'\''"'\''devenv.lock'\''"'\''"'\'''\'''
         shell: bash
       - id: app-token
         name: Mint App token
@@ -183,20 +165,20 @@ jobs:
           permission-administration: write
       - name: Apply ruleset
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'devenv tasks run github:rulesets:sync' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:rulesets:sync'
+          __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run github:rulesets:sync' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:rulesets:sync'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
       - name: Verify ruleset
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'devenv tasks run github:rulesets:check' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:rulesets:check'
+          __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run github:rulesets:check' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:rulesets:check'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
       - name: Check App definition drift
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'devenv tasks run github:app:check' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:app:check'
+          __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run github:app:check' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:app:check'
         env:
           RECONCILE_APP_ID: '4312996'
           RECONCILE_APP_PRIVATE_KEY: ${{ secrets.LIVESTORE_RULESET_APP_KEY }}
@@ -208,22 +190,12 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - name: Prepare CI helper scripts
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts_src='genie/ci-scripts'
-          scripts_dst='${{ runner.temp }}/genie-ci-scripts'
-          if [ ! -d "$scripts_src" ]; then
-            echo "::error::CI helper script directory is missing: $scripts_src"
-            exit 1
-          fi
-          rm -rf "$scripts_dst"
-          mkdir -p "$scripts_dst"
-          cp -R "$scripts_src/." "$scripts_dst/"
-          chmod +x "$scripts_dst"/*.sh
+        with:
+          persist-credentials: false
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           extra-conf: |
             experimental-features = nix-command flakes
@@ -234,8 +206,25 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Prepare CI helper scripts
+        shell: bash
+        run: |
+          cd "${GITHUB_WORKSPACE:-$PWD}" && set -euo pipefail
+          scripts_src='genie/ci-scripts'
+          scripts_dst='${{ runner.temp }}/composition-state/ci-runtime'
+          if [ ! -d "$scripts_src" ]; then
+            echo "::error::CI helper script directory is missing: $scripts_src"
+            exit 1
+          fi
+          rm -rf "$scripts_dst"
+          mkdir -p "$scripts_dst"
+          cp -R "$scripts_src/." "$scripts_dst/"
+          rm -f "$scripts_dst"/*.genie.ts
+          chmod +x "$scripts_dst"/*.sh
       - name: Provide cachix CLI from nixpkgs
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
@@ -244,13 +233,19 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
           skipPush: true
+      - name: Restore megarepo store
+        id: restore-megarepo-store
+        uses: actions/cache/restore@v4
+        with:
+          path: '${{ runner.temp }}/megarepo-store'
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Sync megarepo dependencies
         env:
-          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          GITHUB_TOKEN: ${{ github.token }}
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
           if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
             echo '\''::error::megarepo.lock missing members["effect-utils"].commit'\''
@@ -262,13 +257,19 @@ jobs:
             printf '\''MEGAREPO_STORE=%s\n'\'' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
           fi
 
-          nix run --no-write-lock-file --override-input flake-utils "https://codeload.github.com/numtide/flake-utils/tar.gz/11707dc2f618dd54ca8739b309ec4fc024de578b" --override-input nixpkgs "https://codeload.github.com/NixOS/nixpkgs/tar.gz/5b63481602d9b0a714d5791c53bebe829d6b1a3c" "https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all'
+          nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all'
         shell: bash
+      - name: Save megarepo store
+        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: '${{ runner.temp }}/megarepo-store'
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Use pinned devenv from lock
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          cd "${GITHUB_WORKSPACE:-$PWD}" && DEVENV_REV=$(jq -r .nodes.devenv.locked.rev 'devenv.lock')
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            printf '::error::%s missing .nodes.devenv.locked.rev\n' 'devenv.lock'
             exit 1
           fi
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
@@ -277,74 +278,38 @@ jobs:
       - name: Isolate pnpm state
         shell: bash
         run: |
-          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
-          echo "PNPM_CONFIG_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
-          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+          cd "${GITHUB_WORKSPACE:-$PWD}" && set -euo pipefail
+          mkdir -p "${{ runner.temp }}/composition-state/pnpm-store-pure-v1" "${{ runner.temp }}/composition-state/pnpm-home" .devenv
+          member_store=.devenv/pnpm-store-pure-v1
+          if [ -L "$member_store" ]; then
+            if [ "$(readlink "$member_store")" != "${{ runner.temp }}/composition-state/pnpm-store-pure-v1" ]; then
+              echo "::error::owned member pnpm store symlink has the wrong target: $member_store" >&2
+              exit 1
+            fi
+          elif [ -e "$member_store" ]; then
+            echo "::error::refusing non-symlink owned member pnpm store path: $member_store" >&2
+            exit 1
+          else
+            ln -s "${{ runner.temp }}/composition-state/pnpm-store-pure-v1" "$member_store"
+          fi
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/composition-state/pnpm-store-pure-v1" >> "$GITHUB_ENV"
+          echo "PNPM_CONFIG_STORE_DIR=${{ runner.temp }}/composition-state/pnpm-store-pure-v1" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ runner.temp }}/composition-state/pnpm-home" >> "$GITHUB_ENV"
       - id: restore-pnpm-state
         name: Restore pnpm state
         uses: actions/cache/restore@v4
         with:
           path: |
-            ${{ github.workspace }}/.pnpm-home
-            ${{ runner.temp }}/pnpm-store/${{ github.job }}
-          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+            ${{ runner.temp }}/composition-state/pnpm-home
+            ${{ runner.temp }}/composition-state/pnpm-store-pure-v1
+          key: "livestore-pnpm-state-v1-v3-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'Resolve devenv' 'DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
-          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '\''::error::devenv.lock missing .nodes.devenv.locked.rev'\''
-            exit 1
-          fi
-
-          resolve_devenv() {
-            nix build \
-              --accept-flake-config \
-              --option extra-substituters https://devenv.cachix.org \
-              --option extra-trusted-public-keys devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= \
-              --no-link \
-              --print-out-paths \
-              "github:cachix/devenv/$DEVENV_REV#devenv"
-          }
-
-          # Temporary: capture diagnostics dir for #272 root-cause analysis.
-          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
-          mkdir -p "$DIAG_ROOT"
-          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
-
-          {
-            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            echo "runner_name=${RUNNER_NAME:-unknown}"
-            echo "runner_os=${RUNNER_OS:-unknown}"
-            echo "runner_arch=${RUNNER_ARCH:-unknown}"
-            echo "github_job=${GITHUB_JOB:-unknown}"
-            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            nix --version || true
-          } > "$DIAG_ROOT/environment.txt" 2>&1
-
-          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
-            echo "::error::resolve_devenv failed. Last 30 lines of log:"
-            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
-            exit 1
-          fi
-          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-
-          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing targeted path..."
-            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
-            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
-              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
-              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
-              exit 1
-            fi
-            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-          fi
-
-          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
-          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"'
+          __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'Resolve devenv' '__genie_ci_retry_script='\''${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'\''
+          bash "$__genie_ci_retry_script" '\''resolve devenv (devenv.lock)'\'' '\''cd "${GITHUB_WORKSPACE:-$PWD}" && '\''"'\''"'\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\''"'\''"'\'' '\''"'\''"'\''devenv.lock'\''"'\''"'\'''\'''
         shell: bash
       - id: app-token
         name: Mint App token
@@ -355,7 +320,7 @@ jobs:
           permission-administration: read
       - name: Plan ruleset
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'devenv tasks run github:rulesets:plan' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:rulesets:plan'
+          __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run github:rulesets:plan' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:rulesets:plan'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}

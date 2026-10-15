@@ -7,16 +7,15 @@
     "skipLibCheck": true,
 
     /* Bundler mode */
-    "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "disableSourceOfProjectReferenceRedirect": true,
     "noEmit": true,
 
     /* Linting */
-    "strict": true,
     "strictNullChecks": true,
     "noUncheckedIndexedAccess": true,
 
@@ -28,5 +27,10 @@
     "exactOptionalPropertyTypes": true
   },
   "include": ["./src"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
+  "references": [
+    { "path": "../../packages/@livestore/adapter-cloudflare" },
+    { "path": "../../packages/@livestore/livestore" },
+    { "path": "../../packages/@livestore/sync-cf" }
+  ]
 }

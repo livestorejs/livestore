@@ -1,8 +1,8 @@
 # SQLite Schema Management — Requirements
 
 Role: `02-schema-management/` owns how the SQLite realization detects schema
-change and carries state across it: hash-based rebuild, the `auto`/`manual`
-migration strategies, and the state-vs-eventlog versioning asymmetry.
+change and carries state across it: hash-based automatic rebuild and the
+state-vs-eventlog versioning asymmetry.
 
 ## Context
 

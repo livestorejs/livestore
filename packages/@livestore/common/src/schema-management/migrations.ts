@@ -8,7 +8,7 @@
  * - EVENTLOG TABLES (NEVER modify): Changes cause data loss - need manual versioning!
  *
  * How it works:
- * 1. Each table's schema is hashed using SqliteAst.hash()
+ * 1. Each table's schema is fingerprinted
  * 2. Hashes are stored in SCHEMA_META_TABLE after successful migrations
  * 3. On app start, current schema hashes are compared with stored hashes
  * 4. Mismatches trigger migrations:
@@ -37,7 +37,8 @@ import type { MigrationsReport, MigrationsReportEntry } from '../defs.ts'
 import type { UnknownError } from '../errors.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { makeColumnSpec } from '../schema/state/sqlite/column-spec.ts'
-import { SqliteAst } from '../schema/state/sqlite/db-schema/mod.ts'
+import { fingerprint } from '../schema/state/sqlite/db-schema/ast/fingerprint.ts'
+import type { SqliteAst } from '../schema/state/sqlite/db-schema/mod.ts'
 import type { SchemaEventDefsMetaRow, SchemaMetaRow } from '../schema/state/sqlite/system-tables/state-tables.ts'
 import {
   isStateSystemTable,
@@ -114,14 +115,14 @@ export const migrateDb = ({
       ...Array.from(schema.state.sqlite.tables.values()).filter((_) => !isStateSystemTable(_.sqliteDef.name)),
     ]
 
-    const tablesToMigrate = new Set<{ tableAst: SqliteAst.Table; schemaHash: number }>()
+    const tablesToMigrate = new Set<{ tableAst: SqliteAst.Table; schemaHash: string }>()
 
     const migrationsReportEntries: MigrationsReportEntry[] = []
     for (const tableDef of tableDefs) {
       const tableAst = tableDef.sqliteDef.ast
       const tableName = tableAst.name
       const dbSchemaHash = dbSchemaHashByTable[tableName]
-      const schemaHash = SqliteAst.hash(tableAst)
+      const schemaHash = fingerprint(tableAst)
 
       if (schemaHash !== dbSchemaHash) {
         tablesToMigrate.add({ tableAst, schemaHash })
@@ -151,13 +152,13 @@ export const migrateDb = ({
 export const migrateTable = ({
   db,
   tableAst,
-  schemaHash = SqliteAst.hash(tableAst),
+  schemaHash = fingerprint(tableAst),
   behaviour,
   skipMetaTable = false,
 }: {
   db: SqliteDb
   tableAst: SqliteAst.Table
-  schemaHash?: number
+  schemaHash?: string
   behaviour: 'drop-and-recreate' | 'create-if-not-exists'
   skipMetaTable?: boolean
 }) =>

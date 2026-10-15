@@ -17,9 +17,10 @@ repositories) and the child-node ownership map.
 Does not define: composition/lock mechanics
 ([01-composition](./01-composition/spec.md)), release/version flow
 ([02-release](./02-release/spec.md)), artifact flows
-([03-artifacts](./03-artifacts/spec.md)), internal package architecture
-(`../02-system/`), contributor governance (`../05-contributing/`), or
-docs-site content rules (`../04-docs/`).
+([03-artifacts](./03-artifacts/spec.md)), provider/account declared state
+([04-infrastructure](./04-infrastructure/spec.md)), internal package
+architecture (`../02-system/`), contributor governance
+(`../05-contributing/`), or docs-site content rules (`../04-docs/`).
 
 ## Delivery Identity
 
@@ -36,6 +37,7 @@ which package — and everything that follows from that split — is
 | [01-composition](./01-composition/spec.md) | Repository topology, package ownership, megarepo/lock semantics, dev-time dependency resolution, shared tooling/CI composition, docs-site composition, routing, history preservation |
 | [02-release](./02-release/spec.md) | Versioning, publish flow, lockstep core→contrib releases, publish-time dependency rewriting, dependency-update policy |
 | [03-artifacts](./03-artifacts/spec.md) | DevTools artifact release contract, wa-sqlite vendoring |
+| [04-infrastructure](./04-infrastructure/spec.md) | Provider accounts, declared infrastructure state, credential handling at rest |
 
 Decision records for the whole branch stay in [.decisions/](./.decisions/):
 [0001 two-repo composition](./.decisions/0001-two-repo-composition.md),

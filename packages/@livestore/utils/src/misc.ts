@@ -57,7 +57,7 @@ export const envTruish = (env: string | undefined) =>
 export const shouldNeverHappen = (msg?: string, ...args: ReadonlyArray<unknown>): never => {
   console.error(msg, ...args)
   if (isDevEnv() === true) {
-    // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint during development
+    // oxlint-disable-next-line no-debugger -- intentional breakpoint during development
     debugger
   }
 

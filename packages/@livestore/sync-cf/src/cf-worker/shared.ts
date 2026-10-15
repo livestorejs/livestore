@@ -1,6 +1,6 @@
 import type { UnknownError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
-import type { Effect } from '@livestore/utils/effect'
+import type { Effect, Layer } from '@livestore/utils/effect'
 import { Result, Schema } from '@livestore/utils/effect'
 
 import type { SearchParams } from '../common/mod.ts'
@@ -107,11 +107,18 @@ export type MakeDurableObjectClassOptions = {
     responseHeaders?: Record<string, string>
   }
 
-  otel?: {
-    baseUrl?: string
-    serviceName?: string
-  }
+  /** Optional telemetry. Omit to avoid creating an exporter or sending telemetry. */
+  otel?: SyncBackendOtelOptions
 }
+
+export type SyncBackendOtelOptions =
+  /** Application-supplied tracer layer; LiveStore builds and finalizes its resources per sync operation. */
+  | Layer.Layer<never>
+  | {
+      /** Convenience OTLP/HTTP JSON exporter owned by LiveStore for each operation. */
+      baseUrl?: string
+      serviceName?: string
+    }
 
 export type StoreId = string
 export type DurableObjectId = string
@@ -146,7 +153,7 @@ const SearchParamsFromUrlSearchParams = Schema.fromURLSearchParams(SearchParamsS
  */
 export const matchSyncRequest = (request: CfTypes.Request): SearchParams | undefined => {
   const url = new URL(request.url)
-  const paramsResult = Schema.decodeUnknownResult(SearchParamsFromUrlSearchParams)(url.searchParams)
+  const paramsResult = Schema.decodeResult(SearchParamsFromUrlSearchParams)(url.searchParams)
 
   if (Result.isFailure(paramsResult) === true) {
     return undefined
@@ -167,6 +174,9 @@ export type RpcSubscription = {
     durableObjectId: string
   }
 }
+
+/** Key prefix for DO-RPC subscriptions persisted in the DO's synchronous KV storage. */
+export const rpcSubscriptionKeyPrefix = 'rpc-sub:'
 
 /**
  * Durable Object interface supporting the DO RPC protocol for DO <> DO syncing.

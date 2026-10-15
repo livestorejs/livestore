@@ -1,33 +1,47 @@
 import { expect } from 'vitest'
 
-import { BackendIdMismatchError, SyncBackend } from '@livestore/common'
+import { BackendIdMismatchError, StateHead, SyncBackend } from '@livestore/common'
+import {
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  type ShutdownChannel as Shutdown,
+} from '@livestore/common/leader-thread'
 import { EventFactory } from '@livestore/common/testing'
 import type { LiveStoreEvent } from '@livestore/livestore'
 import { EventSequenceNumber, nanoid } from '@livestore/livestore'
-import { events } from '@livestore/livestore/internal/testing-utils'
+import { events, schema, tables } from '@livestore/livestore/internal/testing-utils'
+import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
+import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
-  type Context,
+  Clock,
+  Context,
+  Deferred,
   Duration,
   Effect,
   FetchHttpClient,
   Fiber,
-  type HttpClient,
+  HttpClient,
+  HttpClientRequest,
   KeyValueStore,
   Layer,
   Logger,
   ManagedRuntime,
   Option,
+  Queue,
   References,
+  Result,
   Schedule,
   Schema,
   Stream,
   SubscriptionRef,
+  WebChannel,
 } from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
 
-import { providerKeys, providerRegistry } from './providers/registry.ts'
-import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'
+import { providerRegistry, selectedProviderKeys } from './providers/registry.ts'
+import { HOOK_TIMEOUT_MS, SyncProviderImpl, type SyncProviderOptions } from './types.ts'
 
 // NOTE: These specs should mirror LeaderSyncProcessor semantics: pushes never bypass the
 // queueing/rebase rules, and live pulls represent the long-lived stream the leader relies on.
@@ -37,7 +51,7 @@ const defaultClient = EventFactory.clientIdentity('test-client', 'test-session')
 
 const makeFactory = EventFactory.makeFactory(events)
 
-const providerLayers = providerKeys.map((key) => providerRegistry[key])
+const providerLayers = selectedProviderKeys().map((key) => ({ key, ...providerRegistry[key] }))
 
 type RuntimeServices = SyncProviderImpl | HttpClient.HttpClient
 
@@ -56,13 +70,14 @@ const runFirstNonEmpty = <T, E, R>(stream: Stream.Stream<SyncBackend.PullResItem
     Stream.runFirstUnsafe,
   )
 
-// TODO come up with a way to target specific providers individually
 /** Verifies: LS.SYS.SYNC-R02, LS.SYS.SYNC-R03, LS.SYS.SYNC-R04, LS.SYS.SYNC-R05, LS.SYS.SYNC.CF-R05, LS.SYS.VER.CONF-R01 */
-Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, ({ layer, name }) => {
+Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, ({ key, layer, name }) => {
   let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
   let runtimeContext: Context.Context<RuntimeServices>
   let testId: string
 
+  // Vitest's default hookTimeout (10s) is shorter than the wrangler boot budget inside the layer
+  // (30s per attempt + 1 retry in CI), so a slow workerd cold start would kill the whole suite here.
   Vitest.beforeAll(async () => {
     testId = nanoid()
     runtime = ManagedRuntime.make(
@@ -76,9 +91,9 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     )
     // Eagerly start the runtime
     runtimeContext = await runtime.context()
-  })
+  }, HOOK_TIMEOUT_MS)
 
-  Vitest.afterAll(async () => await runtime.dispose())
+  Vitest.afterAll(async () => await runtime.dispose(), HOOK_TIMEOUT_MS)
 
   const makeProvider = (testName?: string, options?: SyncProviderOptions) =>
     Effect.suspend(() =>
@@ -175,6 +190,120 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         expect(result.batch.length).toBe(1)
       }).pipe(withTestCtx()(test)),
     )
+
+    Vitest.live.skipIf(key !== 'cf-ws-d1' && key !== 'cf-ws-do')(
+      'resumes pulling events pushed after a socket drop',
+      (test) =>
+        Effect.gen(function* () {
+          const reader = yield* makeProvider(test.task.name)
+          const subscribed = yield* Deferred.make<void>()
+          const offline = yield* Deferred.make<void>()
+          let pullAttempts = 0
+          const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
+          const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
+          const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
+          const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
+          const leaderContext = yield* Layer.build(
+            makeLeaderThreadLayer({
+              schema,
+              storeId: `test-store-${name}-${test.task.name}-${testId}`,
+              clientId: 'reader',
+              syncPayloadEncoded: undefined,
+              syncPayloadSchema: undefined,
+              makeSqliteDb,
+              syncOptions: {
+                livePull: true,
+                backend: () =>
+                  Effect.succeed({
+                    ...reader,
+                    pull: (cursor, options) =>
+                      Stream.suspend(() => {
+                        pullAttempts++
+                        // Stop a broken production retry loop before it can flood tracing or exhaust memory.
+                        if (pullAttempts > 1_000) return Stream.die('Pull retry loop exceeded 1,000 attempts')
+                        return reader.pull(cursor, options).pipe(
+                          Stream.tap(() => Deferred.succeed(subscribed, undefined)),
+                          Stream.tapError((error) =>
+                            error._tag === 'IsOfflineError' ? Deferred.succeed(offline, undefined) : Effect.void,
+                          ),
+                        )
+                      }),
+                  }),
+              },
+              dbState,
+              dbEventlog,
+              devtoolsOptions: { enabled: false },
+              shutdownChannel: yield* WebChannel.noopChannel<typeof Shutdown.All.Type, typeof Shutdown.All.Type>(),
+            }).pipe(
+              Layer.provide(StateHead.layer({ dbState })),
+              Layer.provide(FetchHttpClient.layer),
+              Layer.provide(PlatformNode.NodeFileSystem.layer),
+            ),
+          )
+          const leader = Context.get(leaderContext, LeaderThreadCtx)
+          yield* Deferred.await(subscribed)
+          const reconnected = yield* SubscriptionRef.changes(reader.isConnected).pipe(
+            Stream.dropWhile((connected) => connected === true),
+            Stream.filter((connected) => connected === true),
+            Stream.runFirstUnsafe,
+            Effect.andThen(Clock.currentTimeMillis),
+            Effect.forkChild,
+          )
+          const applied = yield* leader.syncProcessor.syncState.changes.pipe(
+            Stream.filter((state) => state.upstreamHead.global === 1),
+            Stream.runFirstUnsafe,
+            Effect.andThen(Clock.currentTimeMillis),
+            Effect.forkChild,
+          )
+
+          const client = yield* HttpClient.HttpClient
+          const url = new URL('/instance/close-websockets', reader.metadata.url as string)
+          url.searchParams.set('storeId', `test-store-${name}-${test.task.name}-${testId}`)
+          const closed = yield* client
+            .execute(HttpClientRequest.post(url.toString()))
+            .pipe(Effect.flatMap((response) => response.json))
+          expect(closed).toEqual({ count: 1 })
+          yield* Deferred.await(offline)
+          yield* Effect.sleep('20 seconds')
+          url.pathname = '/instance/websocket-outage'
+          const outage = yield* client.execute(HttpClientRequest.get(url.toString())).pipe(
+            Effect.flatMap((response) => response.json),
+            Effect.flatMap(
+              Schema.decodeUnknownEffect(Schema.Struct({ until: Schema.Finite, openAttempts: Schema.Finite })),
+            ),
+          )
+          yield* Effect.logInfo('20-second WebSocket outage retry counts', {
+            pullAttempts,
+            openAttempts: outage.openAttempts,
+          })
+          expect.soft(pullAttempts).toBeLessThanOrEqual(12)
+          expect.soft(outage.openAttempts).toBeGreaterThan(0)
+          expect.soft(outage.openAttempts).toBeLessThanOrEqual(12)
+
+          const writer = yield* makeProvider(test.task.name)
+          const factory = makeFactory({ client: defaultClient, startSeq: 1, initialParent: 'root' })
+          const event = factory.todoCreated.next({ id: 'after-reconnect', text: 'After reconnect', completed: false })
+          yield* writer.push([event])
+          const connectedAt = yield* Fiber.join(reconnected).pipe(Effect.timeout('40 seconds'))
+          const caughtUp = yield* Fiber.join(applied).pipe(Effect.timeout('2 seconds'), Effect.result)
+          const catchUpMs = Result.isSuccess(caughtUp) === true ? caughtUp.success - connectedAt : null
+          yield* Effect.logInfo('WebSocket leader catch-up latency', {
+            pullAttempts,
+            serverAvailableToConnectedMs: connectedAt - outage.until,
+            connectedToAppliedMs: catchUpMs,
+          })
+          expect.soft(Result.isSuccess(caughtUp)).toBe(true)
+          if (Result.isSuccess(caughtUp) === true) expect.soft(catchUpMs).toBeLessThanOrEqual(2_000)
+          expect
+            .soft(leader.dbState.select<{ id: string }>(tables.todos.asSql().query).map((row) => row.id))
+            .toEqual(['after-reconnect'])
+        }).pipe(
+          Effect.provide(PlatformNode.NodeFileSystem.layer),
+          Effect.provide(runtimeContext),
+          withTestCtx({ timeout: '90 seconds' })(test),
+        ),
+      { timeout: 90_000 },
+    )
   })
 
   Vitest.live('can pull with cursor', (test) =>
@@ -197,6 +326,46 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       expect(secondPull).toEqual(SyncBackend.pullResItemEmpty())
     }).pipe(withTestCtx()(test)),
   )
+
+  Vitest.describe.skipIf(key !== 'cf-ws-do')('serialized admission', () => {
+    Vitest.live('serializes concurrent pushes that share the same parent', (test) =>
+      Effect.gen(function* () {
+        const syncBackend = yield* makeProvider(test.task.name)
+        const contenders = Array.from({ length: 8 }, (_, index) =>
+          makeFactory({
+            client: EventFactory.clientIdentity(`contender-${index}`, `session-${index}`),
+            startSeq: 1,
+            initialParent: 'root',
+          }).todoCreated.next({ id: `contender-${index}`, text: `Contender ${index}`, completed: false }),
+        )
+        const ready = yield* Queue.unbounded<void>()
+        const release = yield* Deferred.make<void>()
+
+        const fibers = yield* Effect.forEach(contenders, (event) =>
+          Effect.gen(function* () {
+            yield* Queue.offer(ready, undefined)
+            yield* Deferred.await(release)
+            return yield* syncBackend.push([event]).pipe(Effect.result)
+          }).pipe(Effect.forkChild),
+        )
+
+        // All contenders cross the same explicit start barrier before backend admission.
+        yield* Effect.forEach(contenders, () => Queue.take(ready))
+        yield* Deferred.succeed(release, undefined)
+
+        const results = yield* Effect.forEach(fibers, Fiber.join)
+        const successes = results.filter(Result.isSuccess)
+        const failures = results.filter(Result.isFailure)
+
+        expect(successes).toHaveLength(1)
+        expect(failures).toHaveLength(contenders.length - 1)
+        expect(failures.every((result) => result.failure._tag === 'ServerAheadError')).toBe(true)
+
+        const pulled = yield* syncBackend.pull(Option.none()).pipe(Stream.runCollectReadonlyArray)
+        expect(pulled.flatMap((item) => item.batch)).toHaveLength(1)
+      }).pipe(withTestCtx()(test)),
+    )
+  })
 
   Vitest.describe('large batches handling', () => {
     const MIN_BATCH_PAYLOAD_BYTES = 1_000_000
@@ -384,7 +553,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
           })(test),
         )
       },
-      { timeout: vitestTimeoutMs, fastCheck: { numRuns: 1 } },
+      { timeout: vitestTimeoutMs, arbitrary: { runs: 1 } },
     )
   })
 
@@ -677,8 +846,8 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       expect(originalError.received).toBe('received-backend-id-456')
 
       // Simulate what happens during RPC: encode to JSON and decode back
-      const str = yield* Schema.encodeEffect(Schema.UnknownFromJsonString)(originalError)
-      const encoded = (yield* Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)(str)) as {
+      const str = yield* Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown))(originalError)
+      const encoded = (yield* Schema.decodeEffect(Schema.fromJsonString(Schema.Unknown))(str)) as {
         _tag: string
         expected: string
         received: string

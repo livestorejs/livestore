@@ -78,9 +78,9 @@ Sources (all developers.cloudflare.com, retrieved 2026-07-15):
 The DO adapter (`create-store-do.ts`) colocates the leader and single
 client session in one isolate. Commits materialize and persist to the
 eventlog via `ctx.storage` (SQL VFS) before the background push to the
-sync backend. The push target `syncBackendStub` is a
-`DurableObjectStub` (DO-to-DO RPC), i.e. an **outgoing network
-message**.
+sync backend. The push target (the stub that `getSyncBackendStub`
+returns) is a `DurableObjectStub` (DO-to-DO RPC), i.e. an **outgoing
+network message**.
 
 - **No push precedes durable persistence.** Because the push is a
   network message, the output gate holds it until the eventlog write

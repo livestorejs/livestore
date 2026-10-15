@@ -204,7 +204,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               suffix: `delayX=${delayX} delayY=${delayY} connectDelay=${connectDelay} channelType=${channelType} nodeNames=${nodeNames.join(',')}`,
             }),
           ),
-        // { fastCheck: { numRuns: 20 } },
+        // { arbitrary: { runs: 20 } },
       )
       // const waitForOfflineDelay = undefined
       // const sleepDelay = 0
@@ -283,7 +283,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               suffix: `waitForOfflineDelay=${waitForOfflineDelay} sleepDelay=${sleepDelay} channelType=${channelType}`,
             }),
           ),
-        { fastCheck: { numRuns: 20 } },
+        { arbitrary: { runs: 20 } },
       )
 
       Vitest.live('reconnect with re-created node', (test) =>
@@ -395,7 +395,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               suffix: `channelType=${channelType} nodeNames=${nodeNames.join(',')}`,
             }),
           ),
-        { fastCheck: { numRuns: 10 } },
+        { arbitrary: { runs: 10 } },
       )
 
       Vitest.describe('TODO improve latency', () => {
@@ -459,7 +459,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
                 timeout: testTimeout * 2,
               }),
             ),
-          { fastCheck: { numRuns: 10 } },
+          { arbitrary: { runs: 10 } },
         )
       })
     })
@@ -1266,7 +1266,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               timeout: testTimeout * 2,
             }),
           ),
-        { fastCheck: { numRuns: 10 } },
+        { arbitrary: { runs: 10 } },
       )
     })
   })

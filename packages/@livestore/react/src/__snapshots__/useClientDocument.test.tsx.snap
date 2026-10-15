@@ -29,8 +29,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
         {
           "_name": "client-session-sync-processor:pull",
           "attributes": {
-            "span.label": "⚠︎ Interrupted",
-            "status.interrupted": true,
+            "effect.fiber.interrupted": true,
           },
         },
         {
@@ -38,8 +37,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "span.label": "⚠︎ Interrupted",
-            "status.interrupted": true,
+            "effect.fiber.interrupted": true,
           },
         },
       ],
@@ -186,9 +184,9 @@ exports[`useClientDocument > otel > should update the data based on component ke
     "_name": "LiveStore:commit",
     "attributes": {
       "livestore.commitLabel": "UserInfo.set:u1",
-      "livestore.eventTags": "[
-  "UserInfoSet"
-]",
+      "livestore.eventTags": [
+        "UserInfoSet",
+      ],
       "livestore.eventsCount": 1,
     },
     "children": [
@@ -211,6 +209,19 @@ exports[`useClientDocument > otel > should update the data based on component ke
     ",
                 },
               },
+              {
+                "_name": "@livestore/common:execSql",
+                "attributes": {
+                  "bindValueKeys": [
+                    "$id",
+                    "$seqNumGlobal",
+                    "$seqNumClient",
+                    "$seqNumRebaseGeneration",
+                  ],
+                  "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+                  "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+                },
+              },
             ],
           },
         ],
@@ -230,9 +241,9 @@ exports[`useClientDocument > otel > should update the data based on component ke
   {
     "_name": "LiveStore:commit",
     "attributes": {
-      "livestore.eventTags": "[
-  "UserInfoSet"
-]",
+      "livestore.eventTags": [
+        "UserInfoSet",
+      ],
       "livestore.eventsCount": 1,
     },
     "children": [
@@ -253,6 +264,19 @@ exports[`useClientDocument > otel > should update the data based on component ke
       VALUES (?, ?)
       ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
     ",
+                },
+              },
+              {
+                "_name": "@livestore/common:execSql",
+                "attributes": {
+                  "bindValueKeys": [
+                    "$id",
+                    "$seqNumGlobal",
+                    "$seqNumClient",
+                    "$seqNumRebaseGeneration",
+                  ],
+                  "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+                  "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
               },
             ],
@@ -303,8 +327,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
         {
           "_name": "client-session-sync-processor:pull",
           "attributes": {
-            "span.label": "⚠︎ Interrupted",
-            "status.interrupted": true,
+            "effect.fiber.interrupted": true,
           },
         },
         {
@@ -312,8 +335,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "span.label": "⚠︎ Interrupted",
-            "status.interrupted": true,
+            "effect.fiber.interrupted": true,
           },
         },
       ],
@@ -398,9 +420,9 @@ exports[`useClientDocument > otel > should update the data based on component ke
     "_name": "LiveStore:commit",
     "attributes": {
       "livestore.commitLabel": "UserInfo.set:u1",
-      "livestore.eventTags": "[
-  "UserInfoSet"
-]",
+      "livestore.eventTags": [
+        "UserInfoSet",
+      ],
       "livestore.eventsCount": 1,
     },
     "children": [
@@ -423,6 +445,19 @@ exports[`useClientDocument > otel > should update the data based on component ke
     ",
                 },
               },
+              {
+                "_name": "@livestore/common:execSql",
+                "attributes": {
+                  "bindValueKeys": [
+                    "$id",
+                    "$seqNumGlobal",
+                    "$seqNumClient",
+                    "$seqNumRebaseGeneration",
+                  ],
+                  "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+                  "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+                },
+              },
             ],
           },
         ],
@@ -442,9 +477,9 @@ exports[`useClientDocument > otel > should update the data based on component ke
   {
     "_name": "LiveStore:commit",
     "attributes": {
-      "livestore.eventTags": "[
-  "UserInfoSet"
-]",
+      "livestore.eventTags": [
+        "UserInfoSet",
+      ],
       "livestore.eventsCount": 1,
     },
     "children": [
@@ -465,6 +500,19 @@ exports[`useClientDocument > otel > should update the data based on component ke
       VALUES (?, ?)
       ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
     ",
+                },
+              },
+              {
+                "_name": "@livestore/common:execSql",
+                "attributes": {
+                  "bindValueKeys": [
+                    "$id",
+                    "$seqNumGlobal",
+                    "$seqNumClient",
+                    "$seqNumRebaseGeneration",
+                  ],
+                  "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+                  "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
               },
             ],

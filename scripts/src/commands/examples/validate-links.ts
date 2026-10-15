@@ -2,7 +2,7 @@ import { Effect, Option, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import { type ExampleDeploymentEnvironment, exampleDeployments } from '@local/shared'
 
-class ExampleLinkValidationError extends Schema.TaggedErrorClass<ExampleLinkValidationError>()(
+class ExampleLinkValidationError extends Schema.TaggedError<ExampleLinkValidationError>()(
   'ExampleLinkValidationError',
   {
     message: Schema.String,
@@ -60,7 +60,7 @@ const validateEndpoint = ({
 export const validateLinksCommand = Cli.Command.make(
   'validate-links',
   {
-    exampleFilter: Cli.Flag.string('example-filter').pipe(Cli.Flag.withAlias('e'), Cli.Flag.optional),
+    exampleFilter: Cli.Flag.String('example-filter').pipe(Cli.Flag.withAlias('e'), Cli.Flag.optional),
   },
   Effect.fn(function* ({ exampleFilter }) {
     const filteredDeployments = exampleDeployments.filter((deployment) =>

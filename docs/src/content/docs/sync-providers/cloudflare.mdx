@@ -161,7 +161,8 @@ Creates an HTTP-based sync backend client with polling for live updates.
 Creates a Durable Object RPC-based sync backend (for internal use).
 
 **Options:**
-- `syncBackendStub` - Durable Object stub implementing `SyncBackendRpcInterface`
+- `getSyncBackendStub` - Returns a Durable Object stub implementing `SyncBackendRpcInterface`; called for every RPC call so a retry after a failure uses a fresh stub
+- `durableObjectState` - The client Durable Object's `ctx` (`DurableObjectState`); scopes live-pull routing to this instance so it resets on reconstruction
 - `durableObjectContext` - Context for RPC callbacks:
   - `bindingName` - Wrangler binding name for the client DO
   - `durableObjectId` - Client Durable Object ID
@@ -170,10 +171,11 @@ Creates a Durable Object RPC-based sync backend (for internal use).
 - Direct RPC communication
 - Real-time live pull via callbacks
 - Hibernation support
+- Retries temporary failures: a call that Cloudflare marks `retryable` (and not `overloaded`) surfaces as `IsOfflineError`, and pulls back off exponentially (1 s doubling to 30 s, with jitter). Catch-up also recovers from disconnected streams and from 60 seconds without a page or completion, resuming after the last applied event. Idle live subscriptions have no deadline. Explicit overload, non-retryable remote errors, and unknown call failures stop sync as before
 
-### `handleSyncUpdateRpc(payload)`
+### `handleSyncUpdateRpc(ctx, payload)`
 
-Handles RPC callback for live pull updates in Durable Objects.
+Handles the RPC callback for live-pull updates in Durable Objects. Pass the client DO's `ctx` (`DurableObjectState`) so the update is routed to that instance's live pull. The `syncUpdateRpc` method also receives the subscription's `storeId` as a required trailing argument: a reconstructed (store-less) DO can re-boot its store from it and catch up rather than drop the update — see [the Durable Object adapter's recovery options](/platform-adapters/cloudflare-durable-object-adapter).
 
 <SNIPPETS.clientDo />
 
@@ -190,9 +192,13 @@ Creates a sync backend Durable Object class.
 - `onPullRes?` - Callback for pull responses: `(message) => void | Promise<void>`
 - `storage?` - Storage engine: `{ _tag: 'do-sqlite' } | { _tag: 'd1', binding: string }` (default: `do-sqlite`)
 - `enabledTransports?` - Set of enabled transports: `Set<'http' | 'ws' | 'do-rpc'>`
-- `otel?` - OpenTelemetry configuration:
-  - `baseUrl?` - OTEL endpoint URL
-  - `serviceName?` - Service name for traces
+- `otel?` - Pass your Effect tracer layer with `otel: tracingLayer`, or use `otel: { baseUrl: 'https://collector.example.com', serviceName: 'sync-cf' }` for the built-in OTLP/HTTP JSON exporter (`serviceName` is optional).
+
+Omit `otel` to disable telemetry export. Your application chooses the tracing integration and destination; LiveStore does not require Workers Paid.
+
+Layers are built per sync operation and cleaned up in the background. Keep setup lightweight, and do not shut down a shared tracer provider during cleanup. Telemetry delivery is best-effort.
+
+Sampled client RPC context is preserved. When the client has no sampled context, backend spans start a new trace so server telemetry remains independently observable. Expected sync-recovery responses remain typed errors without marking the RPC boundary as a tracing error.
 
 <SNIPPETS.doSyncBackend />
 
@@ -336,6 +342,23 @@ npx wrangler dev
 # Access local D1 database
 # Located at: .wrangler/state/d1/miniflare-D1DatabaseObject/XXX.sqlite
 ```
+
+## Self-hosting with celld
+
+Run the sync backend on your own infrastructure with [celld](https://github.com/denoland/celld). celld reads the Wrangler configuration above in its JSON form (`wrangler.json`):
+
+```bash
+# Start local development server (http://127.0.0.1:9876)
+celld dev .
+
+# Deploy the worker to a storage bucket (S3, GCS or Azure)
+celld deploy . --bucket <bucket>
+
+# Start a node that serves the deployment
+celld --bucket <bucket>
+```
+
+See the [`web-todomvc-sync-celld`](https://github.com/livestorejs/livestore-contrib/tree/main/examples/web-todomvc-sync-celld) example for a complete setup.
 
 ## Examples
 

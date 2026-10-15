@@ -2,14 +2,10 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
-    "composite": false,
-    "declaration": false,
-    "declarationMap": false,
+    "types": ["vite/client", "vite-plugin-svgr/client"],
     /* Bundler mode */
-    "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "verbatimModuleSyntax": true,
@@ -19,12 +15,18 @@
     "jsx": "react-jsx",
 
     /* Linting */
-    "strict": true,
     "strictNullChecks": true,
     "noUncheckedIndexedAccess": true,
     // "noUnusedLocals": true,
     // "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [
+    { "path": "../../packages/@livestore/adapter-web" },
+    { "path": "../../packages/@livestore/livestore" },
+    { "path": "../../packages/@livestore/react" },
+    { "path": "../../packages/@livestore/sync-cf" },
+    { "path": "../../packages/@livestore/utils" }
+  ]
 }

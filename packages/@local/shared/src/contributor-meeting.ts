@@ -93,6 +93,7 @@ export const decodeMeetingSchedule = (input: unknown): MeetingSchedule => {
     changes,
     ...(calendarId === undefined ? {} : { calendarId }),
   }
+  validateCadence(schedule)
   getMeetingView(schedule, new Date(`${schedule.anchor.date}T00:00:00Z`))
   return schedule
 }
@@ -100,10 +101,12 @@ export const decodeMeetingSchedule = (input: unknown): MeetingSchedule => {
 export const getMeetingView = (
   schedule: MeetingSchedule,
   now: Date,
-): { upcoming: MeetingOccurrence[]; notices: MeetingNotice[] } => {
+  retainIds: ReadonlySet<string> = new Set(),
+): { upcoming: MeetingOccurrence[]; notices: MeetingNotice[]; retainedHistory: MeetingOccurrence[] } => {
   if (Number.isFinite(now.getTime()) === false) throw new MeetingScheduleError('Invalid current time')
   const upcoming: MeetingOccurrence[] = []
   const notices: MeetingNotice[] = []
+  const retainedHistory: MeetingOccurrence[] = []
   let cursorDate = schedule.anchor.date
   let localStart = schedule.localStart
   let previousDate: string | undefined
@@ -142,17 +145,21 @@ export const getMeetingView = (
     previousDate = cursorDate
     const start = localInstant(cursorDate, localStart, schedule.timeZone)
     const end = start + schedule.durationMinutes * 60000
-    if (end > now.getTime() && upcoming.length < 2) {
-      upcoming.push({
-        id: `lscontrib${occurrence.toString(16).padStart(8, '0')}`,
+    const id = `lscontrib${occurrence.toString(16).padStart(8, '0')}`
+    const retainHistory = end <= now.getTime() && retainIds.has(id) === true
+    if ((end > now.getTime() && upcoming.length < 2) || retainHistory === true) {
+      const meeting = {
+        id,
         occurrence,
         date: cursorDate,
         start: new Date(start).toISOString(),
         end: new Date(end).toISOString(),
         ...(note === undefined ? {} : { note }),
-      })
+      }
+      if (retainHistory === true) retainedHistory.push(meeting)
+      else upcoming.push(meeting)
     }
-    if (upcoming.length === 2 && occurrence >= lastChange + 2) return { upcoming, notices }
+    if (upcoming.length === 2 && occurrence >= lastChange + 2) return { upcoming, notices, retainedHistory }
     cursorDate = addDays(cursorDate, schedule.intervalDays)
   }
   throw new MeetingScheduleError('Schedule exceeds the supported 10,000-occurrence horizon')
@@ -212,3 +219,44 @@ const localInstant = (day: string, time: string, timeZone: string): number => {
 
 const meetingEnd = (schedule: MeetingSchedule, day: string): number =>
   localInstant(day, schedule.localStart, schedule.timeZone) + schedule.durationMinutes * 60000
+
+// Berlin has missing/ambiguous wall times only in the 02:00 hour on the
+// last Sunday of March/October. Inspect the entire bounded cadence cheaply,
+// invoking Intl only for those candidate dates (including later cadence changes).
+const validateCadence = (schedule: MeetingSchedule): void => {
+  let day = schedule.anchor.date
+  let time = schedule.localStart
+  const changes = new Map(schedule.changes.map((change) => [change.occurrence, change]))
+  const replacements = new Map<number, string>()
+  if (schedule.changes.some((change) => change.occurrence + (change.kind === 'cancel' ? 2 : 0) >= 10000) === true)
+    throw new MeetingScheduleError('Schedule exceeds the supported 10,000-occurrence horizon')
+  if (
+    time.startsWith('02:') === false &&
+    schedule.changes.some((change) => change.kind === 'reschedule' && change.localStart?.startsWith('02:') === true) ===
+      false
+  )
+    return
+  for (let occurrence = 0; occurrence < 10000; occurrence++) {
+    day = replacements.get(occurrence) ?? day
+    const change = changes.get(occurrence)
+    if (change?.kind === 'cancel') {
+      replacements.set(occurrence + 1, change.nextDates[0])
+      replacements.set(occurrence + 2, change.nextDates[1])
+    } else {
+      if (change?.kind === 'reschedule') {
+        day = change.date
+        time = change.localStart ?? time
+      }
+      if (time.startsWith('02:') === true) {
+        const instant = new Date(`${day}T00:00:00Z`)
+        if (
+          (instant.getUTCMonth() === 2 || instant.getUTCMonth() === 9) &&
+          instant.getUTCDay() === 0 &&
+          instant.getUTCDate() >= 25
+        )
+          localInstant(day, time, schedule.timeZone)
+      }
+    }
+    day = addDays(day, schedule.intervalDays)
+  }
+}

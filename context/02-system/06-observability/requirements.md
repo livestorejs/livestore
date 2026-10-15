@@ -18,8 +18,8 @@ this node owns tracing/telemetry semantics.
   traces.
 - **LS.SYS.OBS-R02 No-op default:** Without an app-provided tracer,
   instrumentation degrades to a built-in no-op tracer: no exporter, no
-  network, bounded per-span overhead (today: one object allocation plus
-  start/end timestamps — a stricter zero-allocation budget is open, see
+  network, bounded per-span overhead (today: one object allocation and a
+  shared invalid OpenTelemetry span context — a stricter zero-allocation budget is open, see
   LS.SYS.OBS-DQ3). `refines: LS-R14`
 - **LS.SYS.OBS-R03 Injectable tracer:** Apps provide their tracer/exporter;
   LiveStore never configures a global exporter on its own.

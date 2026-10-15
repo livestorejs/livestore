@@ -4,17 +4,7 @@ import { DurableObject } from 'cloudflare:workers'
 
 import { type CfTypes, setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
 import { CfDeclare } from '@livestore/common-cf/declare'
-import {
-  Effect,
-  FetchHttpClient,
-  Layer,
-  Logger,
-  Otlp,
-  References,
-  RpcMessage,
-  Schema,
-  type Scope,
-} from '@livestore/utils/effect'
+import { Effect, Layer, Logger, References, RpcMessage, Schema, type Scope } from '@livestore/utils/effect'
 
 import {
   type Env,
@@ -25,6 +15,7 @@ import {
   WebSocketAttachmentSchema,
 } from '../shared.ts'
 import * as DoCtx from './layer.ts'
+import { makeObservability } from './observability.ts'
 import { createDoRpcHandler } from './transport/do-rpc-server.ts'
 import { createHttpRpcHandler } from './transport/http-rpc-server.ts'
 import { makeRpcServer } from './transport/ws-rpc-server.ts'
@@ -34,7 +25,7 @@ const WebSocketPair = CfDeclare.WebSocketPair
 const WebSocketRequestResponsePair = CfDeclare.WebSocketRequestResponsePair
 
 /** Module-scoped JSON encoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
-const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
+const jsonStringify = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown))
 
 const DurableObjectBase = DurableObject as any as new (
   state: CfTypes.DurableObjectState,
@@ -88,24 +79,18 @@ export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) =
 export const makeDurableObject: MakeDurableObjectClass = (options) => {
   const enabledTransports = options?.enabledTransports ?? new Set(['http', 'ws', 'do-rpc'])
 
-  const Observability: Layer.Layer<never> =
-    options?.otel?.baseUrl !== undefined
-      ? Otlp.layerJson({
-          baseUrl: options.otel.baseUrl,
-          tracerExportInterval: 50,
-          resource: {
-            serviceName: options.otel.serviceName ?? 'sync-cf-do',
-          },
-        }).pipe(Layer.provide(FetchHttpClient.layer))
-      : Layer.empty
-
   return class SyncBackendDOBase extends DurableObjectBase implements SyncBackendRpcInterface {
     __DURABLE_OBJECT_BRAND = 'SyncBackendDOBase' as never
+    private readonly observability = makeObservability(options?.otel)
 
     constructor(ctx: CfTypes.DurableObjectState, env: Env) {
       super(ctx, env)
 
-      const WebSocketRpcServerLive = makeRpcServer({ doSelf: this, doOptions: options })
+      const WebSocketRpcServerLive = makeRpcServer({
+        doSelf: this,
+        doOptions: options,
+        observability: this.observability,
+      })
 
       // This registers the `webSocketMessage` and `webSocketClose` handlers
       if (enabledTransports.has('ws') === true) {
@@ -117,7 +102,6 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           // in combination with DO hibernation
           onMessage: (request, ws) => {
             if (request._tag === 'Request' && request.tag === 'SyncWsRpc.Pull') {
-              // Is Pull request: add requestId to pullRequestIds
               const attachment = ws.deserializeAttachment()
               const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
               ws.serializeAttachment(
@@ -126,20 +110,10 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
                   pullRequestIds: [...pullRequestIds, request.id],
                 }),
               )
-            } else if (request._tag === 'Interrupt') {
-              // Is Interrupt request: remove requestId from pullRequestIds
-              const attachment = ws.deserializeAttachment()
-              const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
-              ws.serializeAttachment(
-                Schema.encodeSync(WebSocketAttachmentSchema)({
-                  ...rest,
-                  pullRequestIds: pullRequestIds.filter((id) => id !== request.requestId),
-                }),
-              )
-              // TODO also emit `Exit` stream RPC message
             }
           },
-          mainLayer: Observability,
+          onRequestExit: (requestId, ws) => removePullRequestId(ws, requestId),
+          onProtocolDefect: clearPullRequestIds,
         })
       }
     }
@@ -219,10 +193,11 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         throw new Error('Do RPC transport is not enabled (based on `options.enabledTransports`)')
       }
 
-      return createDoRpcHandler({ payload, input: { doSelf: this, doOptions: options } }).pipe(
-        Effect.withSpan('@livestore/sync-cf:durable-object:rpc'),
-        this.runEffectAsPromise,
-      )
+      return createDoRpcHandler({
+        payload,
+        input: { doSelf: this, doOptions: options },
+        observability: this.observability,
+      }).pipe(Effect.withSpan('@livestore/sync-cf:durable-object:rpc'), this.runEffectAsPromise)
     }
 
     /**
@@ -242,14 +217,36 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         Effect.tapCauseLogPretty,
         Effect.annotateLogs({ thread: 'SyncDo' }),
         Effect.provide(
-          Layer.mergeAll(
-            Observability,
-            Logger.layer([Logger.consoleStructured]),
-            Layer.succeed(References.MinimumLogLevel, 'Debug'),
-          ),
+          Layer.mergeAll(Logger.layer([Logger.consoleStructured]), Layer.succeed(References.MinimumLogLevel, 'Debug')),
         ),
         Effect.scoped,
+        this.observability.effect,
         Effect.runPromise,
       )
   }
+}
+
+const removePullRequestId = (ws: CfTypes.WebSocket, requestId: string | number) =>
+  updatePullRequestIds(ws, (pullRequestIds) =>
+    pullRequestIds.includes(requestId) === true ? pullRequestIds.filter((id) => id !== requestId) : pullRequestIds,
+  )
+
+const clearPullRequestIds = (ws: CfTypes.WebSocket) =>
+  updatePullRequestIds(ws, (pullRequestIds) => (pullRequestIds.length === 0 ? pullRequestIds : []))
+
+const updatePullRequestIds = (
+  ws: CfTypes.WebSocket,
+  update: (pullRequestIds: ReadonlyArray<string | number>) => ReadonlyArray<string | number>,
+) => {
+  const attachment = ws.deserializeAttachment()
+  const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
+  const nextPullRequestIds = update(pullRequestIds)
+  if (nextPullRequestIds === pullRequestIds) return
+
+  ws.serializeAttachment(
+    Schema.encodeSync(WebSocketAttachmentSchema)({
+      ...rest,
+      pullRequestIds: nextPullRequestIds,
+    }),
+  )
 }

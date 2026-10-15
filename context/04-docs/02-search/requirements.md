@@ -22,3 +22,8 @@ production search sync in the release flow
 - **LS.DOCS.SEARCH-R02 One index, whole product:** Search spans core and
   contrib package docs as one result set. `refines: LS.DEL.COMP-R14`
   Adopted 2026-07-16 (interview).
+- **LS.DOCS.SEARCH-R03 Each surface searches its own content:** A docs surface
+  serves the index its own sync path writes. The production surface searches
+  released documentation and the development surface searches `main`, so
+  neither returns results for pages the reader cannot reach.
+  `refines: LS.DOCS.SEARCH-R01` Adopted 2026-07-27 (interview).

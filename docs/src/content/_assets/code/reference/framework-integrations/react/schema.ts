@@ -26,7 +26,7 @@ export const events = {
     schema: Schema.Struct({
       id: Schema.String,
       text: Schema.String,
-      createdAt: Schema.DateFromString.check(Schema.isDateValid()),
+      createdAt: Schema.DateFromString,
     }),
   }),
 } as const

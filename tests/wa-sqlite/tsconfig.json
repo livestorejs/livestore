@@ -3,7 +3,9 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": ["ES2024"],
+    "lib": [
+      "ES2024"
+    ],
     "module": "NodeNext",
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
@@ -34,14 +36,26 @@
           "anyUnknownInErrorContext": "warning",
           "preferSchemaOverJson": "warning"
         },
-        "allowedDuplicatedPackages": ["@livestore/utils"]
+        "allowedDuplicatedPackages": [
+          "@livestore/utils"
+        ]
       }
     ],
     "noEmit": true,
-    "types": ["vitest/globals", "@types/node"]
+    "types": [
+      "vitest/globals",
+      "@types/node"
+    ]
   },
-  "include": ["test"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
+  "include": [
+    "test"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/dist",
+    "**/node_modules/.pnpm",
+    "**/*.genie.ts"
+  ],
   "references": [
     {
       "path": "../../packages/@livestore/wa-sqlite"

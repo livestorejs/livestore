@@ -1,7 +1,7 @@
 import type * as otel from '@opentelemetry/api'
 
 import type { BootStatus, BootWarningReason, LogConfig, SqliteDb, SyncOptions } from '@livestore/common'
-import { Devtools, UnknownError } from '@livestore/common'
+import { Devtools, StateHead, UnknownError } from '@livestore/common'
 import type { DevtoolsOptions, StreamEventsOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
@@ -10,8 +10,7 @@ import {
   makeLeaderThreadLayer,
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
-import type { LiveStoreSchema } from '@livestore/common/schema'
-import { LiveStoreEvent } from '@livestore/common/schema'
+import { LiveStoreEvent, type LiveStoreSchema } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
@@ -25,6 +24,7 @@ import {
   OtelTracer,
   Queue,
   References,
+  RpcSerialization,
   RpcServer,
   RpcWorker,
   Schema,
@@ -133,11 +133,13 @@ const makeMessagePortRpcServerProtocol = (port: MessagePort): Layer.Layer<RpcSer
         send: (_clientId, response, transferables) =>
           Effect.sync(() => port.postMessage([1, response], { transfer: (transferables ?? []) as Transferable[] })),
         end: () => Effect.void,
-        clientIds: Effect.sync(() => clientIds),
+        clientIds: Effect.succeed(clientIds),
         initialMessage: Effect.asSome(Deferred.await(initialMessage)),
         supportsAck: true,
         supportsTransferables: true,
         supportsSpanPropagation: true,
+        supportsNotifications: true,
+        codecFor: RpcSerialization.json.codecFor,
         run: (writeRequest) =>
           Effect.gen(function* () {
             const context = yield* Effect.context<never>()
@@ -189,7 +191,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
 
       const leaderThreadContextOnce = yield* Effect.cached(
         Effect.gen(function* () {
-          const { storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayloadEncoded } =
+          const { storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayloadEncoded, params } =
             yield* RpcWorker.initialMessage(WorkerSchema.LeaderWorkerInnerInitialMessage.payloadSchema)
 
           const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
@@ -280,8 +282,9 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
               shutdownChannel,
               syncPayloadEncoded,
               syncPayloadSchema: syncPayloadSchema as Schema.Decoder<Schema.Json, never> | undefined,
+              params,
               ...(bootWarning !== undefined ? { bootWarning } : {}),
-            }),
+            }).pipe(Layer.provide(StateHead.layer({ dbState }))),
             leaderThreadScope,
           )
         }).pipe(

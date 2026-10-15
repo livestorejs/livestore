@@ -13,7 +13,8 @@ Builds on the root [requirements.md](../requirements.md). This node owns only
 the delivery boundary; the mechanics live in the children:
 [01-composition](./01-composition/requirements.md) (`LS.DEL.COMP-*`),
 [02-release](./02-release/requirements.md) (`LS.DEL.REL-*`),
-[03-artifacts](./03-artifacts/requirements.md) (`LS.DEL.ART-*`).
+[03-artifacts](./03-artifacts/requirements.md) (`LS.DEL.ART-*`),
+[04-infrastructure](./04-infrastructure/requirements.md) (`LS.DEL.INFRA-*`).
 Former `LS.DEL-*` IDs were re-homed into the children on 2026-07-16; the
 mapping notes live in each child's Context section. Operational sequencing is
 tracked outside the VRS.

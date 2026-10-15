@@ -2,13 +2,16 @@ import { describe, expect, it } from 'vitest'
 
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 
+import { fingerprint } from '../../schema/state/sqlite/db-schema/ast/fingerprint.ts'
 import { SqliteAst } from '../../schema/state/sqlite/db-schema/mod.ts'
+import { schemaMetaTable } from '../../schema/state/sqlite/system-tables/state-tables.ts'
 import type { PreparedStatement, SqliteDb } from '../../sqlite-types.ts'
 import type { PreparedBindValues } from '../../util.ts'
 import { migrateTable } from '../migrations.ts'
 
 const makeStubDb = () => {
   const executed: string[] = []
+  const bindings: Array<PreparedBindValues | undefined> = []
 
   const db: SqliteDb = {
     _tag: 'SqliteDb',
@@ -16,8 +19,9 @@ const makeStubDb = () => {
     debug: { head: 0 as any },
     prepare: (queryStr: string): PreparedStatement => ({
       sql: queryStr,
-      execute: (_bind: PreparedBindValues | undefined) => {
+      execute: (bind: PreparedBindValues | undefined) => {
         executed.push(queryStr)
+        bindings.push(bind)
       },
       select: <T>(_bind: PreparedBindValues | undefined) => [] as unknown as ReadonlyArray<T>,
       finalize: () => {},
@@ -32,7 +36,7 @@ const makeStubDb = () => {
     makeChangeset: () => ({ invert: () => ({ invert: () => ({}) as any, apply: () => {} }) as any, apply: () => {} }),
   }
 
-  return { db, executed }
+  return { db, executed, bindings }
 }
 
 describe('migrateTable - quoting and autoincrement', () => {
@@ -84,5 +88,32 @@ describe('migrateTable - quoting and autoincrement', () => {
     expect(createStmt!).toContain(" default ''")
     expect(createStmt!).not.toContain("PRIMARY KEY ('id')")
     expect(createStmt!).not.toMatch(/'todos'|'id'|'text'/)
+  })
+
+  it('persists full textual table fingerprints', () => {
+    const { db, bindings } = makeStubDb()
+    const table = SqliteAst.table(
+      'todos',
+      [
+        SqliteAst.column({
+          name: 'id',
+          type: { _tag: 'text' },
+          nullable: false,
+          primaryKey: true,
+          autoIncrement: false,
+          default: Option.none(),
+          schema: Schema.String,
+        }),
+      ],
+      [],
+    )
+
+    migrateTable({ db, tableAst: table, behaviour: 'create-if-not-exists' }).pipe(Effect.runSync)
+
+    const schemaMetaBinding = bindings.find(
+      (binding) => binding !== undefined && Array.isArray(binding) === false && '$schemaHash' in binding,
+    )
+    expect(schemaMetaBinding).toMatchObject({ $schemaHash: fingerprint(table) })
+    expect(schemaMetaTable.sqliteDef.ast.columns.find((column) => column.name === 'schemaHash')?.type._tag).toBe('text')
   })
 })

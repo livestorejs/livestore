@@ -92,10 +92,11 @@ streaming — `worker-schema.ts`); the proxy above is the portable contract.
 Two boot paths produce the session's initial in-memory state:
 
 - **Fast path (web):** the session reads the persisted state DB directly
-  from OPFS and derives `leaderHead` from `SESSION_CHANGESET_META_TABLE` —
+  from OPFS and derives `leaderHead` from `__livestore_state_head` —
   without touching the leader. This is the one sanctioned direct
-  persistence *read*; the snapshot is currently trusted without validation
-  (code TODO), and its head source differs from the leader's
+  persistence *read*. The session requires state system tables and the rebuild
+  completion row before using the snapshot; otherwise it takes the slow path.
+  The snapshot is not compared with the leader, and its head source differs from the leader's
   (eventlog-derived), so the two can in principle diverge — violating
   LS.SYS.RT-R15
   ([DELTA-001](./.delta/DELTA-001-fast-path-unvalidated.md)).

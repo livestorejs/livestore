@@ -1,7 +1,6 @@
+import { queryDb } from '@livestore/livestore'
 import { type CSSProperties, memo } from 'react'
 import { areEqual } from 'react-window'
-
-import { queryDb } from '@livestore/livestore'
 
 import { tables } from '../../../livestore/schema/index.ts'
 import { useAppStore } from '../../../livestore/store.ts'

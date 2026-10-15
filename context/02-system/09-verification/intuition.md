@@ -19,6 +19,7 @@ shape to evidence shape:
 | Performance promise (LS-R14) | Maintained perf suites with comparable runs |
 | Protocol stability (devtools, sync) | Executable compatibility tests |
 | Determinism | Runtime hash checks, not convention |
+| Composed sync behavior under faults and recovery | Reproducible, scoped diagnostic evidence |
 
 ## Conformance is the flip side of pluggability
 
@@ -31,6 +32,12 @@ Adapter and framework-integration suites are now contracted but not yet
 built (open deltas in
 [02-conformance/](./02-conformance/requirements.md)); read-model
 conformance remains the open question (LS.SYS.VER.CONF-DQ1).
+
+Scenario-based composed-system verification is a different evidence shape from
+dimension conformance. It exercises actual product boundaries under declared
+topology, fault, and recovery conditions and retains scoped, reproducible
+diagnostic evidence. The core requirement does not prescribe a runner, trace,
+artifact, oracle, or visualization design.
 
 ## Where evidence lives
 

@@ -14,7 +14,7 @@ import {
   Stream,
 } from '@livestore/utils/effect'
 
-export class DockerComposeError extends Schema.TaggedErrorClass<DockerComposeError>(
+export class DockerComposeError extends Schema.TaggedError<DockerComposeError>(
   '~@livestore/utils-dev/DockerComposeError',
 )('DockerComposeError', {
   cause: Schema.Defect(),

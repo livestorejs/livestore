@@ -569,7 +569,7 @@
             : t.TokenSet.fromString(e.term)
         }),
         (t.TokenSet.fromFuzzyString = function (e, n) {
-          for (var r = new t.TokenSet(), i = [{ node: r, editsRemaining: n, str: e }]; i.length; ) {
+          for (var r = new t.TokenSet(), i = [{ node: r, editsRemaining: n, str: e }]; i.length;) {
             var s = i.pop()
             if (s.str.length > 0) {
               var o = s.str.charAt(0),
@@ -624,7 +624,7 @@
           return r
         }),
         (t.TokenSet.prototype.toArray = function () {
-          for (var e = [], n = [{ prefix: '', node: this }]; n.length; ) {
+          for (var e = [], n = [{ prefix: '', node: this }]; n.length;) {
             var r = n.pop(),
               i = Object.keys(r.node.edges),
               s = i.length
@@ -646,7 +646,7 @@
           return e
         }),
         (t.TokenSet.prototype.intersect = function (e) {
-          for (var n = new t.TokenSet(), r = void 0, i = [{ qNode: e, output: n, node: this }]; i.length; ) {
+          for (var n = new t.TokenSet(), r = void 0, i = [{ qNode: e, output: n, node: this }]; i.length;) {
             r = i.pop()
             for (
               var s = Object.keys(r.qNode.edges), o = s.length, a = Object.keys(r.node.edges), l = a.length, u = 0;
@@ -1100,7 +1100,7 @@
             (this.escapeCharPositions = []))
         }),
         (t.QueryLexer.prototype.run = function () {
-          for (var e = t.QueryLexer.lexText; e; ) e = e(this)
+          for (var e = t.QueryLexer.lexText; e;) e = e(this)
         }),
         (t.QueryLexer.prototype.sliceString = function () {
           for (var e = [], n = this.start, r = this.pos, i = 0; i < this.escapeCharPositions.length; i++)
@@ -1181,7 +1181,7 @@
         }),
         (t.QueryParser.prototype.parse = function () {
           ;(this.lexer.run(), (this.lexemes = this.lexer.lexemes))
-          for (var e = t.QueryParser.parseClause; e; ) e = e(this)
+          for (var e = t.QueryParser.parseClause; e;) e = e(this)
           return this.query
         }),
         (t.QueryParser.prototype.peekLexeme = function () {
@@ -1395,7 +1395,7 @@
     ensureActivePageVisible() {
       let e = document.querySelector('.tsd-navigation .current'),
         n = e?.parentElement
-      for (; n && !n.classList.contains('.tsd-navigation'); )
+      for (; n && !n.classList.contains('.tsd-navigation');)
         (n instanceof HTMLDetailsElement && (n.open = !0), (n = n.parentElement))
       if (e) {
         let r = e.getBoundingClientRect().top - document.documentElement.clientHeight / 4
@@ -1414,7 +1414,7 @@
       let e = document.getElementById(location.hash.substring(1))
       if (!e) return
       let n = e.parentElement
-      for (; n && n.tagName !== 'SECTION'; ) n = n.parentElement
+      for (; n && n.tagName !== 'SECTION';) n = n.parentElement
       if (n && n.offsetParent == null) {
         ;((this.alwaysVisibleMember = n), n.classList.add('always-visible'))
         let r = document.createElement('p')
@@ -1579,7 +1579,7 @@
       i = [],
       s = 0,
       o = n.indexOf(r)
-    for (; o != -1; )
+    for (; o != -1;)
       (i.push(K(t.substring(s, o)), `<b>${K(t.substring(o, o + r.length))}</b>`),
         (s = o + r.length),
         (o = n.indexOf(r, s)))

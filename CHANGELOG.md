@@ -6,15 +6,306 @@
 > for more info. LiveStore is following a semver-like release strategy where
 > breaking changes are released in minor versions before the 1.0 release.
 
-## Unreleased
+## 0.5.0
 
 ### Changed
 
-- Stable documentation examples use published LiveStore 0.4.0 packages and standalone npm installs rather than the development workspace, with browser-only Redwood store initialization after hydration.
-
-- Added a canonical contributor meeting page with upcoming dates, calendar links, and the reusable video room. ([#1635](https://github.com/livestorejs/livestore/pull/1635))
-
+- **SQLite schema tables:** Fixed Date fields in `State.SQLite.table({ schema })`
+  so their codecs round-trip through SQLite in structs and `Schema.Class` rows
+  while preserving Date checks and transformations, including nullable encoded
+  Dates. Thanks @acusti for the original fix
+  ([#1596](https://github.com/livestorejs/livestore/issues/1596),
+  [#1597](https://github.com/livestorejs/livestore/pull/1597),
+  [#1672](https://github.com/livestorejs/livestore/pull/1672)).
+- **Effect dependencies:** Updated the aligned Effect 4 dependency cohort from
+  `4.0.0` to `4.0.3`, including its AI, OpenTelemetry, platform, SQLite, and
+  Vitest packages. Applications using Effect should align their dependencies
+  to `4.0.3` or a compatible later 4.x release
+  ([#1669](https://github.com/livestorejs/livestore/pull/1669)).
+- **Contributor meetings:** Added the canonical docs schedule for the next two
+  fortnightly meetings at 19:00 Berlin, automatic Google Calendar publishing,
+  and a stable Riverside room link
+  ([#1635](https://github.com/livestorejs/livestore/pull/1635)).
+- **Store commits:** Fixed the callback form of `store.commit` and its TypeScript
+  overloads, including calls with commit options. Synchronous callbacks return
+  an event array that is collected before materialization, and throwing callbacks
+  apply no events ([#1611](https://github.com/livestorejs/livestore/issues/1611),
+  [#1616](https://github.com/livestorejs/livestore/pull/1616)).
+  Thanks @bohdanbirdie for the original fix.
+- **Cloudflare sync telemetry:** Added optional Effect tracer layers via `otel: layer`.
+  Telemetry cleanup runs in the background, and finite WebSocket operations and
+  DO-RPC pull streams now emit their sync spans
+  ([#1618](https://github.com/livestorejs/livestore/issues/1618)).
+- **Cloudflare adapter:** Track state database ownership and remove obsolete
+  tracked state after successful boot, preserving the current state, eventlog
+  and untracked files. Failed cleanup is retried on a later boot without
+  blocking the completed store
+  ([#1555](https://github.com/livestorejs/livestore/issues/1555)).
+- **Schema rebuilds:** Batched eventlog replay to reduce repeated SQLite page
+  writes, including billed row writes on Cloudflare Durable Objects. Replay order
+  and recovery from incomplete rebuilds are preserved. Clients can tune the
+  event-count batch per runtime with `params.stateRebuildBatchSize` (a positive
+  integer, default 100); lower values trade more queries and writes for smaller batches
+  ([#1555](https://github.com/livestorejs/livestore/issues/1555)).
+- **State recovery:** Interrupted rematerialization is retried from clean derived
+  state instead of reopening partial results. Completion is recorded after all
+  migration hooks finish. Browser fast-path startup waits for recovery when its
+  snapshot is incomplete. The eventlog and pending events are preserved
+  ([#1605](https://github.com/livestorejs/livestore/issues/1605)).
+- **Cloudflare sync:** Serialize push admission through pull publication so an
+  accepted event cannot advance the backend head without notifying subscribers
+  ([#1537](https://github.com/livestorejs/livestore/pull/1537)).
+- **Cloudflare WebSocket sync:** Live pulls interrupted after the sync Durable
+  Object hibernates now receive their terminal RPC `Exit`, matching interruption
+  behavior before hibernation. Completed and protocol-defected pulls are also
+  removed from persisted fan-out state
+  ([#1418](https://github.com/livestorejs/livestore/issues/1418)).
+- **Cloudflare sync:** Fixed live WebSocket pulls stopping permanently after a
+  disconnect. Pulls now resume after reconnect without reloading the client,
+  and HTTP transport failures also remain retryable. Offline pulls wait for
+  reconnection rather than spinning, and resume as soon as the backend reports
+  connected. Capped fallback probes cover stale connectivity signals and still
+  wake immediately on later disconnect/reconnect transitions.
+  Protocol failures stay terminal
+  ([#1650](https://github.com/livestorejs/livestore/issues/1650),
+  [#1673](https://github.com/livestorejs/livestore/pull/1673)).
+  For the root-cause analysis, thanks @bohdanbirdie.
+- **Cloudflare DO-RPC sync:** A temporary Durable Object RPC failure no longer
+  stops replication for good. A call that Cloudflare marks `retryable` (and not
+  `overloaded`) now surfaces as `IsOfflineError`, so the leader retries the pull
+  after a jittered exponential backoff (1 s doubling to 30 s) on a fresh stub.
+  Interrupted catch-up streams also recover when Cloudflare drops the error
+  flags or the stream stalls for 60 seconds, resuming after the last applied
+  event. Idle live subscriptions do not time out. Explicit overload and
+  non-retryable remote failures keep their previous terminal handling
+  ([#1462](https://github.com/livestorejs/livestore/issues/1462),
+  [#1649](https://github.com/livestorejs/livestore/pull/1649)).
 - Removed redundant devenv package entries now owned by the task guard modules.
+- **Sync correctness:** Prevented later client-session events from crossing an
+  older rejected pending prefix, and made leader admission retain explicit
+  reservation ownership through queue drain until apply, rejection, or stale
+  dropping. Parent contiguity now compares DAG position independently of local
+  rebase generation while stale epochs remain checked separately, avoiding
+  duplicate materialization and ghost fences during multi-writer rebases
+  ([#1530](https://github.com/livestorejs/livestore/pull/1530)).
+- **Expo getting-started docs:** The manual install command now installs
+  `@livestore/sync-cf` instead of the import subpath `@livestore/sync-cf/client`,
+  which package managers resolved as a git URL and failed to install
+  ([#1657](https://github.com/livestorejs/livestore/issues/1657),
+  [#1667](https://github.com/livestorejs/livestore/pull/1667)).
+- **Session IDs:** Resolved symbol-backed session IDs at store, query and sync
+  boundaries so queries receive stable session ID values. Thanks @IGassmann
+  ([#1297](https://github.com/livestorejs/livestore/pull/1297)).
+- **Cloudflare DO-RPC sync:** Restored sync after the Effect 4 migration and
+  isolated binary parsers per request so concurrent stream and unary responses
+  cannot corrupt each other's frames. Thanks @IGassmann and @bohdanbirdie
+  ([#1389](https://github.com/livestorejs/livestore/pull/1389),
+  [#1266](https://github.com/livestorejs/livestore/pull/1266)).
+- **Cloudflare DO-RPC recovery:** Persisted backend subscriptions and restored
+  client stores after Durable Object reconstruction so live updates resume after
+  deployment, eviction or hibernation. Reverse-RPC callbacks now receive
+  `syncUpdateRpc(payload, storeId)` so clients can reopen the correct store.
+  Thanks @bohdanbirdie
+  ([#1415](https://github.com/livestorejs/livestore/issues/1415),
+  [#1462](https://github.com/livestorejs/livestore/issues/1462),
+  [#1545](https://github.com/livestorejs/livestore/pull/1545)).
+- **Cloudflare DO-RPC shutdown:** Graceful `store.shutdown()` now unsubscribes
+  the client's live pull without removing a replacement store's subscription.
+  Hibernating clients retain their subscriptions. Thanks @bohdanbirdie
+  ([#1418](https://github.com/livestorejs/livestore/issues/1418)).
+- **Cloudflare HTTP sync:** Forwarded client `payload` to `onPush`, matching
+  WebSocket and DO-RPC transports. Payload validation may now reject HTTP pushes
+  that previously arrived with `undefined`. Thanks @bohdanbirdie
+  ([#1417](https://github.com/livestorejs/livestore/issues/1417)).
+- **Browser rebases:** Preserved rollback metadata for accepted local events so
+  conflicting backend events can be rolled back and rebased correctly.
+  Thanks @victornyberg and @slashv
+  ([#1472](https://github.com/livestorejs/livestore/pull/1472)).
+- **Store shutdown:** Orderly shutdown now drains admitted client events to the
+  leader before closing the store. Commits remain synchronous during rebases,
+  and a timeout closes the store scope if the leader is unresponsive. Hard crashes
+  can still lose unacknowledged client commits
+  ([#1451](https://github.com/livestorejs/livestore/pull/1451)).
+- **Persisted web sessions:** Persisted the state snapshot head separately from
+  rollback data so restored browser sessions use the correct head. The added
+  system table triggers a one-time state rebuild from the eventlog on upgrade
+  ([#1522](https://github.com/livestorejs/livestore/pull/1522)).
+- **OpenTelemetry compatibility:** Removed dependencies on SDK-private span
+  timing fields so SQLite and live-query instrumentation works with custom
+  tracers. No-op spans now use the standard invalid span context, fixing Metro
+  bundling in Expo
+  ([#1449](https://github.com/livestorejs/livestore/pull/1449),
+  [#1452](https://github.com/livestorejs/livestore/pull/1452)).
+- **Source types:** Improved compatibility with newer TypeScript DOM and
+  Cloudflare Worker global types
+  ([#1346](https://github.com/livestorejs/livestore/pull/1346)).
+- **Node utilities:** Restored the public recursive-watch layer exports with
+  Effect 4-compatible implementations
+  ([#1591](https://github.com/livestorejs/livestore/pull/1591)).
+
+### Breaking Changes
+
+- **Effect 4 / LiveStore 0.5:** Upgrade application dependencies and schema APIs
+  from Effect 3 to stable Effect 4. Follow the
+  [0.4 to 0.5 upgrade guide](https://docs.livestore.dev/misc/upgrading-0.4-to-0.5/)
+  for peer packages, schema substitutions, removed utilities, commit callbacks
+  and Cloudflare DO-RPC changes
+  ([#1310](https://github.com/livestorejs/livestore/issues/1310),
+  [#1647](https://github.com/livestorejs/livestore/pull/1647),
+  [#1670](https://github.com/livestorejs/livestore/pull/1670)).
+- **Cloudflare adapter:** `createStoreDo`, `createStoreDoPromise` and
+  `makeDoRpcSync` take `getSyncBackendStub: () => stub` instead of
+  `syncBackendStub`. LiveStore calls it for every sync call, because Cloudflare
+  leaves a stub broken after many exceptions. Replace
+  `syncBackendStub: env.SYNC_BACKEND_DO.getByName(storeId)` with
+  `getSyncBackendStub: () => env.SYNC_BACKEND_DO.getByName(storeId)`
+  ([#1462](https://github.com/livestorejs/livestore/issues/1462),
+  [#1649](https://github.com/livestorejs/livestore/pull/1649)).
+- **Store commit callbacks:** Callbacks now synchronously return an event array.
+  Replace `store.commit((commit) => { commit(event) })` with
+  `store.commit(() => [event])` or `store.commit(event)`
+  ([#1611](https://github.com/livestorejs/livestore/issues/1611),
+  [#1616](https://github.com/livestorejs/livestore/pull/1616)).
+- **Rebuild completion tracking:** The first open after upgrading from a version
+  without the completion marker rebuilds derived state once. No application
+  configuration changes are needed. Cloudflare deployments should budget for
+  replay duration and row writes. Migration hooks must tolerate retries after
+  interrupted rebuilds ([#1605](https://github.com/livestorejs/livestore/issues/1605)).
+- **State schema fingerprints:** Replaced Effect-internal AST hashing with a
+  LiveStore-owned canonical descriptor and a synchronous full-width SHA-256
+  fingerprint. No application schema or configuration changes are required.
+  The first open after upgrading intentionally creates a new state database and
+  rematerializes it once from the event log, so Cloudflare deployments should
+  plan for the corresponding row-write usage
+  ([#1555](https://github.com/livestorejs/livestore/issues/1555)).
+
+- **Effect dependency compatibility:** The peer range is `^4.0.0`, excluding
+  beta/RC releases. Effect-only upgrades preserve state schema fingerprints,
+  but changed event schema hashes can produce warnings on rematerialization
+  ([#63](https://github.com/livestorejs/livestore/issues/63)). Refined
+  `Schema.DateFromMillis` and `Schema.Uint8Array` retain INTEGER and BLOB storage
+  ([#1557](https://github.com/livestorejs/livestore/issues/1557),
+  [#1606](https://github.com/livestorejs/livestore/pull/1606),
+  [#1647](https://github.com/livestorejs/livestore/pull/1647)).
+  Thanks [@JamieMason](https://github.com/JamieMason) for the migration work.
+- **SQLite migration configuration:** Removed the unsupported manual migration
+  strategy and `strategy: 'auto'`. Remove the `strategy` field from migration
+  configuration. State databases are rebuilt automatically from the eventlog
+  when their schema changes, while hooks and logging remain supported.
+  Thanks @IGassmann
+  ([#1525](https://github.com/livestorejs/livestore/pull/1525)).
+- **Cloudflare DO-RPC routing:** Pass the client's Durable Object `ctx` to
+  `handleSyncUpdateRpc(ctx, payload)` and supply `durableObjectState` to
+  `makeDoRpcSync`. Live-pull routing is now scoped to the instance instead of
+  leaking across co-located or reconstructed objects. Thanks @bohdanbirdie
+  ([#1415](https://github.com/livestorejs/livestore/issues/1415),
+  [#1545](https://github.com/livestorejs/livestore/pull/1545)).
+- **Worker entry points:** Import the generic worker mesh bridge from
+  `@livestore/webmesh/worker` and the browser DevTools channel protocol from
+  `@livestore/adapter-web/devtools-web-channel`
+  ([#1293](https://github.com/livestorejs/livestore/pull/1293)).
+- **Effect utility facade:** `TestSchema` is no longer exported from
+  `@livestore/utils/effect`, keeping Node-only test assertions out of browser
+  bundles. Import it from `effect/testing` instead
+  ([#1433](https://github.com/livestorejs/livestore/pull/1433)).
+- **Effect utility migrations:** Replace `Schema.DateFromEpochMillis` with
+  `Schema.DateFromMillis` (the encoded value remains epoch milliseconds).
+  Replace the removed `Scheduler.messageChannel()` helper with Effect's default
+  `MixedScheduler` or an application-specific scheduler. Thanks @IGassmann
+  ([#1385](https://github.com/livestorejs/livestore/pull/1385),
+  [#1370](https://github.com/livestorejs/livestore/pull/1370)).
+- **Effect helper errors:** Renamed `Effect.tryAll` to
+  `Effect.trySyncOrPromiseOrEffect`. Promise rejections now fail with
+  `Cause.UnknownError`, and returned Effects preserve their failure and service
+  channels. Thanks @IGassmann
+  ([#1527](https://github.com/livestorejs/livestore/pull/1527)).
+- **Effect facade exports:** Replace the removed `Encoding` export with
+  `Base64Url` and move imports of the removed `BucketQueue` and `ServiceContext`
+  helpers to the corresponding Effect 4 APIs. The upgrade guide lists the
+  consolidated Effect modules and obsolete peer packages to remove
+  ([#1310](https://github.com/livestorejs/livestore/issues/1310),
+  [#1647](https://github.com/livestorejs/livestore/pull/1647),
+  [#1670](https://github.com/livestorejs/livestore/pull/1670)).
+
+### Internal Changes
+
+For maintainers and contributors:
+
+- **Unit-test tooling:** Local `mono test unit` and `devenv tasks run test:unit`
+  now fail when any package's Vitest process exits nonzero, matching CI.
+  Package output streams directly to the terminal instead of being buffered
+  ([#683](https://github.com/livestorejs/livestore/issues/683),
+  [#1671](https://github.com/livestorejs/livestore/pull/1671)).
+
+- **CI composition:** Aligned the megarepo setup with the automatic CI worktree
+  policy and consolidated devenv resolver from
+  [effect-utils#1207](https://github.com/overengineeringstudio/effect-utils/pull/1207).
+
+- **Release tooling:** Pull-request CI now packs exact-head snapshot candidates
+  for forks without secrets. Maintainers can allow npm publication for a fork's
+  current and later PR heads with the revocable `ci:publish-snapshot` label
+  ([#1559](https://github.com/livestorejs/livestore/issues/1559)). The trusted
+  publisher leaves npm registry configuration unset so `actions/setup-node`
+  does not inject its token-auth placeholder into the OIDC-only job.
+- **Effect rc.111 API burndown:** Ported the internal Effect surface that moved
+  between beta.99 and rc.111 — `Schema.TaggedErrorClass` →
+  `Schema.TaggedError`, `Schema.UnknownFromJsonString` →
+  `Schema.fromJsonString(Schema.Unknown)`, `Schema.toArbitraryLazy` →
+  `Schema.toArbitrary`, `Schedule.andThen` → `Schedule.concat`, and the
+  `SchemaIssue` constructors that dropped their `actual` argument. SQLite column
+  inference now keys off the open `representation` annotation instead of the
+  removed `typeConstructor`/`meta` annotations, and JSON-string columns are
+  detected through the `application/json` content annotation now that
+  `SchemaTransformation.fromJsonString` is a factory rather than a singleton.
+  Schema issues no longer carry a `toString()`
+  ([Effect-TS/effect#7093](https://github.com/Effect-TS/effect/pull/7093)), so
+  the Durable Object RPC server renders decode failures through
+  `SchemaIssue.makeFormatterDefault()` like the rest of the codebase.
+  The `@effect/vitest` record-arbitrary workaround was dropped because
+  [Effect-TS/effect#7148](https://github.com/Effect-TS/effect/pull/7148) fixed it
+  upstream ([#1557](https://github.com/livestorejs/livestore/issues/1557)).
+- **Effect rc.113 API burndown:** Replaced the removed MessagePack RPC layer
+  with `SchemaBinary`, migrated sockets to the pull reader and scoped writer
+  APIs, and updated CLI constructors and schema transformations to their rc.113
+  names. The FastCheck-based `Vitest.asProp` helper was removed; use
+  `Vitest.live.prop` with `arbitrary` options
+  ([#1606](https://github.com/livestorejs/livestore/pull/1606)).
+- **Tooling:** Shell entry no longer runs the full TypeScript build after
+  dependency and generated-source setup. The shared Effect-utils
+  `otel:profile:setup` task captures the strict setup graph through native
+  devenv tracing and `otelite`; `otel:verify:setup` gates the connected trace
+  shape without a repository-local orchestration module
+  ([#1402](https://github.com/livestorejs/livestore/issues/1402)).
+- **Tooling:** Unit-test failures now block merges. The `test-unit` job ran
+  `packages/@livestore/webmesh` and `tests/package-common` through
+  `Effect.ignore` on CI, so their failures produced a passing required check.
+  Removing that also restores the intent-layer invariant suite as a real gate on
+  `context/` changes ([#1404](https://github.com/livestorejs/livestore/issues/1404)).
+- **Tooling:** The DevTools Playwright suite is currently broken (0/15) and
+  carries a declared, expiring quarantine entry instead of an unrecorded
+  `|| echo` wrapper. Its check does **not** gate merges yet — the quarantine
+  records the failure with a reason, an issue, and an expiry date rather than
+  hiding it ([#1489](https://github.com/livestorejs/livestore/issues/1489)).
+- **Tooling:** Cloudflare sync-provider failures now block merges. All six `cf-*`
+  matrix cells previously exited 0 on failure, which is why the Durable Object
+  hibernation guards could not gate merges
+  ([#1404](https://github.com/livestorejs/livestore/issues/1404)).
+- **Materialization internals:** Added a journal service for recording,
+  rolling back and pruning state database changesets
+  ([#1531](https://github.com/livestorejs/livestore/pull/1531)).
+- **Leader sync internals:** Local pushes now always await processing, and
+  client-only event predicates use explicit `isClientOnly` naming
+  ([#1303](https://github.com/livestorejs/livestore/pull/1303),
+  [#1310](https://github.com/livestorejs/livestore/issues/1310)).
+- **Mock sync backend:** Each connection now receives the full live event stream
+  instead of competing for events on one shared queue. Thanks @victornyberg
+  and @slashv
+  ([#1535](https://github.com/livestorejs/livestore/pull/1535)).
+- **Build tooling:** Adopted TypeScript 7 tooling compatibility updates and
+  vendored SQLite's contrib extension source so Nix builds no longer download
+  it from sqlite.org
+  ([#1628](https://github.com/livestorejs/livestore/pull/1628),
+  [#1460](https://github.com/livestorejs/livestore/pull/1460)).
 
 ## 0.4.0 - 2026-06-02
 
@@ -517,6 +808,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 #### Development Tooling
 
 - **Effect v4 dependency cohort:** Updated the repository-wide Effect v4 dependency family to beta.99 and migrated graph access to the public API while preserving degree-local history traversal ([#1446](https://github.com/livestorejs/livestore/issues/1446)).
+- **Expo source-linked tracing:** No-op spans now use OpenTelemetry's canonical invalid span context, so Metro can bundle workspace source without a platform-specific ID generator ([#1450](https://github.com/livestorejs/livestore/issues/1450)).
 - **Strict peer dep composition:** Added `@effect/vitest` to `utilsEffectPeerDeps` and `@livestore/peer-deps`, and deduplicated the peer-deps package to derive its dependency list from the canonical `utilsEffectPeerDeps` source ([#1107](https://github.com/livestorejs/livestore/issues/1107)).
 - **Hosted example link validation:** Maintainers now have a shared deployment metadata source and `mono examples validate-links` check so docs and example deployments can catch stale first-party demo URLs before publishing ([#1244](https://github.com/livestorejs/livestore/issues/1244)).
 - **Chrome DevTools extension assets restored:** Restored `qrcode-generator` 2.0.4 in `@livestore/utils` and included the Chrome DevTools extension assets in the release artifact flow so the published DevTools package contains the Chrome extension build alongside the Vite plugin ([#1215](https://github.com/livestorejs/livestore/pull/1215)).

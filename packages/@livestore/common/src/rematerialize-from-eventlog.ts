@@ -3,28 +3,39 @@ import { Effect, Option, ReadonlyArray as EffectArray, Schema, Stream } from '@l
 
 import { type SqliteDb, UnknownError } from './adapter-types.ts'
 import type { MaterializeEvent } from './leader-thread/mod.ts'
+import { STATE_REBUILD_BATCH_SIZE_DEFAULT, StateRebuildBatchSizeSchema } from './leader-thread/types.ts'
 import type { EventDef, LiveStoreSchema } from './schema/mod.ts'
-import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from './schema/mod.ts'
+import { EventSequenceNumber, LiveStoreEvent, SystemTables } from './schema/mod.ts'
+import { withSavepoint } from './sqlite-db-helper.ts'
 import type { PreparedBindValues } from './util.ts'
 import { sql } from './util.ts'
 
 /** Parse JSON string to unknown value */
-const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
+const jsonParse = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))
 
 export const rematerializeFromEventlog = Effect.fn('@livestore/common:rematerializeFromEventlog')(function* ({
   dbEventlog,
   // TODO re-use this db when bringing back the boot in-memory db implementation
-  // db,
+  dbState,
   schema,
   onProgress,
   materializeEvent,
+  batchSize = STATE_REBUILD_BATCH_SIZE_DEFAULT,
 }: {
   dbEventlog: SqliteDb
-  // db: SqliteDb
+  dbState: SqliteDb
   schema: LiveStoreSchema
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>
   materializeEvent: MaterializeEvent
+  batchSize?: number
 }) {
+  if (Schema.is(StateRebuildBatchSizeSchema)(batchSize) === false) {
+    return yield* UnknownError.make({
+      cause: `Invalid stateRebuildBatchSize: ${String(batchSize)}. Expected a positive integer.`,
+      payload: { batchSize },
+    })
+  }
+
   const eventsCount = dbEventlog.select<{ count: number }>(
     `SELECT COUNT(*) AS count FROM ${SystemTables.EVENTLOG_META_TABLE}`,
   )[0]!.count
@@ -52,18 +63,15 @@ export const rematerializeFromEventlog = Effect.fn('@livestore/common:rematerial
       sessionId: row.sessionId,
     })
 
-    const resolution = yield* resolveEventDef(schema, {
-      operation: '@livestore/common:rematerializeFromEventlog:processEvent',
-      event: eventEncoded,
-    }).pipe(UnknownError.mapToUnknownError)
+    const eventDef = schema.eventsDefsMap.get(row.name)
+    const materializer = schema.state.materializers.get(row.name)
 
-    if (resolution._tag === 'unknown') {
-      // Old snapshots can contain newer events. Skip until the runtime has
-      // been updated; the event stays in the log for future replays.
+    if (eventDef === undefined || materializer === undefined) {
+      // Route unknown events through the normal materialization boundary so
+      // they advance the state snapshot head as no-ops.
+      yield* materializeEvent(eventEncoded, { skipEventlog: true })
       return
     }
-
-    const { eventDef } = resolution
 
     if (hashEventDef(eventDef) !== row.schemaHash) {
       yield* Effect.logWarning(
@@ -88,13 +96,11 @@ This likely means the schema has changed in an incompatible way.
     yield* materializeEvent(eventEncoded, { skipEventlog: true })
   })
 
-  const CHUNK_SIZE = 100
-
   const stmt = dbEventlog.prepare(sql`\
 SELECT * FROM ${SystemTables.EVENTLOG_META_TABLE} 
 WHERE seqNumGlobal > $seqNumGlobal OR (seqNumGlobal = $seqNumGlobal AND seqNumClient > $seqNumClient)
 ORDER BY seqNumGlobal ASC, seqNumClient ASC
-LIMIT ${CHUNK_SIZE}
+LIMIT $batchSize
 `)
 
   let processedEvents = 0
@@ -104,6 +110,7 @@ LIMIT ${CHUNK_SIZE}
       const rows = stmt.select<SystemTables.EventlogMetaRow>({
         $seqNumGlobal: lastId.global,
         $seqNumClient: lastId.client,
+        $batchSize: batchSize,
       } as any as PreparedBindValues)
 
       if (EffectArray.isReadonlyArrayNonEmpty(rows) === false) {
@@ -128,14 +135,19 @@ LIMIT ${CHUNK_SIZE}
     }),
   ).pipe(
     Stream.bufferArray({ capacity: 2 }),
-    Stream.tap((row) =>
-      Effect.gen(function* () {
-        yield* processEvent(row)
+    Stream.runForEachArray((rows) =>
+      Effect.forEach(
+        rows,
+        (row) =>
+          Effect.gen(function* () {
+            yield* processEvent(row)
 
-        processedEvents++
-        yield* onProgress({ done: processedEvents, total: eventsCount })
-      }),
+            processedEvents++
+            yield* onProgress({ done: processedEvents, total: eventsCount })
+          }),
+        { discard: true },
+      ).pipe(withSavepoint(dbState)),
     ),
-    Stream.runDrain,
+    Effect.ensuring(Effect.sync(() => stmt.finalize())),
   )
 }, Effect.withPerformanceMeasure('@livestore/common:rematerializeFromEventlog'))

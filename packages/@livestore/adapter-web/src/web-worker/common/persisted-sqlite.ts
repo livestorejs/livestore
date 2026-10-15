@@ -1,5 +1,6 @@
-import { liveStoreStorageFormatVersion } from '@livestore/common'
-import type { LiveStoreSchema } from '@livestore/common/schema'
+import { liveStoreStorageFormatVersion, type MakeSqliteDb } from '@livestore/common'
+import { hasCompletedState } from '@livestore/common/leader-thread'
+import { getStateDbBaseName, type LiveStoreSchema } from '@livestore/common/schema'
 import {
   decodeAccessHandlePoolFilename,
   HEADER_OFFSET_DATA,
@@ -20,7 +21,7 @@ import { Opfs, type WebError } from '@livestore/utils/effect/browser'
 
 import type * as WorkerSchema from './worker-schema.ts'
 
-export class PersistedSqliteError extends Schema.TaggedErrorClass<PersistedSqliteError>(
+export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>(
   '~@livestore/adapter-web/PersistedSqliteError',
 )('PersistedSqliteError', {
   message: Schema.String,
@@ -34,10 +35,12 @@ export const readPersistedStateDbFromClientSession = Effect.fn(
     storageOptions,
     storeId,
     schema,
+    makeSqliteDb,
   }: {
     storageOptions: WorkerSchema.StorageType
     storeId: string
     schema: LiveStoreSchema
+    makeSqliteDb: (input: { _tag: 'in-memory' }) => ReturnType<MakeSqliteDb>
   }) {
     const accessHandlePoolDirString = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
 
@@ -81,7 +84,33 @@ export const readPersistedStateDbFromClientSession = Effect.fn(
       })
     }
 
-    return new Uint8Array(stateDbBuffer)
+    const snapshot = new Uint8Array(stateDbBuffer)
+    const sqliteDb = yield* Effect.acquireRelease(
+      makeSqliteDb({ _tag: 'in-memory' }).pipe(
+        Effect.tap((db) =>
+          Effect.try({
+            try: () => {
+              db.import(snapshot)
+              return hasCompletedState(db)
+            },
+            catch: (cause) => new PersistedSqliteError({ message: 'Could not load persisted state snapshot', cause }),
+          }).pipe(
+            Effect.filterOrFail(
+              (completed) => completed,
+              () =>
+                new PersistedSqliteError({
+                  message: 'Persisted state rebuild is incomplete; waiting for leader recovery',
+                }),
+            ),
+            // A failed acquisition has no scope finalizer yet, so release it here.
+            Effect.onError(() => Effect.sync(() => db.close())),
+          ),
+        ),
+      ),
+      (db) => Effect.sync(() => db.close()),
+    )
+
+    return { sqliteDb, snapshotByteLength: snapshot.byteLength }
   },
   Effect.logWarnIfTakesLongerThan({
     duration: 1000,
@@ -122,11 +151,7 @@ export const sanitizeOpfsDir = Effect.fn('@livestore/adapter-web:sanitizeOpfsDir
   return `${directory}@${liveStoreStorageFormatVersion}`
 })
 
-export const getStateDbFileName = (schema: LiveStoreSchema) => {
-  const schemaHashSuffix =
-    schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
-  return `state${schemaHashSuffix}.db`
-}
+export const getStateDbFileName = (schema: LiveStoreSchema) => `${getStateDbBaseName(schema)}.db`
 
 export const MAX_ARCHIVED_STATE_DBS_IN_DEV = 3
 export const ARCHIVE_DIR_NAME = 'archive'
@@ -165,16 +190,6 @@ export const cleanupOldStateDbFiles: (options: {
   | PersistedSqliteError,
   Opfs.Opfs
 > = Effect.fn('@livestore/adapter-web:cleanupOldStateDbFiles')(function* ({ vfs, currentSchema, opfsDirectory }) {
-  // Only cleanup for auto migration strategy because:
-  // - Auto strategy: Creates new database files per schema change (e.g., state123.db, state456.db)
-  //   which accumulate over time and can exhaust OPFS file pool capacity
-  // - Manual strategy: Always reuses the same database file (statefixed.db) across schema changes,
-  //   so there are never multiple old files to clean up
-  if (currentSchema.state.sqlite.migrations.strategy === 'manual') {
-    yield* Effect.logDebug('Skipping state db cleanup - manual migration strategy uses fixed filename')
-    return
-  }
-
   const isDev = isDevEnv()
   const currentDbFileName = getStateDbFileName(currentSchema)
   const currentPath = `/${currentDbFileName}`

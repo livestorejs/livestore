@@ -16,23 +16,33 @@ see [01-collaboration/](./01-collaboration/spec.md).
 ## RFC Lifecycle (LS.CONTRIB-R01, R02)
 
 ```
-draft ──► review PR ──► accepted (PR merged) ──► implemented
-                                                     │
-                                              fold-in to VRS
-                                                     │
-                                            RFC = historical record
+draft ──► review PR ──► accepted (PR merged) ──► fold-in to VRS
+                                                               │
+                                                    RFC = historical record
+                                                               │
+                                             unimplemented intent = deltas
+                                                               │
+                                                    implementation lands
+                                                               │
+                                                       deltas closed
 ```
 
 1. **Draft** — copy `contributor-docs/rfcs/0000-template.md` to the next
    sequential number. Required sections: Context (facts), Problem, Proposed
    Solution, Alternatives Considered, Open Questions.
 2. **Review** — open a PR, gather feedback, iterate until consensus.
-3. **Accept** — merge the PR; implementation may begin.
-4. **Fold in** (normative addition per decision 0002) — with the landed
-   implementation, move durable content into the owning VRS nodes; record
-   the choice and rejected alternatives as `.decisions/` entries citing the
-   RFC. The published RFC process description includes this step
+3. **Accept** — merge the RFC PR. Acceptance triggers intent-layer fold-in;
+   implementation follows the canonical intent rather than preceding it.
+4. **Fold in** (normative addition per decision 0002) — move durable content
+   into the owning VRS nodes; record the choice and rejected alternatives as
+   `.decisions/` entries citing the RFC. The RFC becomes a historical record.
+   For every accepted contract that is not yet implemented, add a `.delta/`
+   record that states the divergence and its close condition. The published
+   RFC process description derives from this rule
    (`contributor-docs/rfcs/index.md` §4, added 2026-07-16).
+5. **Implement and close deltas** — track implementation against the folded-in
+   intent. Close each delta as the implementation and its required evidence
+   land.
 
 Current RFC state: RFC 0001 (multi-store API) is shipped and folded into
 [`02-system/05-store/`](../02-system/05-store/spec.md) — whose spec records

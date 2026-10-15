@@ -3,7 +3,9 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "lib": ["ES2024"],
+    "lib": [
+      "ES2024"
+    ],
     "module": "ESNext",
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
@@ -34,7 +36,9 @@
           "anyUnknownInErrorContext": "warning",
           "preferSchemaOverJson": "warning"
         },
-        "allowedDuplicatedPackages": ["@livestore/utils"]
+        "allowedDuplicatedPackages": [
+          "@livestore/utils"
+        ]
       }
     ],
     "rootDir": "./src",
@@ -43,8 +47,16 @@
     "jsx": "preserve",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts", "src/content/_assets/code/**/*"],
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/dist",
+    "**/node_modules/.pnpm",
+    "**/*.genie.ts",
+    "src/content/_assets/code/**/*"
+  ],
   "references": [
     {
       "path": "../packages/@livestore/adapter-cloudflare"

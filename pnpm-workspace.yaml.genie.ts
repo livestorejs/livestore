@@ -1,20 +1,16 @@
 import { catalog, commonPnpmPolicySettings, pnpmWorkspaceYaml, repoPnpmAllowBuilds } from './genie/repo.ts'
 import { rootWorkspacePackages } from './package.json.genie.ts'
 
-/**
- * The shared effect-utils pnpm policy still suppresses peer conflicts for
- * obsolete Effect v3 package names. Drop those suppressions in LiveStore so
- * stale v3 peers fail loudly during the v4 migration instead of being hidden.
- */
-const { peerDependencyRules: _effectV3PeerDependencyRules, ...livestorePnpmPolicySettings } = commonPnpmPolicySettings
-
 const effectV4MinimumReleaseAgeExclude = Object.entries(
   catalog.pick(
+    'effect',
+    '@effect/ai-openai',
     '@effect/opentelemetry',
     '@effect/platform-browser',
     '@effect/platform-bun',
     '@effect/platform-node',
     '@effect/platform-node-shared',
+    '@effect/sql-sqlite-node',
     '@effect/vitest',
   ),
 ).map(([name, version]) => `${name}@${version}`)
@@ -77,18 +73,20 @@ export const repoPackageExtensions = {
 export default pnpmWorkspaceYaml.root({
   packages: rootWorkspacePackages,
   repoName: 'livestore',
-  ...livestorePnpmPolicySettings,
+  extraMembers: ['examples/*'],
+  ...commonPnpmPolicySettings,
   /**
    * LiveStore's live CI/dev workspace typechecks package source and generated
    * dist outputs together. pnpm's injected workspace snapshots are still used
    * by Nix/FOD package preparation, but enabling them for the live workspace
-   * makes TypeScript see duplicate package identities through GVS links.
+   * makes TypeScript see duplicate package identities across injected and
+   * source workspace views.
    */
   injectWorkspacePackages: false,
   allowBuilds: repoPnpmAllowBuilds,
   packageExtensions: repoPackageExtensions,
   minimumReleaseAgeExclude: [
-    ...livestorePnpmPolicySettings.minimumReleaseAgeExclude,
+    ...commonPnpmPolicySettings.minimumReleaseAgeExclude,
     ...effectV4MinimumReleaseAgeExclude,
   ],
   /** Relaxed until @livestore/devtools-vite publishes with updated Effect peer ranges */

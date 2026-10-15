@@ -12,7 +12,6 @@ tmp
 *.tsbuildinfo
 
 .wrangler
-.vercel
 .netlify
 
 *.config.timestamp_*.js

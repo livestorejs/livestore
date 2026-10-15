@@ -1,3 +1,5 @@
+// Generated file - DO NOT EDIT
+// Source: pr-snapshot-artifact.test.mjs.genie.ts
 import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import os from 'node:os'
@@ -10,6 +12,7 @@ import {
   createManifest,
   hasCurrentHeadApproval,
   isAuthorizedReviewState,
+  isAuthorizedSnapshotState,
   selectEligibleProducerRun,
   snapshotTag,
   snapshotVersion,
@@ -25,11 +28,19 @@ test('requires a trusted verification receipt before declaring a registry cohort
   ]
 
   assert.deepEqual(
-    assessRegistryCohort({ expectedVersion: version, packageStates: matching, hasVerifiedReceipt: false }),
+    assessRegistryCohort({
+      expectedVersion: version,
+      packageStates: matching,
+      hasVerifiedReceipt: false,
+    }),
     { action: 'dispatch' },
   )
   assert.deepEqual(
-    assessRegistryCohort({ expectedVersion: version, packageStates: matching, hasVerifiedReceipt: true }),
+    assessRegistryCohort({
+      expectedVersion: version,
+      packageStates: matching,
+      hasVerifiedReceipt: true,
+    }),
     { action: 'complete' },
   )
   assert.deepEqual(
@@ -50,7 +61,7 @@ test('requires a trusted verification receipt before declaring a registry cohort
   )
 })
 
-const writeOctal = (header, start, length, value) => {
+const writeOctal = ({ header, start, length, value }) => {
   const encoded = value.toString(8).padStart(length - 1, '0')
   header.write(encoded, start, length - 1, 'ascii')
   header[start + length - 1] = 0
@@ -62,21 +73,21 @@ const tar = (entries) => {
     const body = Buffer.from(content)
     const header = Buffer.alloc(512)
     header.write(name, 0, 100, 'utf8')
-    writeOctal(header, 100, 8, 0o644)
-    writeOctal(header, 108, 8, 0)
-    writeOctal(header, 116, 8, 0)
-    writeOctal(header, 124, 12, body.length)
-    writeOctal(header, 136, 12, 0)
+    writeOctal({ header, start: 100, length: 8, value: 0o644 })
+    writeOctal({ header, start: 108, length: 8, value: 0 })
+    writeOctal({ header, start: 116, length: 8, value: 0 })
+    writeOctal({ header, start: 124, length: 12, value: body.length })
+    writeOctal({ header, start: 136, length: 12, value: 0 })
     header.fill(0x20, 148, 156)
     header[156] = '0'.charCodeAt(0)
     header.write('ustar\0', 257, 6, 'ascii')
     header.write('00', 263, 2, 'ascii')
-    writeOctal(
+    writeOctal({
       header,
-      148,
-      8,
-      header.reduce((sum, byte) => sum + byte, 0),
-    )
+      start: 148,
+      length: 8,
+      value: header.reduce((sum, byte) => sum + byte, 0),
+    })
     chunks.push(header, body, Buffer.alloc(Math.ceil(body.length / 512) * 512 - body.length))
   }
   chunks.push(Buffer.alloc(1024))
@@ -92,7 +103,7 @@ const fixture = async () => {
   const version = `0.0.0-snapshot-pr.42.${headSha}`
   const packageNames = ['@livestore/a', '@livestore/b']
   await writeFile(topologyPath, JSON.stringify({ publishablePackageNames: packageNames }))
-  for (const name of packageNames) {
+  const files = packageNames.map((name) => {
     const file = `${name.slice('@livestore/'.length)}.tgz`
     const packageJson = {
       name,
@@ -100,14 +111,15 @@ const fixture = async () => {
       dependencies: name.endsWith('/b') === true ? { '@livestore/a': version } : {},
       scripts: { test: 'node --test' },
     }
-    await writeFile(
-      path.join(artifactDir, file),
-      tar([
+    return {
+      file,
+      bytes: tar([
         ['package/package.json', JSON.stringify(packageJson)],
         ['package/dist/index.js', 'export {}\n'],
       ]),
-    )
-  }
+    }
+  })
+  await Promise.all(files.map(({ file, bytes }) => writeFile(path.join(artifactDir, file), bytes)))
   return { dir: artifactDir, topologyPath, headSha, version }
 }
 
@@ -137,7 +149,10 @@ test('creates and validates an exact-run package cohort', async () => {
   assert.equal(result.npmTag, `pr-42-${headSha}`)
   assert.equal(result.packageCount, 2)
   assert.match(result.manifestDigest, /^[0-9a-f]{64}$/)
-  assert.equal(await readFile(publishListPath, 'utf8'), '@livestore/a\ta.tgz\n@livestore/b\tb.tgz\n')
+  assert.equal(
+    await readFile(publishListPath, 'utf8'),
+    '@livestore/a\ta.tgz\n@livestore/b\tb.tgz\n',
+  )
 })
 
 test('requires an approval for the unchanged head', () => {
@@ -145,8 +160,14 @@ test('requires an approval for the unchanged head', () => {
   const currentHead = 'b'.repeat(40)
   const reviews = [{ state: 'APPROVED', commit_id: oldHead }]
 
-  assert.equal(hasCurrentHeadApproval({ headSha: oldHead, currentHeadSha: currentHead, reviews }), false)
-  assert.equal(hasCurrentHeadApproval({ headSha: currentHead, currentHeadSha: currentHead, reviews }), false)
+  assert.equal(
+    hasCurrentHeadApproval({ headSha: oldHead, currentHeadSha: currentHead, reviews }),
+    false,
+  )
+  assert.equal(
+    hasCurrentHeadApproval({ headSha: currentHead, currentHeadSha: currentHead, reviews }),
+    false,
+  )
   assert.equal(
     hasCurrentHeadApproval({
       headSha: currentHead,
@@ -192,11 +213,79 @@ test('requires the authoritative required-review decision', () => {
   )
 })
 
+test('a fork label only authorizes when it is the configured trust label', () => {
+  const headSha = 'c'.repeat(40)
+  const forked = {
+    repository: 'livestorejs/livestore',
+    headRepository: 'contributor/livestore',
+    headSha,
+    currentHeadSha: headSha,
+    reviewDecision: 'REVIEW_REQUIRED',
+    reviews: [],
+    trustLabel: 'ci:publish-snapshot',
+  }
+
+  assert.equal(isAuthorizedSnapshotState({ ...forked, labelNames: ['ci:publish-snapshot'] }), true)
+  // A different label — however plausible — grants nothing.
+  assert.equal(isAuthorizedSnapshotState({ ...forked, labelNames: ['ci:deploy-docs'] }), false)
+  // And an empty trust label must fail loudly rather than match nothing silently.
+  assert.throws(
+    () =>
+      isAuthorizedSnapshotState({ ...forked, labelNames: ['ci:publish-snapshot'], trustLabel: '' }),
+    /Fork trust label is required/,
+  )
+})
+
+test('authorizes repository-owned snapshots by review and fork snapshots by live label', () => {
+  const headSha = 'a'.repeat(40)
+  const common = {
+    repository: 'livestorejs/livestore',
+    headSha,
+    currentHeadSha: headSha,
+    labelNames: [],
+    reviewDecision: 'APPROVED',
+    reviews: [{ state: 'APPROVED', commit_id: headSha }],
+    trustLabel: 'ci:publish-snapshot',
+  }
+
+  assert.equal(isAuthorizedSnapshotState({ ...common, headRepository: common.repository }), true)
+  assert.equal(
+    isAuthorizedSnapshotState({
+      ...common,
+      headRepository: 'contributor/livestore',
+      reviewDecision: 'REVIEW_REQUIRED',
+      reviews: [],
+    }),
+    false,
+  )
+  assert.equal(
+    isAuthorizedSnapshotState({
+      ...common,
+      headRepository: 'contributor/livestore',
+      labelNames: ['ci:publish-snapshot'],
+      reviewDecision: 'REVIEW_REQUIRED',
+      reviews: [],
+    }),
+    true,
+  )
+  assert.equal(
+    isAuthorizedSnapshotState({
+      ...common,
+      headRepository: 'contributor/livestore',
+      currentHeadSha: 'b'.repeat(40),
+      labelNames: ['ci:publish-snapshot'],
+      reviewDecision: 'REVIEW_REQUIRED',
+      reviews: [],
+    }),
+    false,
+  )
+})
+
 test('generated promotion workflow is anchored to trusted main', async () => {
   const workflow = await readFile(new URL('../workflows/release.yml', import.meta.url), 'utf8')
   assert.doesNotMatch(workflow, /pull_request_review:/)
   assert.match(workflow, /cron: '\*\/5 \* \* \* \*'/)
-  const dispatchStart = workflow.indexOf('\n  dispatch-approved-pr-snapshots:')
+  const dispatchStart = workflow.indexOf('\n  dispatch-authorized-pr-snapshots:')
   const validateStart = workflow.indexOf('\n  validate-pr-snapshot:', dispatchStart)
   const dispatch = workflow.slice(dispatchStart, validateStart)
   assert.match(dispatch, /actions: write/)
@@ -205,18 +294,28 @@ test('generated promotion workflow is anchored to trusted main', async () => {
   assert.match(dispatch, /pulls\?state=open&base=main&per_page=100.*--slurp/)
   assert.match(dispatch, /pullRequest\(number:\$number\)\{reviewDecision\}/)
   assert.match(dispatch, /reviewDecision.*APPROVED/s)
-  assert.match(dispatch, /any\(\.pull_requests\[\]\?; \.number == \$pr_number and \.head\.sha == \$sha\)/)
+  assert.match(dispatch, /ci:publish-snapshot/)
+  assert.match(dispatch, /\.head_repository\.full_name == \$head_repository/)
+  assert.match(dispatch, /\.head_branch == \$head_ref/)
+  assert.match(dispatch, /\.head_sha == \$sha/)
+  assert.doesNotMatch(dispatch, /\.pull_requests/)
   assert.match(dispatch, /pack-pr-snapshot.*conclusion == "success"/s)
   assert.match(dispatch, /artifacts\?per_page=100.*expired == false/s)
   assert.match(dispatch, /ci_run_id="\$selected_run_id"/)
   assert.match(dispatch, /selected_pack_attempt="\$pack_attempt"/)
-  assert.match(dispatch, /verified-pr-snapshot-\$head_sha-\$selected_run_id-\$selected_pack_attempt/)
+  assert.match(
+    dispatch,
+    /verified-pr-snapshot-\$head_sha-\$selected_run_id-\$selected_pack_attempt/,
+  )
   assert.match(dispatch, /assess-registry.*--verified-receipt="\$verified_receipt"/s)
   assert.match(dispatch, /cohort_failed=true.*scan_failed=true.*continue/s)
   assert.match(dispatch, /if \[ "\$scan_failed" = true \]; then\s+exit 1/s)
 
   const checkoutStart = workflow.indexOf('- name: Checkout trusted validator only')
-  const checkoutEnd = workflow.indexOf('\n      - name: Use pinned Node validator runtime', checkoutStart)
+  const checkoutEnd = workflow.indexOf(
+    '\n      - name: Use pinned Node validator runtime',
+    checkoutStart,
+  )
   assert.notEqual(checkoutStart, -1)
   assert.notEqual(checkoutEnd, -1)
   const checkout = workflow.slice(checkoutStart, checkoutEnd)
@@ -228,15 +327,30 @@ test('generated promotion workflow is anchored to trusted main', async () => {
   const publishStart = workflow.indexOf('\n  publish-pr-snapshot:', authorizeStart)
   const nextJobStart = workflow.indexOf('\n  create-release-pr:', publishStart)
   assert.match(workflow.slice(validateStart, attestStart), /GITHUB_WORKFLOW_REF.*refs\/heads\/main/)
-  assert.match(workflow.slice(validateStart, attestStart), /workflow_dispatch.*refs\/heads\/main.*promote-pr-snapshot/s)
+  assert.match(
+    workflow.slice(validateStart, attestStart),
+    /workflow_dispatch.*refs\/heads\/main.*promote-pr-snapshot/s,
+  )
   assert.doesNotMatch(workflow.slice(validateStart, attestStart), /id-token: write/)
   assert.match(workflow.slice(validateStart, attestStart), /pull-requests: read/)
   assert.match(workflow.slice(attestStart, authorizeStart), /id-token: write/)
   assert.match(workflow.slice(authorizeStart, publishStart), /pull-requests: read/)
+  assert.match(workflow.slice(authorizeStart, publishStart), /ci:publish-snapshot/)
 
   const publish = workflow.slice(publishStart, nextJobStart)
   assert.match(publish, /pull-requests: read/)
-  assert.match(publish, /group: 'pr-snapshot-\$\{\{ needs\.validate-pr-snapshot\.outputs\.head-sha \}\}'/)
+  const publishNodeSetupStart = publish.indexOf('- name: Use pinned npm trusted-publishing client')
+  const publishNodeSetupEnd = publish.indexOf(
+    '\n      - name: Download validated promotion artifact',
+    publishNodeSetupStart,
+  )
+  assert.notEqual(publishNodeSetupStart, -1)
+  assert.notEqual(publishNodeSetupEnd, -1)
+  assert.doesNotMatch(publish.slice(publishNodeSetupStart, publishNodeSetupEnd), /registry-url:/)
+  assert.match(
+    publish,
+    /group: 'pr-snapshot-\$\{\{ needs\.validate-pr-snapshot\.outputs\.head-sha \}\}'/,
+  )
   assert.match(publish, /\.base\.ref/)
   assert.match(publish, /\.head\.repo\.full_name/)
   assert.doesNotMatch(publish, /npm dist-tag/)
@@ -244,7 +358,13 @@ test('generated promotion workflow is anchored to trusted main', async () => {
   assert.match(workflow.slice(validateStart, attestStart), /jobs\?filter=all/)
   assert.match(workflow.slice(validateStart, attestStart), /sort_by\(\.run_attempt\) \| last/)
   assert.match(workflow.slice(validateStart, attestStart), /inputs\.ci_run_id/)
-  assert.match(workflow.slice(validateStart, attestStart), /\.pull_requests\[0\]\.head\.sha/)
+  assert.match(
+    workflow.slice(validateStart, attestStart),
+    /\.head\.repo\.full_name == \$head_repository/,
+  )
+  assert.match(workflow.slice(validateStart, attestStart), /\.head\.ref == \$head_branch/)
+  assert.match(workflow.slice(validateStart, attestStart), /\.head\.sha == \$head_sha/)
+  assert.doesNotMatch(workflow.slice(validateStart, attestStart), /\.pull_requests\[0\]/)
   assert.match(workflow, /validated-pr-snapshot-.*release-run-attempt/)
   assert.match(workflow, /promotion-pr-snapshot-.*promotion-attempt/)
 
@@ -252,16 +372,29 @@ test('generated promotion workflow is anchored to trusted main', async () => {
   assert.match(publish, /dist\.integrity/)
   assert.match(publish, /dist-tags/)
   assert.match(publish, /\[ -n "\$remote_tag" \].*\[ "\$remote_tag" != "\$SNAPSHOT_VERSION" \]/s)
-  assert.match(publish, /mutable tag \$SNAPSHOT_TAG is absent; OIDC publishing cannot repair dist-tags/)
+  assert.match(
+    publish,
+    /mutable tag \$SNAPSHOT_TAG is absent; OIDC publishing cannot repair dist-tags/,
+  )
   assert.match(publish, /\[ "\$remote_integrity" = "\$local_integrity" \]/)
   assert.doesNotMatch(publish, /\[ "\$remote_tag" = "\$SNAPSHOT_VERSION" \]/)
   assert.match(publish, /needs\.validate-pr-snapshot\.outputs\.package-count/)
   assert.match(publish, /Upload trusted verification receipt/)
-  assert.match(publish, /verified-pr-snapshot-.*outputs\.head-sha.*outputs\.run-id.*outputs\.run-attempt/s)
+  assert.match(publish, /ci:publish-snapshot/)
+  assert.match(
+    publish,
+    /verified-pr-snapshot-.*outputs\.head-sha.*outputs\.run-id.*outputs\.run-attempt/s,
+  )
   assert.match(publish, /sourceRunAttempt/)
   assert.match(publish, /overwrite: true/)
 
   const ciWorkflow = await readFile(new URL('../workflows/ci.yml', import.meta.url), 'utf8')
+  assert.match(ciWorkflow, /pack-pr-snapshot:\n    if: github\.event_name == 'pull_request'/)
+  assert.doesNotMatch(
+    ciWorkflow,
+    /pack-pr-snapshot:[\s\S]*?head\.repo\.full_name == github\.repository/,
+  )
+  assert.doesNotMatch(ciWorkflow, /pull_request_target:/)
   assert.match(
     ciWorkflow,
     /name: 'pr-snapshot-\$\{\{ github\.event\.pull_request\.head\.sha \}\}-\$\{\{ github\.run_attempt \}\}'/,
@@ -311,36 +444,62 @@ test('selects the successful producer attempt when only failed jobs were rerun',
   )
 })
 
-test('selects an exact PR-associated run when multiple PRs share a head SHA', () => {
+test('selects an exact repository, branch, and SHA producer run for forks', () => {
   const headSha = 'a'.repeat(40)
   const artifact = (attempt) => ({ name: `pr-snapshot-${headSha}-${attempt}`, expired: false })
   const runs = [
     {
       id: 100,
-      headSha: 'c'.repeat(40),
+      headRepository: 'other/livestore',
+      headBranch: 'feature',
+      headSha,
       event: 'pull_request',
       conclusion: 'success',
-      pullRequests: [{ number: 41, headSha }],
       packAttempt: 1,
       artifacts: [artifact(1)],
       createdAt: '2026-07-18T10:00:00Z',
     },
     {
       id: 101,
-      headSha: 'd'.repeat(40),
+      headRepository: 'contributor/livestore',
+      headBranch: 'feature',
+      headSha,
       event: 'pull_request',
       conclusion: 'success',
-      pullRequests: [{ number: 42, headSha }],
       packAttempt: 2,
       artifacts: [artifact(2)],
       createdAt: '2026-07-18T09:00:00Z',
     },
   ]
 
-  assert.equal(selectEligibleProducerRun({ runs, prNumber: 42, headSha })?.id, 101)
-  assert.equal(selectEligibleProducerRun({ runs, prNumber: 43, headSha }), null)
+  assert.equal(
+    selectEligibleProducerRun({
+      runs,
+      headRepository: 'contributor/livestore',
+      headBranch: 'feature',
+      headSha,
+    })?.id,
+    101,
+  )
+  assert.equal(
+    selectEligibleProducerRun({
+      runs,
+      headRepository: 'contributor/livestore',
+      headBranch: 'other',
+      headSha,
+    }),
+    null,
+  )
   runs[1].artifacts[0].expired = true
-  assert.equal(selectEligibleProducerRun({ runs, prNumber: 42, headSha }), null)
+  assert.equal(
+    selectEligibleProducerRun({
+      runs,
+      headRepository: 'contributor/livestore',
+      headBranch: 'feature',
+      headSha,
+    }),
+    null,
+  )
 })
 
 test('rejects a tarball changed after manifest creation', async () => {
@@ -436,7 +595,10 @@ test('rejects traversal paths and lifecycle scripts', async () => {
   await writeFile(
     path.join(dir, 'a.tgz'),
     tar([
-      ['package/package.json', JSON.stringify({ name: '@livestore/a', version, scripts: { prepare: 'echo unsafe' } })],
+      [
+        'package/package.json',
+        JSON.stringify({ name: '@livestore/a', version, scripts: { prepare: 'echo unsafe' } }),
+      ],
     ]),
   )
   await assert.rejects(

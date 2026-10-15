@@ -158,8 +158,7 @@ describe('CloudflareWorkerVFS - Advanced Features', () => {
       expect(vfs.jClose(fileId)).toBe(VFS.SQLITE_OK)
     })
 
-    // TODO: Remove retry once flaky timeout is investigated (https://github.com/livestorejs/livestore/issues/1020)
-    it('should handle large files that exceed cache capacity', { retry: 3, timeout: 10000 }, async () => {
+    it('should handle large files that exceed cache capacity', async () => {
       const path = '/test/cache-overflow.db'
       const fileId = 1
       const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE

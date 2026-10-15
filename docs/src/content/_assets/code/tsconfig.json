@@ -3,7 +3,10 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": ["ES2024", "DOM"],
+    "lib": [
+      "ES2024",
+      "DOM"
+    ],
     "module": "NodeNext",
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
@@ -34,15 +37,28 @@
           "anyUnknownInErrorContext": "warning",
           "preferSchemaOverJson": "warning"
         },
-        "allowedDuplicatedPackages": ["@livestore/utils", "@effect/platform"]
+        "allowedDuplicatedPackages": [
+          "@livestore/utils",
+          "@effect/platform"
+        ]
       }
     ],
     "rootDir": "./",
     "jsx": "react-jsx",
-    "types": ["vite/client", "node", "@cloudflare/workers-types", "@types/react", "@types/react-dom"],
+    "types": [
+      "vite/client",
+      "node",
+      "@cloudflare/workers-types",
+      "@types/react",
+      "@types/react-dom"
+    ],
     "noEmit": true
   },
-  "include": ["./**/*.ts", "./**/*.tsx", "./**/*.d.ts"],
+  "include": [
+    "./**/*.ts",
+    "./**/*.tsx",
+    "./**/*.d.ts"
+  ],
   "exclude": [
     "./node_modules",
     "./dist",

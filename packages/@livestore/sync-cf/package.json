@@ -1,65 +1,4 @@
 {
-  "name": "@livestore/sync-cf",
-  "version": "0.4.0",
-  "license": "Apache-2.0",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/livestorejs/livestore.git"
-  },
-  "files": [
-    "dist",
-    "package.json",
-    "src",
-    "README.md"
-  ],
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    "./cf-worker": "./src/cf-worker/mod.ts",
-    "./client": "./src/client/mod.ts",
-    "./common": "./src/common/mod.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      "./client": "./dist/client/mod.js",
-      "./common": "./dist/common/mod.js",
-      "./cf-worker": "./dist/cf-worker/mod.js"
-    }
-  },
-  "scripts": {
-    "test": "echo 'No tests yet'"
-  },
-  "dependencies": {
-    "@cloudflare/workers-types": "4.20251118.0",
-    "@livestore/common": "workspace:^",
-    "@livestore/common-cf": "workspace:^",
-    "@livestore/utils": "workspace:^"
-  },
-  "devDependencies": {
-    "@effect/opentelemetry": "4.0.0-beta.99",
-    "@effect/platform-browser": "4.0.0-beta.99",
-    "@effect/platform-bun": "4.0.0-beta.99",
-    "@effect/platform-node": "4.0.0-beta.99",
-    "@effect/platform-node-shared": "4.0.0-beta.99",
-    "@effect/vitest": "4.0.0-beta.99",
-    "@opentelemetry/api": "1.9.0",
-    "@opentelemetry/resources": "2.2.0",
-    "@standard-schema/spec": "1.1.0",
-    "effect": "4.0.0-beta.99"
-  },
-  "peerDependencies": {
-    "@effect/opentelemetry": "^4.0.0-beta.99",
-    "@effect/platform-browser": "^4.0.0-beta.99",
-    "@effect/platform-bun": "^4.0.0-beta.99",
-    "@effect/platform-node": "^4.0.0-beta.99",
-    "@effect/platform-node-shared": "^4.0.0-beta.99",
-    "@effect/vitest": "^4.0.0-beta.99",
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/resources": "^2.2.0",
-    "@standard-schema/spec": "^1.1.0",
-    "effect": "^4.0.0-beta.99"
-  },
   "$genie": {
     "source": "package.json.genie.ts",
     "warning": "DO NOT EDIT - changes will be overwritten",
@@ -71,5 +10,68 @@
       "packages/@livestore/utils-dev",
       "packages/@livestore/webmesh"
     ]
+  },
+  "name": "@livestore/sync-cf",
+  "version": "0.5.0",
+  "type": "module",
+  "sideEffects": false,
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/livestorejs/livestore.git"
+  },
+  "exports": {
+    "./cf-worker": "./src/cf-worker/mod.ts",
+    "./client": "./src/client/mod.ts",
+    "./common": "./src/common/mod.ts"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "4.20251118.0",
+    "@livestore/common": "workspace:^",
+    "@livestore/common-cf": "workspace:^",
+    "@livestore/utils": "workspace:^"
+  },
+  "devDependencies": {
+    "@effect/opentelemetry": "4.0.3",
+    "@effect/platform-browser": "4.0.3",
+    "@effect/platform-bun": "4.0.3",
+    "@effect/platform-node": "4.0.3",
+    "@effect/platform-node-shared": "4.0.3",
+    "@effect/vitest": "4.0.3",
+    "@livestore/utils-dev": "workspace:^",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/resources": "2.2.0",
+    "@standard-schema/spec": "1.1.0",
+    "effect": "4.0.3",
+    "vitest": "4.1.9"
+  },
+  "peerDependencies": {
+    "@effect/opentelemetry": "^4.0.3",
+    "@effect/platform-browser": "^4.0.3",
+    "@effect/platform-bun": "^4.0.3",
+    "@effect/platform-node": "^4.0.3",
+    "@effect/platform-node-shared": "^4.0.3",
+    "@effect/vitest": "^4.0.3",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "@standard-schema/spec": "^1.1.0",
+    "effect": "^4.0.3"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      "./client": "./dist/client/mod.js",
+      "./common": "./dist/common/mod.js",
+      "./cf-worker": "./dist/cf-worker/mod.js"
+    }
   }
 }

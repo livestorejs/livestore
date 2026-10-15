@@ -72,7 +72,8 @@ const handleUnknownEvent = ({
       case 'callback': {
         const callback = config.onUnknownEvent
 
-        yield* Effect.tryAll<void>(() => callback(context, error)).pipe(
+        // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- user callback errors are immediately handled and logged below
+        yield* Effect.trySyncOrPromiseOrEffect(() => callback(context, error)).pipe(
           Effect.catch((cause) =>
             Effect.logWarning('@livestore/common:schema:unknown-event:callback-error', {
               event: context.event,

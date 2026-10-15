@@ -1,6 +1,6 @@
 import type * as otel from '@opentelemetry/api'
 
-import { Equal, Hash, Predicate } from '@livestore/utils/effect'
+import { Predicate, type Equal, type Hash } from '@livestore/utils/effect'
 
 import * as RG from '../reactive.ts'
 import type { QueryDebugInfo, RefreshReason } from '../store/store-types.ts'

@@ -1,6 +1,6 @@
 # DELTA-002 — Intent-layer enforcement suite does not hard-block CI
 
-Status: open
+Status: closed (2026-07-25) — resolved by removing the `Effect.ignore` outright.
 
 ## Divergence
 
@@ -21,13 +21,22 @@ expected; only the CI wrapper drops the failure.
 
 [spec.md](../spec.md) §Enforcement.
 
-## Close condition
+## Resolution
 
-Run the intent-layer suite as a dedicated **non-ignored** step in the
-`test-unit` path — e.g. a `vitest run tests/package-common/src/intent-layer`
-invocation outside the `Effect.ignore`'d sequential loop — so a failing
-invariant fails the job, without un-ignoring the genuinely-flaky `webmesh` /
-`package-common` tests. Close when a deliberately-broken invariant reds
-`test-unit` in CI. (Deferred here as a CI-runner change requiring a working
-`devenv`/`mono` env to verify; the shared effect-utils store is currently
-dirtied by a concurrent tsgo-bump workstream.)
+The `Effect.ignore` was removed from the sequential loop entirely, so both
+`tests/package-common` and `packages/@livestore/webmesh` now fail `test-unit`.
+This supersedes the originally proposed remedy — running the intent-layer suite
+as a dedicated non-ignored step — which would have left the rest of
+`tests/package-common` swallowed.
+
+Carving out only the intent-layer suite was rejected because the quarantine was
+never scoped to the flake it was added for: it covered two complete targets, and
+a survey of 20 `main` runs and 18 pull-request runs found no evidence of the
+`webmesh` flakiness still occurring. Quarantining a target, if one proves unreliable, is a
+declared ledger entry carrying a reason, tracking issue, and expiry date rather
+than a package-wide wrapper. Test-level suppression remains outside the ledger
+(see `../02-system/09-verification/01-lanes/.delta/DELTA-004-test-level-suppressions-unledgered.md`).
+
+Closure rests on the code change and on `test-unit` being a required check whose
+exit code now reflects these targets; a deliberately-broken invariant reddening
+CI has not been demonstrated end to end.

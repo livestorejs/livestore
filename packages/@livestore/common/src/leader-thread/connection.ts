@@ -83,14 +83,18 @@ export const execSql = (sqliteDb: SqliteDb, sql: string, bind: BindValues) => {
   )
 }
 
-// const selectSqlPrepared = <T>(stmt: PreparedStatement, bind: BindValues) => {
-//   const bindValues = prepareBindValues(bind, stmt.sql)
-//   return Effect.try({
-//     try: () => stmt.select<T>(bindValues),
-//     catch: (cause) =>
-//       new SqliteError({ cause, query: { bindValues, sql: stmt.sql }, code: (cause as WaSqlite.SQLiteError).code }),
-//   })
-// }
+export const selectSql = <T>(sqliteDb: SqliteDb, sql: string, bind: BindValues) => {
+  const bindValues = prepareBindValues(bind, sql)
+  return Effect.try({
+    try: () => sqliteDb.select<T>(sql, bindValues),
+    catch: (cause) =>
+      new SqliteError({ cause, query: { bindValues, sql }, code: (cause as WaSqlite.SQLiteError).code }),
+  }).pipe(
+    Effect.withSpan(`@livestore/common:selectSql`, {
+      attributes: { 'span.label': sql, sql, bindValueKeys: Object.keys(bindValues) },
+    }),
+  )
+}
 
 // TODO actually use prepared statements
 export const execSqlPrepared = (sqliteDb: SqliteDb, sql: string, bindValues: PreparedBindValues) => {

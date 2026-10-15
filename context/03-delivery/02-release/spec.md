@@ -57,19 +57,90 @@ sequenceDiagram
 Manual contrib release dispatch accepts an explicit version but must use a
 version already published by core (LS.DEL.REL-R05).
 
+## Stable Production Surface Promotion
+
+Package and DevTools artifact publication runs from `main`. Production docs,
+examples, and search run separately from the reviewed `docs/stable` branch.
+For each successful `latest` release, a maintainer opens a PR advancing
+`docs/stable` to the exact published release commit, preserving applicable
+stable-only documentation fixes. The merged branch must identify the published
+stable version; it is not advanced for prereleases or snapshots.
+Promotion PR validation is scoped by the PR base ref: `docs/stable` checks every
+release-topology package's published version and `latest` dist-tag, and proves
+that the published `v<version>` tag's commit is an ancestor of the exact PR
+head. It uses the checked-in stable plan without synthesizing a prerelease.
+PRs against `main` retain the unpublished-package rehearsal.
+
+The maintainer dispatches `deploy-prod.yml --ref docs/stable` for docs, then
+examples and search from the same recorded, unchanged stable SHA. Search must
+follow successful docs deployment, including verification and CDN purge; the
+workflow enforces this ordering for `target=all`. Every production target
+rejects other refs. Stable-only docs backports are reviewed against this branch
+and deployed with the same docs/search sequence.
+
+This explicit approval boundary preserves the stable baseline established in
+[#1637](https://github.com/livestorejs/livestore/pull/1637), rather than coupling
+production docs to a moving development head or automatically advancing a
+branch with stable-only fixes. Commands and recovery:
+[release-workflows-runbook.md](./release-workflows-runbook.md).
+
+## Pull-Request Snapshot Promotion (LS.DEL.REL-R08)
+
+```text
+pull_request CI (untrusted)             release.yml on main (trusted)
+----------------------------------      --------------------------------
+pack exact PR head without secrets ---> resolve exact repo/branch/SHA run
+upload immutable candidate              validate bounded package cohort
+                                        re-read open PR + current head
+same-repo PR: current-head approval ---> authorize
+fork PR: ci:publish-snapshot label ----> authorize while label remains
+                                        recheck immediately before npm OIDC
+                                        publish exact-SHA immutable versions
+```
+
+The `pack-pr-snapshot` job runs for every pull request, including forks, with
+`contents: read`, no npm authority, and no CACHIX credential. Its artifact is
+untrusted data. The trusted main-branch workflow downloads but never executes
+the candidate, validates its exact package topology, version, dependency pins,
+paths, sizes, lifecycle-script absence, and digests, and publishes tarballs with
+scripts disabled.
+
+GitHub Actions may omit fork PR associations from workflow-run records. The
+publisher therefore identifies a producer by the exact tuple of head repository,
+head branch, and head SHA, requires it to resolve to exactly one open non-draft
+PR targeting `main`, and binds the manifest to that PR number and run attempt.
+
+Repository-owned PR authorization remains the authoritative review decision plus
+an approval naming the current head. For a fork PR, the persistent
+`ci:publish-snapshot` label trusts control of that PR's mutable head repository
+and branch: later commits remain eligible while the label is present. Removing
+the label cancels any candidate whose npm publication has not started. Published
+npm versions are immutable and are not revoked by removing the label. Decision
+and rejected alternatives: [.decisions/0002](./.decisions/0002-fork-snapshot-trust-label.md).
+
+The job graph and the candidate validator are shared rather than local to this
+repository: both are supplied by `effect-utils` and consumed here and by
+livestore-contrib, so the rules deciding what may be published are one
+implementation rather than two that can drift. The validator is emitted from
+that shared source, so the two repositories agree on the bytes that gate
+publication. Decision and rejected alternatives:
+[.decisions/0003](./.decisions/0003-share-the-pr-snapshot-pipeline.md).
+
 ## Breaking-Change Mechanics (LS.DEL.REL-R06)
 
 Beta releases may break in three distinct ways (user-facing promise:
 `../../01-product/spec.md` §Maturity & Stability Promise):
 
-| Kind | Mechanism | Consequence |
-| --- | --- | --- |
-| API | public API change in a minor release | code migration, guided by release notes |
-| Client storage format | `liveStoreStorageFormatVersion` bump | persisted client state resets (see `02-system/02-state/01-sqlite/02-schema-management/`) |
-| Sync backend storage format | provider persistence change (e.g. `PERSISTENCE_FORMAT_VERSION`) | backend soft-reset per provider (see `02-system/03-sync/03-cf/`) |
+| Kind                        | Mechanism                                                       | Consequence                                                                              |
+| --------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| API                         | public API change in a minor release                            | code migration, guided by release notes                                                  |
+| Client storage format       | `liveStoreStorageFormatVersion` bump                            | persisted client state resets (see `02-system/02-state/01-sqlite/02-schema-management/`) |
+| Sync backend storage format | provider persistence change (e.g. `PERSISTENCE_FORMAT_VERSION`) | backend soft-reset per provider (see `02-system/03-sync/03-cf/`)                         |
 
 Release notes classify each breaking change by kind and include a migration
-path where feasible.
+path where feasible. The application-facing
+[0.4 to 0.5 upgrade guide](../../../docs/src/content/docs/misc/upgrading-0.4-to-0.5.md)
+collects the Effect dependency/API migration and deployment implications.
 
 ## Dependency-Update Policy
 

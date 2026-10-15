@@ -1,7 +1,7 @@
 import { TestSchema } from 'effect/testing'
 import { assert, describe, expect, it } from 'vitest'
 
-import { Schema, SchemaAST, Struct } from '@livestore/utils/effect'
+import { Schema, SchemaAST, SchemaTransformation, Struct } from '@livestore/utils/effect'
 
 import * as State from '../mod.ts'
 import { withAutoIncrement, withColumnType, withDefault, withPrimaryKey, withUnique } from './column-annotations.ts'
@@ -26,10 +26,13 @@ describe('getColumnDefForSchema', () => {
     it('should map Schema.Date to text column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.Date)
       expect(columnDef.columnType).toBe('text')
+      const date = new Date('2026-01-02T03:04:05.678Z')
+      expect(Schema.encodeUnknownSync(columnDef.schema)(date)).toBe(date.toISOString())
+      expect(Schema.decodeSync(columnDef.schema)(date.toISOString())).toEqual(date)
       expect(Schema.toEncoded(columnDef.schema).ast._tag).toBe('String')
       expect(
-        SchemaAST.resolveAt<{ readonly _tag: string }>('typeConstructor')(Schema.toType(columnDef.schema).ast),
-      ).toEqual({ _tag: 'Date' })
+        SchemaAST.resolveAt<{ readonly id: string }>('representation')(Schema.toType(columnDef.schema).ast)?.id,
+      ).toBe('effect/schema/Date')
     })
 
     it('should map Schema.DateFromMillis to integer column', () => {
@@ -37,8 +40,92 @@ describe('getColumnDefForSchema', () => {
       expect(columnDef.columnType).toBe('integer')
       expect(Schema.toEncoded(columnDef.schema).ast._tag).toBe('Number')
       expect(
-        SchemaAST.resolveAt<{ readonly _tag: string }>('typeConstructor')(Schema.toType(columnDef.schema).ast),
-      ).toEqual({ _tag: 'Date' })
+        SchemaAST.resolveAt<{ readonly id: string }>('representation')(Schema.toType(columnDef.schema).ast)?.id,
+      ).toBe('effect/schema/Date')
+    })
+
+    it('should preserve the Date representation through checks', () => {
+      const schema = Schema.DateFromMillis.check(Schema.isGreaterThanDate(new Date(0)))
+
+      expect(State.SQLite.getColumnDefForSchema(schema).columnType).toBe('integer')
+    })
+
+    it('should preserve bare Date checks on encoding and decoding', () => {
+      const schema = Schema.Date.check(Schema.isGreaterThanDate(new Date(0)))
+      const columnDef = State.SQLite.getColumnDefForSchema(schema)
+      const date = new Date('2026-01-02T03:04:05.678Z')
+
+      expect(Schema.encodeUnknownSync(columnDef.schema)(date)).toBe(date.toISOString())
+      expect(Schema.decodeSync(columnDef.schema)(date.toISOString())).toEqual(date)
+      expect(() => Schema.encodeUnknownSync(columnDef.schema)(new Date(0))).toThrow()
+      expect(() => Schema.decodeSync(columnDef.schema)(new Date(0).toISOString())).toThrow()
+    })
+
+    it('should round-trip transformations with an encoded Date', () => {
+      const schema = Schema.Date.pipe(
+        Schema.decodeTo(
+          Schema.String,
+          SchemaTransformation.transform({
+            decode: (date) => date.toISOString(),
+            encode: (value) => new Date(value),
+          }),
+        ),
+      )
+      const columnDef = State.SQLite.getColumnDefForSchema(schema)
+      const value = '2026-01-02T03:04:05.678Z'
+
+      expect(columnDef.columnType).toBe('text')
+      expect(Schema.encodeUnknownSync(columnDef.schema)(value)).toBe(value)
+      expect(Schema.decodeSync(columnDef.schema)(value)).toBe(value)
+    })
+
+    it.each(['nullable', 'optional'] as const)(
+      'should round-trip %s transformations with an encoded Date',
+      (wrapper) => {
+        const schema = Schema.Date.pipe(
+          Schema.decodeTo(
+            Schema.String,
+            SchemaTransformation.transform({
+              decode: (date) => date.toISOString(),
+              encode: (value) => new Date(value),
+            }),
+          ),
+        )
+        const field = wrapper === 'nullable' ? Schema.NullOr(schema) : Schema.optional(schema)
+        const { columns } = State.SQLite.table({ name: 'stamps', schema: Schema.Struct({ value: field }) }).sqliteDef
+        const columnDef = columns.value
+        const value = '2026-01-02T03:04:05.678Z'
+
+        expect(columnDef.nullable).toBe(true)
+        expect(columnDef.columnType).toBe('text')
+        const encoded = Schema.encodeUnknownSync(columnDef.schema)(value)
+        expect(Schema.decodeSync(columnDef.schema)(encoded)).toBe(value)
+        expect(encoded).toBe(value)
+        expect(Schema.encodeUnknownSync(columnDef.schema)(null)).toBeNull()
+        expect(Schema.decodeSync(columnDef.schema)(null)).toBeNull()
+      },
+    )
+
+    it('should round-trip transformations with an encoded nullable Date', () => {
+      const schema = Schema.NullOr(Schema.Date).pipe(
+        Schema.decodeTo(
+          Schema.String,
+          SchemaTransformation.transform({
+            decode: (date) => (date === null ? 'none' : date.toISOString()),
+            encode: (value) => (value === 'none' ? null : new Date(value)),
+          }),
+        ),
+      )
+      const { columns } = State.SQLite.table({ name: 'stamps', schema: Schema.Struct({ value: schema }) }).sqliteDef
+      const columnDef = columns.value
+      const value = '2026-01-02T03:04:05.678Z'
+      const encoded = Schema.encodeUnknownSync(columnDef.schema)(value)
+
+      expect(Schema.decodeSync(columnDef.schema)(encoded)).toBe(value)
+      expect(encoded).toBe(value)
+      expect(columnDef.nullable).toBe(true)
+      expect(Schema.encodeUnknownSync(columnDef.schema)('none')).toBeNull()
+      expect(Schema.decodeSync(columnDef.schema)(null)).toBe('none')
     })
 
     it('should map Schema.BigInt to text column', () => {
@@ -303,11 +390,21 @@ describe('getColumnDefForSchema', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.Uint8Array)
       expect(columnDef.columnType).toBe('blob')
       expect(
-        SchemaAST.resolveAt<{ readonly _tag: string }>('typeConstructor')(Schema.toType(columnDef.schema).ast),
-      ).toEqual({ _tag: 'Uint8Array' })
+        SchemaAST.resolveAt<{ readonly id: string }>('representation')(Schema.toType(columnDef.schema).ast)?.id,
+      ).toBe('effect/schema/Uint8Array')
 
       const asserts = new TestSchema.Asserts(columnDef.schema)
       await asserts.decoding().succeed(new Uint8Array([1, 2, 3]))
+    })
+
+    it('should preserve Uint8Array checks on blob columns', () => {
+      const schema = Schema.Uint8Array.check(Schema.makeFilter((value) => value.byteLength > 0))
+      const columnDef = State.SQLite.getColumnDefForSchema(schema)
+
+      expect(columnDef.columnType).toBe('blob')
+      expect(columnDef.schema).toBe(schema)
+      expect(Schema.decodeSync(columnDef.schema)(new Uint8Array([1]))).toEqual(new Uint8Array([1]))
+      expect(() => Schema.decodeSync(columnDef.schema)(new Uint8Array())).toThrow()
     })
   })
 

@@ -10,7 +10,7 @@ export const mailboxTables = {
       color: State.SQLite.text({ nullable: true }),
       threadCount: State.SQLite.integer({ default: 0 }),
       displayOrder: State.SQLite.integer({ default: 0 }), // Display order in UI
-      createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      createdAt: State.SQLite.integer({ schema: Schema.DateFromMillis }),
     },
   }),
 
@@ -22,8 +22,8 @@ export const mailboxTables = {
       id: State.SQLite.text({ primaryKey: true }), // threadId
       subject: State.SQLite.text(),
       participants: State.SQLite.text(), // JSON array of email addresses
-      lastActivity: State.SQLite.integer({ schema: Schema.DateFromNumber }),
-      createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      lastActivity: State.SQLite.integer({ schema: Schema.DateFromMillis }),
+      createdAt: State.SQLite.integer({ schema: Schema.DateFromMillis }),
     },
   }),
 
@@ -34,7 +34,7 @@ export const mailboxTables = {
     columns: {
       threadId: State.SQLite.text(),
       labelId: State.SQLite.text(),
-      appliedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      appliedAt: State.SQLite.integer({ schema: Schema.DateFromMillis }),
     },
   }),
 
@@ -62,10 +62,10 @@ export const mailboxEvents = {
     schema: Schema.Struct({
       id: Schema.String,
       name: Schema.String,
-      type: Schema.Literal('system', 'user'),
+      type: Schema.Literals(['system', 'user']),
       color: Schema.String.pipe(Schema.NullOr),
       displayOrder: Schema.Number,
-      createdAt: Schema.Date,
+      createdAt: Schema.DateFromString,
     }),
   }),
 
@@ -76,7 +76,7 @@ export const mailboxEvents = {
       id: Schema.String,
       subject: Schema.String,
       participants: Schema.Array(Schema.String), // Array of email addresses
-      createdAt: Schema.Date,
+      createdAt: Schema.DateFromString,
     }),
   }),
 
@@ -86,7 +86,7 @@ export const mailboxEvents = {
     schema: Schema.Struct({
       threadId: Schema.String,
       labelId: Schema.String,
-      appliedAt: Schema.Date,
+      appliedAt: Schema.DateFromString,
     }),
   }),
 
@@ -96,7 +96,7 @@ export const mailboxEvents = {
     schema: Schema.Struct({
       threadId: Schema.String,
       labelId: Schema.String,
-      removedAt: Schema.Date,
+      removedAt: Schema.DateFromString,
     }),
   }),
 

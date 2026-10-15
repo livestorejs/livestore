@@ -8,7 +8,7 @@ import { PlatformNode } from '@livestore/utils/node'
 import { type WatchSnippetsRebuildInfo, watchSnippets } from './snippets.ts'
 
 /** Module-scoped JSON encoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
-const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
+const jsonStringify = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown))
 
 const createDocsImportSource = (relativeSnippetPath: string) => `---
 title: Snippet Watch Test

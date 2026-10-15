@@ -1,5 +1,5 @@
-import type { AlarmInvocationInfo } from '@cloudflare/workers-types'
 import { DurableObject } from 'cloudflare:workers'
+import type { AlarmInvocationInfo } from '@cloudflare/workers-types'
 
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { nanoid, type Store } from '@livestore/livestore'
@@ -45,7 +45,7 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
         env: this.env,
         bindingName: 'CLIENT_DO',
       },
-      syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
+      getSyncBackendStub: () => this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
       livePull: true,
     })
 
@@ -71,7 +71,9 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
     this.subscribeToStore()
   }
 
-  async syncUpdateRpc(payload: unknown) {
-    await handleSyncUpdateRpc(payload)
+  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>, storeId: string) {
+    this.storeId = storeId
+    await this.getStore()
+    await handleSyncUpdateRpc(this.ctx, payload)
   }
 }

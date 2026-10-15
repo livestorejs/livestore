@@ -1,48 +1,55 @@
 import { expect } from 'vitest'
 
+import { EventSequenceNumber } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import { nanoid } from '@livestore/livestore'
-import { events } from '@livestore/livestore/internal/testing-utils'
+import { SyncMessage } from '@livestore/sync-cf/common'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import {
-  type Context,
-  Data,
-  type Duration,
-  Effect,
-  FetchHttpClient,
-  type HttpClient,
-  KeyValueStore,
-  Layer,
-  ManagedRuntime,
-  Option,
-  Schedule,
-  Stream,
-} from '@livestore/utils/effect'
+import { Duration, Effect, Exit, Option, Schema } from '@livestore/utils/effect'
 
+import {
+  awaitDelivery,
+  collectReceivedIds,
+  makeEventFactory,
+  probeSyncDo,
+  setupProviderRuntime,
+  staysResidentWhileWarm,
+  SyncDoProbeError,
+  syncProvider,
+} from './do-idle-helpers.ts'
 import * as CloudflareWsProvider from './providers/cloudflare-ws.ts'
-import { SyncProviderImpl } from './types.ts'
+import { isProviderSelected } from './providers/registry.ts'
 
 const idleWindow: Duration.Input = '20 seconds' // workerd evicts somewhere between 9s and 11s idle
+// The error/success holes are irrelevant for an Interrupt, but the JSON codec still validates its full wire shape.
+const decodeInterruptedExit = Schema.decodeUnknownSync(
+  Schema.toCodecJson(Schema.Exit(Schema.Void, Schema.Never, Schema.Never)),
+)
+const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown))
+const encodePullPayload = Schema.encodeSync(
+  Schema.toCodecJson(
+    Schema.Struct({
+      storeId: Schema.String,
+      live: Schema.Boolean,
+      ...SyncMessage.PullRequest.fields,
+    }),
+  ),
+)
+const decodeRpcWireMessage = Schema.decodeUnknownSync(
+  Schema.fromJsonString(
+    Schema.Struct({
+      _tag: Schema.String,
+      requestId: Schema.optional(Schema.Union([Schema.String, Schema.Finite])),
+      exit: Schema.optional(Schema.Unknown),
+    }),
+  ),
+)
 
-type RuntimeServices = SyncProviderImpl | HttpClient.HttpClient | KeyValueStore.KeyValueStore
+// Selected by provider key, not by suite title, so renaming this suite cannot drop it from CI.
+const describeWsDo = Vitest.describe.skipIf(isProviderSelected('cf-ws-do') === false)
 
-// CI cells select by title (see scripts/src/commands/test-commands.ts); renaming this stops it running anywhere.
-Vitest.describe(`${CloudflareWsProvider.doSqlite.name} sync provider — DO hibernation`, () => {
-  let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
-  let runtimeContext: Context.Context<RuntimeServices>
-
-  Vitest.beforeAll(async () => {
-    runtime = ManagedRuntime.make(
-      CloudflareWsProvider.doSqlite.layer.pipe(
-        Layer.provideMerge(FetchHttpClient.layer),
-        Layer.provideMerge(KeyValueStore.layerMemory),
-        Layer.orDie,
-      ),
-    )
-    runtimeContext = await runtime.context()
-  })
-
-  Vitest.afterAll(async () => await runtime.dispose())
+describeWsDo(`${CloudflareWsProvider.doSqlite.name} sync provider — DO hibernation`, () => {
+  const getContext = setupProviderRuntime(CloudflareWsProvider.doSqlite.layer)
 
   Vitest.live('an idle WS client lets the DO hibernate, and a warm DO stays resident', () =>
     Effect.gen(function* () {
@@ -50,78 +57,136 @@ Vitest.describe(`${CloudflareWsProvider.doSqlite.name} sync provider — DO hibe
         {
           idle: hibernatesWhenIdle({ livePull: false }),
           livePull: hibernatesWhenIdle({ livePull: true }),
-          warmControl: staysResidentWhileWarm,
+          warmControl: staysResidentWhileWarm({ idleWindow, storeIdPrefix: 'hibernation-warm' }),
         },
         { concurrency: 'unbounded' },
       )
 
       expect(observed).toEqual({ idle: true, livePull: true, warmControl: false })
-    }).pipe(Effect.provide(runtimeContext)),
+    }).pipe(Effect.provide(getContext())),
+  )
+
+  Vitest.live('live pulls receive one valid interrupted Exit before and after reconstruction', () =>
+    Effect.gen(function* () {
+      const { port } = yield* syncProvider
+      const storeId = `hibernation-interrupt-${nanoid()}`
+      const ws = yield* openWebSocket({ port, storeId })
+
+      yield* Effect.addFinalizer(() => Effect.sync(() => ws.close()))
+
+      const warmRequestId = 'warm-pull'
+      yield* startLivePull({ ws, storeId, requestId: warmRequestId })
+      const warmExits = yield* sendAndCollectRpcMessages(
+        ws,
+        { _tag: 'Interrupt', requestId: warmRequestId },
+        (message) => message._tag === 'Exit' && message.requestId === warmRequestId,
+      )
+      assertSingleInterruptedExit(warmExits, warmRequestId)
+
+      const restoredRequestId = 'restored-pull'
+      yield* startLivePull({ ws, storeId, requestId: restoredRequestId })
+
+      const before = yield* probeWithOpenSocket({ port, storeId })
+      yield* Effect.sleep(idleWindow)
+      const after = yield* probeWithOpenSocket({ port, storeId })
+      expect(after).not.toBe(before)
+
+      const currentRequestId = 'current-pull'
+      yield* startLivePull({ ws, storeId, requestId: currentRequestId })
+      const currentExits = yield* sendAndCollectRpcMessages(
+        ws,
+        { _tag: 'Interrupt', requestId: currentRequestId },
+        (message) => message._tag === 'Exit' && message.requestId === currentRequestId,
+      )
+      assertSingleInterruptedExit(currentExits, currentRequestId)
+
+      const restoredProbe = yield* probeSyncDo({ port, storeId })
+      expect(restoredProbe.pullRequestIds).toEqual([restoredRequestId])
+
+      const restoredExits = yield* sendAndCollectRpcMessages(
+        ws,
+        { _tag: 'Interrupt', requestId: restoredRequestId },
+        (message) => message._tag === 'Exit' && message.requestId === restoredRequestId,
+      )
+      assertSingleInterruptedExit(restoredExits, restoredRequestId)
+
+      const probe = yield* probeSyncDo({ port, storeId })
+      expect(probe.pullRequestIds).toEqual([])
+    }).pipe(Effect.scoped, Effect.provide(getContext())),
+  )
+
+  Vitest.live('terminal pull exits remove persisted fan-out request ids', () =>
+    Effect.gen(function* () {
+      const { port } = yield* syncProvider
+      const storeId = `pull-exit-cleanup-${nanoid()}`
+      const ws = yield* openWebSocket({ port, storeId })
+
+      yield* Effect.addFinalizer(() => Effect.sync(() => ws.close()))
+
+      yield* runPullToExit({ ws, storeId, requestId: 'completed-pull', live: false, cursor: Option.none() })
+      yield* runPullToExit({
+        ws,
+        storeId,
+        requestId: 'failed-pull',
+        live: true,
+        cursor: Option.some({ backendId: 'stale-backend', eventSequenceNumber: EventSequenceNumber.Global.make(0) }),
+      })
+
+      const probe = yield* probeSyncDo({ port, storeId })
+      expect(probe.pullRequestIds).toEqual([])
+    }).pipe(Effect.scoped, Effect.provide(getContext())),
+  )
+
+  Vitest.live('protocol defects clear restored fan-out request ids', () =>
+    Effect.gen(function* () {
+      const { port } = yield* syncProvider
+      const storeId = `pull-defect-cleanup-${nanoid()}`
+      const ws = yield* openWebSocket({ port, storeId })
+
+      yield* Effect.addFinalizer(() => Effect.sync(() => ws.close()))
+      yield* startLivePull({ ws, storeId, requestId: 'restored-pull' })
+
+      const before = yield* probeWithOpenSocket({ port, storeId })
+      yield* Effect.sleep(idleWindow)
+      const after = yield* probeWithOpenSocket({ port, storeId })
+      expect(after).not.toBe(before)
+
+      const restoredProbe = yield* probeSyncDo({ port, storeId })
+      expect(restoredProbe.pullRequestIds).toEqual(['restored-pull'])
+
+      yield* sendAndWaitForRpcMessage(ws, '{', (message) => message._tag === 'Defect')
+
+      const probe = yield* probeSyncDo({ port, storeId })
+      expect(probe.pullRequestIds).toEqual([])
+    }).pipe(Effect.scoped, Effect.provide(getContext())),
   )
 })
 
-class HibernationProbeError extends Data.TaggedError('HibernationProbeError')<{ message: string }> {}
-
-const syncProvider = Effect.gen(function* () {
-  const { makeProvider, providerSpecific } = yield* SyncProviderImpl
-  const { port } = providerSpecific
-  if (port === undefined) {
-    return yield* Effect.die('sync provider did not expose a dev server port')
-  }
-  return { makeProvider, port }
-})
-
 const eventClient = EventFactory.clientIdentity('hibernation-client', 'hibernation-session')
-const makeFactory = EventFactory.makeFactory(events)
-
-const probeSyncDo = ({ port, storeId }: { port: number; storeId: string }) =>
-  Effect.promise(() =>
-    fetch(`http://localhost:${port}/instance/sync?storeId=${storeId}`).then((res) => res.json()),
-  ).pipe(Effect.map((json) => json as { instanceId: string; webSocketCount: number }))
 
 const probeWithOpenSocket = ({ port, storeId }: { port: number; storeId: string }) =>
   Effect.gen(function* () {
     const probe = yield* probeSyncDo({ port, storeId })
     if (probe.webSocketCount === 0) {
-      return yield* new HibernationProbeError({
+      return yield* new SyncDoProbeError({
         message: `no websocket attached to ${storeId}; hibernation claim would be vacuous`,
       })
     }
     return probe.instanceId
   })
 
-const awaitDelivery = ({ received, id }: { received: ReadonlyArray<string>; id: string }) =>
-  Effect.sync(() => received.includes(id)).pipe(
-    Effect.flatMap((delivered) =>
-      delivered === true ? Effect.void : Effect.fail(new HibernationProbeError({ message: `never delivered: ${id}` })),
-    ),
-    Effect.retry(Schedule.spaced('300 millis')),
-    Effect.timeout('10 seconds'),
-  )
-
 const hibernatesWhenIdle = ({ livePull }: { livePull: boolean }) =>
   Effect.gen(function* () {
     const { makeProvider, port } = yield* syncProvider
     const storeId = `hibernation-${livePull === true ? 'live-pull' : 'idle'}-${nanoid()}`
     const syncBackend = yield* makeProvider({ storeId, clientId: eventClient.clientId, payload: undefined })
-    const factory = makeFactory({ client: eventClient, startSeq: 1, initialParent: 'root' })
-    const received: string[] = []
+    const factory = makeEventFactory({ client: eventClient, startSeq: 1, initialParent: 'root' })
 
     yield* syncBackend.connect
 
-    if (livePull === true) {
-      yield* syncBackend.pull(Option.none(), { live: true }).pipe(
-        Stream.runForEach((res) =>
-          Effect.sync(() => {
-            for (const item of res.batch) {
-              received.push(item.eventEncoded.args.id)
-            }
-          }),
-        ),
-        Effect.tapCauseLogPretty,
-        Effect.forkScoped,
-      )
+    const received = livePull === true ? yield* collectReceivedIds(syncBackend) : []
 
+    if (livePull === true) {
       // A dead pull leaves no park, so "it hibernated" would pass for the wrong reason.
       yield* Effect.sleep('1 second')
       yield* syncBackend.push([factory.todoCreated.next({ id: 'before-idle', text: 'before', completed: false })])
@@ -140,18 +205,167 @@ const hibernatesWhenIdle = ({ livePull }: { livePull: boolean }) =>
     return before !== after
   })
 
-const staysResidentWhileWarm = Effect.gen(function* () {
-  const { port } = yield* syncProvider
-  const storeId = `hibernation-warm-${nanoid()}`
+type RpcWireMessage = ReturnType<typeof decodeRpcWireMessage>
 
-  const before = yield* probeSyncDo({ port, storeId })
-  yield* probeSyncDo({ port, storeId }).pipe(
-    Effect.delay('3 seconds'),
-    Effect.forever,
-    Effect.timeout(idleWindow),
-    Effect.ignore,
+const startLivePull = ({ ws, storeId, requestId }: { ws: globalThis.WebSocket; storeId: string; requestId: string }) =>
+  sendAndWaitForRpcMessage(
+    ws,
+    encodeJson({
+      _tag: 'Request',
+      id: requestId,
+      tag: 'SyncWsRpc.Pull',
+      payload: encodePullPayload({ storeId, live: true, cursor: Option.none() }),
+      headers: [],
+    }),
+    (message) => message._tag === 'Chunk' && message.requestId === requestId,
+  ).pipe(Effect.andThen(Effect.sync(() => ws.send(encodeJson({ _tag: 'Ack', requestId })))))
+
+const runPullToExit = ({
+  ws,
+  storeId,
+  requestId,
+  live,
+  cursor,
+}: {
+  ws: globalThis.WebSocket
+  storeId: string
+  requestId: string
+  live: boolean
+  cursor: SyncMessage.PullRequest['cursor']
+}) =>
+  sendAndWaitForRpcMessage(
+    ws,
+    encodeJson({
+      _tag: 'Request',
+      id: requestId,
+      tag: 'SyncWsRpc.Pull',
+      payload: encodePullPayload({ storeId, live, cursor }),
+      headers: [],
+    }),
+    (message) => message._tag === 'Exit' && message.requestId === requestId,
+    {
+      onMessage: (message) => {
+        if (message._tag === 'Chunk' && message.requestId === requestId) {
+          ws.send(encodeJson({ _tag: 'Ack', requestId }))
+        }
+      },
+    },
   )
-  const after = yield* probeSyncDo({ port, storeId })
 
-  return before.instanceId !== after.instanceId
-})
+const assertSingleInterruptedExit = (messages: ReadonlyArray<RpcWireMessage>, requestId: string) => {
+  expect(messages).toHaveLength(1)
+  const message = messages[0]!
+  expect(message).toMatchObject({ _tag: 'Exit', requestId })
+  expect(message.exit).toBeDefined()
+  expect(Exit.hasInterrupts(decodeInterruptedExit(message.exit))).toBe(true)
+}
+
+const openWebSocket = ({ port, storeId }: { port: number; storeId: string }) =>
+  Effect.callback<globalThis.WebSocket, SyncDoProbeError>((resume, signal) => {
+    const ws = new WebSocket(`ws://localhost:${port}?storeId=${encodeURIComponent(storeId)}&transport=ws`)
+    let settled = false
+    const cleanup = () => {
+      ws.removeEventListener('open', onOpen)
+      ws.removeEventListener('error', onError)
+      signal.removeEventListener('abort', onAbort)
+    }
+    const finish = (effect: Effect.Effect<globalThis.WebSocket, SyncDoProbeError>) => {
+      if (settled === true) return
+      settled = true
+      cleanup()
+      resume(effect)
+    }
+    const onOpen = () => finish(Effect.succeed(ws))
+    const onError = () => finish(Effect.fail(new SyncDoProbeError({ message: 'WebSocket failed to open' })))
+    const onAbort = () => {
+      cleanup()
+      ws.close()
+    }
+
+    ws.addEventListener('open', onOpen, { once: true })
+    ws.addEventListener('error', onError, { once: true })
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+
+const sendAndWaitForRpcMessage = (
+  ws: globalThis.WebSocket,
+  outgoing: string,
+  matches: (message: RpcWireMessage) => boolean,
+  options?: {
+    timeout?: Duration.Input
+    onMessage?: (message: RpcWireMessage) => void
+  },
+) =>
+  Effect.callback<RpcWireMessage, SyncDoProbeError>((resume, signal) => {
+    let settled = false
+    const cleanup = () => {
+      ws.removeEventListener('message', onMessage)
+      ws.removeEventListener('close', onError)
+      ws.removeEventListener('error', onError)
+      signal.removeEventListener('abort', cleanup)
+    }
+    const finish = (effect: Effect.Effect<RpcWireMessage, SyncDoProbeError>) => {
+      if (settled === true) return
+      settled = true
+      cleanup()
+      resume(effect)
+    }
+    const onMessage = (event: MessageEvent) => {
+      try {
+        const message = decodeRpcWireMessage(String(event.data))
+        options?.onMessage?.(message)
+        if (matches(message) === true) finish(Effect.succeed(message))
+      } catch (cause) {
+        finish(Effect.fail(new SyncDoProbeError({ message: `Invalid RPC response: ${String(cause)}` })))
+      }
+    }
+    const onError = () =>
+      finish(Effect.fail(new SyncDoProbeError({ message: 'WebSocket closed before the expected RPC message' })))
+
+    ws.addEventListener('message', onMessage)
+    ws.addEventListener('close', onError, { once: true })
+    ws.addEventListener('error', onError, { once: true })
+    ws.send(outgoing)
+    signal.addEventListener('abort', cleanup, { once: true })
+  }).pipe(Effect.timeout(options?.timeout ?? '5 seconds'))
+
+const sendAndCollectRpcMessages = (
+  ws: globalThis.WebSocket,
+  outgoing: object,
+  matches: (message: RpcWireMessage) => boolean,
+  duration: Duration.Input = '500 millis',
+) =>
+  Effect.callback<ReadonlyArray<RpcWireMessage>, SyncDoProbeError>((resume, signal) => {
+    const messages: RpcWireMessage[] = []
+    let settled = false
+    const timer = setTimeout(() => finish(Effect.succeed(messages)), Duration.toMillis(duration))
+    const cleanup = () => {
+      clearTimeout(timer)
+      ws.removeEventListener('message', onMessage)
+      ws.removeEventListener('close', onError)
+      ws.removeEventListener('error', onError)
+      signal.removeEventListener('abort', cleanup)
+    }
+    const finish = (effect: Effect.Effect<ReadonlyArray<RpcWireMessage>, SyncDoProbeError>) => {
+      if (settled === true) return
+      settled = true
+      cleanup()
+      resume(effect)
+    }
+    const onMessage = (event: MessageEvent) => {
+      try {
+        const message = decodeRpcWireMessage(String(event.data))
+        if (matches(message) === true) messages.push(message)
+      } catch (cause) {
+        finish(Effect.fail(new SyncDoProbeError({ message: `Invalid RPC response: ${String(cause)}` })))
+      }
+    }
+    const onError = () =>
+      finish(Effect.fail(new SyncDoProbeError({ message: 'WebSocket closed while collecting RPC messages' })))
+
+    ws.addEventListener('message', onMessage)
+    ws.addEventListener('close', onError, { once: true })
+    ws.addEventListener('error', onError, { once: true })
+    ws.send(encodeJson(outgoing))
+    signal.addEventListener('abort', cleanup, { once: true })
+  })

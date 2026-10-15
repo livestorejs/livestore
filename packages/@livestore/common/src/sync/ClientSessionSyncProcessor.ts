@@ -1,6 +1,8 @@
 /// <reference lib="dom" />
 import { LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
 import {
+  Cause,
+  Deferred,
   Effect,
   Exit,
   Filter,
@@ -8,6 +10,7 @@ import {
   Option,
   Queue,
   Schema,
+  Semaphore,
   type Scope,
   Stream,
   Subscribable,
@@ -15,16 +18,17 @@ import {
 } from '@livestore/utils/effect'
 
 import type { ClientSession } from '../adapter-types.ts'
-import type { MaterializeError } from '../errors.ts'
+import { MaterializeError } from '../errors.ts'
 import { isRejectedPushError } from '../leader-thread/RejectedPushError.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { resolveSessionIdSymbolInEventArgs } from '../session-id-symbol.ts'
+import * as StateHead from '../StateHead.ts'
 import * as SyncState from './syncstate.ts'
 
 /** Serialize value to JSON string for trace attributes */
-const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
+const jsonStringify = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown))
 
 /**
  * Rebase behaviour:
@@ -54,7 +58,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   clientSession: ClientSession
   materializeEvent: (
     eventEncoded: LiveStoreEvent.Client.EncodedWithMeta,
-    options: { withChangeset: boolean; materializerHashLeader: Option.Option<number> },
+    options: { materializerHashLeader: Option.Option<number> },
   ) => Effect.Effect<
     {
       writeTables: Set<string>
@@ -70,20 +74,25 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   refreshTables: (tables: Set<string>) => void
   params: {
     leaderPushBatchSize: number
-    simulation?: ClientSessionSyncProcessorSimulationParams
+    /**
+     * Test-only deterministic barriers, awaited at fixed points of the rebase critical section.
+     * A test can park the pull fiber at a chosen point, inject a concurrent operation
+     * (a synchronous `push` or a `shutdown`), then release the barrier — without relying on
+     * virtual-time scheduling. Unset in production, where each lookup resolves to `Effect.void`.
+     */
+    rebaseBarriers?: Partial<Record<RebaseBarrierPoint, Effect.Effect<void>>>
   }
   /**
    * Currently only used in the web adapter:
    * If true, registers a beforeunload event listener to confirm unsaved changes.
    */
   confirmUnsavedChanges: boolean
-}): Effect.fn.Return<ClientSessionSyncProcessor> {
+}) {
+  const stateHead = yield* StateHead.StateHead
   const eventSchema = LiveStoreEvent.Client.makeSchemaMemo(schema)
 
-  const simSleep = <TKey extends keyof ClientSessionSyncProcessorSimulationParams>(
-    key: TKey,
-    key2: keyof ClientSessionSyncProcessorSimulationParams[TKey],
-  ) => Effect.sleep((params.simulation?.[key]?.[key2] ?? 0) as number)
+  const rebaseBarrier = (point: RebaseBarrierPoint): Effect.Effect<void> =>
+    params.rebaseBarriers?.[point] ?? Effect.void
 
   const syncStateRef = {
     // The initial state is identical to the leader's initial state
@@ -101,7 +110,38 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
-  const leaderPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
+  const leaderPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta, Cause.Done>()
+  /**
+   * Prevents pull reconciliation, push-rejection handling, and shutdown from running concurrently.
+   * These transitions inspect or update the pending events, leader push queue, and rejection state,
+   * so each must observe the others either fully before or fully after—not midway through bookkeeping.
+   *
+   * Regular local commits do not acquire this mutex; they remain synchronous and are incorporated
+   * when `reconcileLeaderPushQueue` reads the current pending events transactionally.
+   */
+  const pullReconciliationMutex = yield* Semaphore.make(1)
+  const shutdownDone = yield* Deferred.make<void>()
+  const drainStartedSignal = yield* Deferred.make<void>()
+  const rejectionObserved = yield* Deferred.make<void>()
+  let shutdownStarted = false
+  let terminalPushCause: Cause.Cause<never> | undefined
+  let unresolvedRejection:
+    | {
+        readonly error: Error
+        readonly events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
+      }
+    | undefined
+  let leaderPushingFiberHandle: FiberHandle.FiberHandle<void, never> | undefined
+  let pullingFiberHandle: FiberHandle.FiberHandle<void, never> | undefined
+
+  /** Rebuild the leader push queue from the current pending events without racing synchronous commits. */
+  const reconcileLeaderPushQueue = Effect.tx(
+    Effect.gen(function* () {
+      const livePending = syncStateRef.current.pending
+      yield* TxQueue.clear(leaderPushQueue)
+      yield* TxQueue.offerAll(leaderPushQueue, livePending)
+    }),
+  )
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
     if (
@@ -122,37 +162,81 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       )
     }
 
-    const leaderPushingFiberHandle = yield* FiberHandle.make()
+    const leaderPushingHandle = yield* FiberHandle.make<void, never>()
+    const pullingHandle = yield* FiberHandle.make<void, never>()
+    leaderPushingFiberHandle = leaderPushingHandle
+    pullingFiberHandle = pullingHandle
 
-    const backgroundLeaderPushing = Effect.gen(function* () {
-      const batch = yield* TxQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
-      yield* clientSession.leaderThread.events.push(batch).pipe(
-        Effect.catchIf(isRejectedPushError, () => {
-          debugInfo.rejectCount++
-          return TxQueue.clear(leaderPushQueue)
-        }),
-      )
+    const backgroundLeaderPushing: Effect.Effect<void> = Effect.gen(function* () {
+      while (true) {
+        const batch = yield* TxQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize).pipe(
+          Effect.catchIf(Cause.isDone, () => Effect.void),
+        )
+        if (batch === undefined) return
+
+        yield* clientSession.leaderThread.events.push(batch).pipe(
+          Effect.catchIf(isRejectedPushError, (error) =>
+            // A pull carrying the leader's corrective history can complete before or after this
+            // rejection response. Use the same mutex as pull reconciliation so this decision uses
+            // one stable view of pending events and cannot install a stale rejection fence after recovery.
+            pullReconciliationMutex
+              .withPermits(1)(
+                Effect.gen(function* () {
+                  debugInfo.rejectCount++
+                  if (shutdownStarted === true) return yield* Effect.die(error)
+
+                  // A concurrent pull may have already confirmed or rebased this batch while the
+                  // push response was in flight. In that case, rebuild the queue from the reconciled
+                  // pending events instead of creating a fence that no future pull could release.
+                  if (isRejectedBatchRecovered(batch, syncStateRef.current.pending) === true) {
+                    yield* reconcileLeaderPushQueue
+                    yield* Deferred.succeed(rejectionObserved, undefined)
+                    return false
+                  }
+
+                  unresolvedRejection = { error, events: batch }
+                  yield* TxQueue.clear(leaderPushQueue)
+                  yield* Deferred.succeed(rejectionObserved, undefined)
+                  return true
+                }),
+              )
+              .pipe(
+                Effect.flatMap((shouldFence) =>
+                  // Local commits remain synchronous and continue accumulating in pending/the FIFO,
+                  // but this sole drain worker stays parked until pull reconciliation reseeds it.
+                  shouldFence === true ? Effect.never : Effect.void,
+                ),
+              ),
+          ),
+        )
+      }
     }).pipe(
-      Effect.forever,
       Effect.interruptible,
       Effect.tapCauseLogPretty,
-      Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
+      Effect.catchCause((cause) => {
+        if (Cause.hasInterruptsOnly(cause) === true) return Effect.void
+
+        terminalPushCause ??= cause
+        return shutdownStarted === true
+          ? Effect.void
+          : clientSession.shutdown(Exit.failCause(cause)).pipe(Effect.forkDetach, Effect.asVoid)
+      }),
     )
 
-    yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+    yield* FiberHandle.run(leaderPushingHandle, backgroundLeaderPushing)
 
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
-    yield* Stream.suspend(() =>
+    const backgroundPulling = Stream.suspend(() =>
       clientSession.leaderThread.events.pull({ cursor: syncStateRef.current.upstreamHead }),
     ).pipe(
+      Stream.tap(() =>
+        clientSession.devtools.enabled === true ? clientSession.devtools.pullLatch.await : Effect.void,
+      ),
       Stream.tap(({ payload }) =>
         Effect.gen(function* () {
           // yield* Effect.logDebug('ClientSessionSyncProcessor:pull', payload)
 
-          if (clientSession.devtools.enabled === true) {
-            yield* clientSession.devtools.pullLatch.await
-          }
-
+          const rejectionAtPullStart = unresolvedRejection
           const mergeResult = yield* SyncState.merge({
             syncState: syncStateRef.current,
             payload,
@@ -167,6 +251,11 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
           syncStateRef.current = mergeResult.newSyncState
 
+          const recoveredRejection =
+            rejectionAtPullStart !== undefined &&
+            unresolvedRejection === rejectionAtPullStart &&
+            isRejectedBatchRecovered(rejectionAtPullStart.events, mergeResult.newSyncState.pending) === true
+
           if (mergeResult._tag === 'rebase') {
             yield* Effect.spanEvent('merge:pull:rebase', {
               payloadTag: payload._tag,
@@ -178,16 +267,10 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
             debugInfo.rebaseCount++
 
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
+            // Barrier: before we interrupt the in-flight leader-push worker.
+            yield* rebaseBarrier('before_leader_push_fiber_interrupt')
 
-            yield* FiberHandle.clear(leaderPushingFiberHandle)
-
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '2_before_leader_push_queue_clear')
-
-            // Reset the leader push queue since we're rebasing and will push again
-            yield* TxQueue.clear(leaderPushQueue)
-
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '3_before_rebase_rollback')
+            yield* FiberHandle.clear(leaderPushingHandle)
 
             if (LS_DEV === true) {
               yield* Effect.logDebug(
@@ -197,6 +280,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
               )
             }
 
+            // Roll back the optimistic session changesets for the events this rebase discards.
+            // (Independent of the push queue below; order relative to the queue reconcile is irrelevant.)
             for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
               const event = mergeResult.rollbackEvents[i]!
               if (event.meta.sessionChangeset._tag !== 'no-op' && event.meta.sessionChangeset._tag !== 'unset') {
@@ -204,14 +289,37 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
                 event.meta.sessionChangeset = { _tag: 'unset' }
               }
             }
+            if (mergeResult.rollbackEvents.length > 0) {
+              yield* stateHead
+                .set(mergeResult.rollbackEvents[0]!.parentSeqNum)
+                .pipe(Effect.mapError((cause) => MaterializeError.make({ cause })))
+            }
 
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
+            // Barrier: before the atomic queue reconciliation (the "discard + re-offer" step).
+            // A `push` admitted here appends its event to `syncStateRef.current.pending` AND to
+            // `leaderPushQueue`; the reconciliation below re-reads the current pending events, so
+            // that event is preserved rather than removed by the queue clear.
+            yield* rebaseBarrier('before_queue_reconcile')
 
-            yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
+            // Atomic queue reconciliation. `push` runs via `Effect.runSyncWith` (a synchronous run,
+            // per the store's fully-synchronous commit contract), so it executes as an indivisible
+            // unit that can only interleave in THIS fiber's async gaps — never inside a synchronous
+            // stretch. By reading the current pending events, clearing, and re-offering with no async
+            // park between them, this block is atomic w.r.t. `push`. This replaces the blocking
+            // `pullReconciliationMutex` permit that previously forced `push` to wait: queue rebuilding
+            // and synchronous commits cannot interleave, without suspending the commit path.
+            //
+            // We re-read the current `syncStateRef.current.pending` instead of the stale
+            // `mergeResult.newSyncState.pending` snapshot captured at merge time, so any event a
+            // concurrent push appended during the async steps above (fiber interrupt / rollback /
+            // barriers) is included. `Effect.tx` commits the clear+offer as one transaction.
+            yield* reconcileLeaderPushQueue
 
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
+            // Barrier: before restarting the leader-push worker.
+            yield* rebaseBarrier('before_leader_push_fiber_run')
 
-            yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+            if (recoveredRejection === true) unresolvedRejection = undefined
+            yield* FiberHandle.run(leaderPushingHandle, backgroundLeaderPushing)
           } else {
             yield* Effect.spanEvent('merge:pull:advance', {
               payloadTag: payload._tag,
@@ -221,6 +329,13 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
             })
 
             debugInfo.advanceCount++
+
+            if (recoveredRejection === true) {
+              yield* FiberHandle.clear(leaderPushingHandle)
+              yield* reconcileLeaderPushQueue
+              unresolvedRejection = undefined
+              yield* FiberHandle.run(leaderPushingHandle, backgroundLeaderPushing)
+            }
           }
 
           if (mergeResult.newEvents.length === 0) {
@@ -236,7 +351,6 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
               sessionChangeset,
               materializerHash,
             } = yield* materializeEvent(event, {
-              withChangeset: true,
               materializerHashLeader: event.meta.materializerHashLeader,
             })
             for (const table of newWriteTables) {
@@ -252,6 +366,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           // We're only triggering the sync state update after all events have been materialized
           yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
         }).pipe(
+          pullReconciliationMutex.withPermits(1),
           Effect.tapCauseLogPretty,
           Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
         ),
@@ -261,9 +376,49 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       Effect.interruptible,
       Effect.withSpan('client-session-sync-processor:pull'),
       Effect.tapCauseLogPretty,
-      Effect.forkScoped,
     )
+    yield* FiberHandle.run(pullingHandle, backgroundPulling)
   }).pipe(Effect.withSpan('client-session-sync-processor:boot'))
+
+  const runShutdown = Effect.fn('client-session-sync-processor:shutdown')(function* (
+    exit: Exit.Exit<unknown, unknown>,
+  ) {
+    if (Exit.isFailure(exit) === true) {
+      if (pullingFiberHandle !== undefined) yield* FiberHandle.clear(pullingFiberHandle)
+      yield* pullReconciliationMutex.withPermits(1)(TxQueue.end(leaderPushQueue))
+      if (leaderPushingFiberHandle !== undefined) yield* FiberHandle.clear(leaderPushingFiberHandle)
+      return
+    }
+
+    yield* pullReconciliationMutex.withPermits(1)(
+      Effect.gen(function* () {
+        if (pullingFiberHandle !== undefined) yield* FiberHandle.clear(pullingFiberHandle)
+        yield* TxQueue.end(leaderPushQueue)
+        yield* Deferred.succeed(drainStartedSignal, undefined)
+      }),
+    )
+    if (leaderPushingFiberHandle !== undefined) {
+      if (unresolvedRejection === undefined) {
+        yield* FiberHandle.awaitEmpty(leaderPushingFiberHandle)
+      } else {
+        yield* FiberHandle.clear(leaderPushingFiberHandle)
+      }
+    }
+    if (terminalPushCause !== undefined) return yield* Effect.failCause(terminalPushCause)
+    if (unresolvedRejection !== undefined) return yield* Effect.die(unresolvedRejection.error)
+  })
+
+  const shutdown: ClientSessionSyncProcessor['shutdown'] = (exit) =>
+    Effect.suspend(() => {
+      if (shutdownStarted === true) return Deferred.await(shutdownDone)
+      shutdownStarted = true
+      return runShutdown(exit).pipe(
+        Effect.exit,
+        Effect.tap((shutdownExit) => Deferred.done(shutdownDone, shutdownExit)),
+        Effect.forkDetach,
+        Effect.andThen(Deferred.await(shutdownDone)),
+      )
+    })
 
   const encodeEvents: ClientSessionSyncProcessor['encodeEvents'] = Effect.fn(
     'client-session-sync-processor:encode-events',
@@ -304,7 +459,6 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         sessionChangeset,
         materializerHash,
       } = yield* materializeEvent(event, {
-        withChangeset: true,
         materializerHashLeader: Option.none(),
       })
       for (const table of newWriteTables) {
@@ -318,6 +472,12 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
   const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(
     function* (encodedEvents) {
+      if (shutdownStarted === true) {
+        return yield* Effect.die(
+          new Error('Cannot push events after the client session sync processor starts shutting down'),
+        )
+      }
+
       const mergeResult = yield* SyncState.merge({
         syncState: syncStateRef.current,
         payload: { _tag: 'local-push', newEvents: encodedEvents },
@@ -341,7 +501,10 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
       syncStateRef.current = mergeResult.newSyncState
       yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
-      yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
+      const rejectedEvents = yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
+      if (rejectedEvents.length > 0) {
+        return yield* Effect.die(new Error('Leader push queue closed while accepting events'))
+      }
     },
   )
 
@@ -353,6 +516,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
   return {
     boot,
+    shutdown,
     encodeEvents,
     materializeEvents,
     push,
@@ -361,6 +525,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       changes: Stream.fromQueue(syncStateUpdateQueue),
     }),
     debug: {
+      awaitDrainStarted: Deferred.await(drainStartedSignal),
+      awaitRejection: Deferred.await(rejectionObserved),
       print: () =>
         Effect.gen(function* () {
           console.log('debugInfo', debugInfo)
@@ -377,17 +543,29 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   } satisfies ClientSessionSyncProcessor
 })
 
-const snapshotTxQueue = <A>(queue: TxQueue.TxQueue<A>): Effect.Effect<ReadonlyArray<A>> =>
+const snapshotTxQueue = <A, E>(queue: TxQueue.TxQueue<A, E>): Effect.Effect<ReadonlyArray<A>, E> =>
   Effect.tx(
     Effect.gen(function* () {
+      if ((yield* TxQueue.isOpen(queue)) === false) return []
+
       const items = yield* TxQueue.clear(queue)
       yield* TxQueue.offerAll(queue, items)
       return items
     }),
   )
 
+const isRejectedBatchRecovered = (
+  rejectedEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+  pendingEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+): boolean =>
+  rejectedEvents.every(
+    (rejectedEvent) =>
+      pendingEvents.some((pendingEvent) => LiveStoreEvent.Client.isEqualEncoded(pendingEvent, rejectedEvent)) === false,
+  )
+
 export interface ClientSessionSyncProcessor {
   boot: Effect.Effect<void, never, Scope.Scope>
+  shutdown: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>
   encodeEvents: (
     events: ReadonlyArray<LiveStoreEvent.Input.Decoded>,
   ) => Effect.Effect<ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>>
@@ -400,6 +578,8 @@ export interface ClientSessionSyncProcessor {
    */
   syncState: Subscribable.Subscribable<SyncState.SyncState>
   debug: {
+    awaitDrainStarted: Effect.Effect<void>
+    awaitRejection: Effect.Effect<void>
     print: () => void
     debugInfo: () => {
       rebaseCount: number
@@ -408,17 +588,11 @@ export interface ClientSessionSyncProcessor {
   }
 }
 
-// TODO turn this into a build-time "macro" so all simulation snippets are removed for production builds
-const SIMULATION_ENABLED = true
-
-// Warning: High values for the simulation params can lead to very long test runs since those get multiplied with the number of events
-export const ClientSessionSyncProcessorSimulationParams = Schema.Struct({
-  pull: Schema.Struct({
-    '1_before_leader_push_fiber_interrupt': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
-    '2_before_leader_push_queue_clear': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
-    '3_before_rebase_rollback': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
-    '4_before_leader_push_queue_offer': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
-    '5_before_leader_push_fiber_run': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
-  }),
-})
-type ClientSessionSyncProcessorSimulationParams = typeof ClientSessionSyncProcessorSimulationParams.Type
+/**
+ * Injection points inside the rebase critical section where a test-only barrier may be awaited.
+ * Named for the step they precede so the deterministic no-loss tests can target the exact window.
+ */
+export type RebaseBarrierPoint =
+  | 'before_leader_push_fiber_interrupt'
+  | 'before_queue_reconcile'
+  | 'before_leader_push_fiber_run'

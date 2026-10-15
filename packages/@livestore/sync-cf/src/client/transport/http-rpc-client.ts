@@ -25,6 +25,7 @@ import { MAX_HTTP_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST } from '../../commo
 import { SyncHttpRpc } from '../../common/http-rpc-schema.ts'
 import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
+import { mapRpcClientError } from './rpc-client-error.ts'
 
 type PushBatchItem = LiveStoreEvent.Global.Encoded
 
@@ -108,9 +109,13 @@ export const makeHttpSync =
 
         yield* SubscriptionRef.set(isConnected, true)
       }).pipe(
-        UnknownError.mapToUnknownError,
-        Effect.timeout(pingTimeout),
-        Effect.catchTag('TimeoutError', () => SubscriptionRef.set(isConnected, false)),
+        Effect.mapError((cause) =>
+          cause._tag === 'RpcClientError' ? mapRpcClientError(cause) : new UnknownError({ cause }),
+        ),
+        Effect.timeoutOrElse({
+          duration: pingTimeout,
+          orElse: () => SubscriptionRef.set(isConnected, false),
+        }),
       )
 
       const pingInterval = options.ping?.requestInterval ?? 10_000
@@ -178,9 +183,11 @@ export const makeHttpSync =
           Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
           Stream.map((res) => Struct.omit(res, ['backendId'])),
           Stream.mapError((cause) =>
-            cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
-              ? cause
-              : new UnknownError({ cause }),
+            cause._tag === 'RpcClientError'
+              ? mapRpcClientError(cause)
+              : cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
+                ? cause
+                : new UnknownError({ cause }),
           ),
           Stream.withSpan('http-sync-client:pull'),
         )
@@ -215,9 +222,13 @@ export const makeHttpSync =
         },
         pushSemaphore.withPermits(1),
         Effect.mapError((cause) =>
-          cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
-            ? cause
-            : new UnknownError({ cause }),
+          cause._tag === 'RpcClientError'
+            ? mapRpcClientError(cause)
+            : cause._tag === 'UnknownError' ||
+                cause._tag === 'ServerAheadError' ||
+                cause._tag === 'BackendIdMismatchError'
+              ? cause
+              : new UnknownError({ cause }),
         ),
       )
 

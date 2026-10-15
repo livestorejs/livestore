@@ -217,7 +217,7 @@ export class SqliteDbWrapper implements SqliteDb {
           span.recordException(cause)
           span.end()
           if (LS_DEV === true) {
-            // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for SQL errors during development
+            // oxlint-disable-next-line no-debugger -- intentional breakpoint for SQL errors during development
             debugger
           }
           throw new SqliteError({ cause, query: { bindValues: bindValues ?? {}, sql: queryStr } })

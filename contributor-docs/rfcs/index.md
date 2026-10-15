@@ -54,14 +54,19 @@ Include:
 Once the RFC has been reviewed and refined:
 
 - Merge the PR to formally accept the RFC
-- Implementation can begin
+- Fold its durable contracts into the intent layer before implementation begins
 
 ### 4. Fold into the intent layer
 
-Once an accepted RFC is implemented, its durable content moves into the
-intent layer (`context/`): contracts land as requirements/spec clauses in
-the owning nodes, and the decision — including rejected alternatives — is
-recorded under the owning node's `.decisions/`, citing the RFC. The RFC
-itself remains as a historical record and is no longer updated. See
+Acceptance triggers fold-in. The RFC's durable content moves into the intent
+layer (`context/`) before implementation: contracts land as requirements/spec
+clauses in the owning nodes, and the decision — including rejected
+alternatives — is recorded under the owning node's `.decisions/`, citing the
+RFC. The RFC itself remains as a historical record and is no longer updated.
+
+If any accepted contract is not yet implemented, record the divergence in the
+owning node's `.delta/` directory with an explicit close condition. Track the
+implementation against that canonical intent and close each delta as the
+implementation and its required evidence land. See
 [`context/05-contributing/spec.md`](../../context/05-contributing/spec.md)
 for the normative rule.

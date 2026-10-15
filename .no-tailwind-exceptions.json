@@ -1,0 +1,14 @@
+[
+  {
+    "path": "docs/**",
+    "reason": "LiveStore documentation is a standalone Tailwind application"
+  },
+  {
+    "path": "examples/**",
+    "reason": "LiveStore examples are standalone Tailwind applications"
+  },
+  {
+    "path": "packages/@local/**/example/**",
+    "reason": "Standalone local-package example applications use Tailwind"
+  }
+]

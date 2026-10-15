@@ -25,8 +25,9 @@
   pending events.
 - **Derived event** — A framework-generated event with an implicit
   materializer (e.g. client-document set events); never user-defined.
-- **Schema hash** — The hash of the state-schema AST and event definitions
-  that drives drift detection and state rebuild.
+- **Schema hash** — A deterministic schema identifier used for drift
+  detection. State schemas use a LiveStore-owned storage fingerprint; event
+  definitions use their Effect schema hash.
 - **Storage format version** — The manually bumped version of persisted
   eventlog/state formats (`liveStoreStorageFormatVersion`); incompatible
   bumps reset persistence.

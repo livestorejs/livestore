@@ -6,7 +6,6 @@ import {
   type BootStatus,
   type ClientSession,
   type ClientSessionDevtoolsChannel,
-  type ClientSessionSyncProcessorSimulationParams,
   type IntentionalShutdownCause,
   type MaterializeError,
   type MigrationsReport,
@@ -15,6 +14,7 @@ import {
   UnknownError,
   type LogConfig,
 } from '@livestore/common'
+import { STATE_REBUILD_BATCH_SIZE_DEFAULT, StateRebuildBatchSizeSchema } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { isDevEnv, LS_DEV, omitUndefineds } from '@livestore/utils'
 import {
@@ -42,6 +42,14 @@ import type {
 } from './store-types.ts'
 import { StoreInternalsSymbol } from './store-types.ts'
 import { STORE_DEFAULT_PARAMS, Store } from './store.ts'
+
+/**
+ * Hard upper bound (ms) for the detached shutdown drain. A dead/unresponsive leader must not keep
+ * the drain (and therefore the lifetime scope) alive forever; after this bound the scope is
+ * force-closed. Kept comfortably above the 1s caller-side soft wait so that a still-progressing
+ * in-flight leader push is allowed to finish rather than being interrupted.
+ */
+const SHUTDOWN_DRAIN_HARD_TIMEOUT_MS = 30_000
 
 declare global {
   /** Store instances for console debugging */
@@ -130,6 +138,11 @@ export type LiveStoreContextProps<
    *   useStore({ ..., syncPayloadSchema: SyncPayload, syncPayload: { authToken: '...' } })
    */
   syncPayload?: TSyncPayloadSchema['Type']
+  /** Advanced runtime tuning parameters. */
+  params?: {
+    /** Number of events read and committed per SQLite state-rebuild batch. Defaults to 100. */
+    stateRebuildBatchSize?: number
+  }
 }
 
 export interface CreateStoreOptions<
@@ -207,15 +220,21 @@ export interface CreateStoreOptions<
    * @default undefined
    */
   syncPayload?: TSyncPayloadSchema['Type']
-  /** Options provided to the Store constructor. */
+  /** Advanced runtime tuning parameters. */
   params?: {
     /** Max events pushed to the leader per write batch. */
     leaderPushBatchSize?: number
     /** Chunk size used when the stream replays confirmed events. */
     eventQueryBatchSize?: number
-    simulation?: {
-      clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
-    }
+    /**
+     * Number of events read and committed per batch when rebuilding SQLite state from the event log.
+     * Lower values reduce per-batch resource usage but perform more queries and savepoints.
+     * This is a per-client runtime setting and changing it does not trigger a rebuild.
+     *
+     * @default 100
+     * @minimum 1
+     */
+    stateRebuildBatchSize?: number
   }
   debug?: {
     instanceId?: string
@@ -293,6 +312,10 @@ export const createStore = <
   Scope.Scope | OtelTracer.OtelTracer
 > =>
   Effect.gen(function* () {
+    const stateRebuildBatchSize = yield* Schema.decodeEffect(StateRebuildBatchSizeSchema)(
+      params?.stateRebuildBatchSize ?? STATE_REBUILD_BATCH_SIZE_DEFAULT,
+    ).pipe(UnknownError.mapToUnknownError)
+
     const lifetimeScope = yield* Scope.make()
 
     yield* validateStoreId(storeId)
@@ -328,17 +351,38 @@ export const createStore = <
         })
 
       const services = yield* Effect.context<Scope.Scope>()
+      let shutdownSyncProcessor: ((exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>) | undefined
 
       const shutdown = (
         exit: Exit.Exit<IntentionalShutdownCause, UnknownError | MaterializeError | BackendIdMismatchError>,
       ) =>
         Effect.gen(function* () {
-          yield* Scope.close(lifetimeScope, exit).pipe(
+          // Hard outer bound on the DETACHED teardown: the processor drain `awaitEmpty`s the
+          // leader-push worker, which never completes if the leader is dead/unresponsive. Without a
+          // bound the drain would block forever, so `Scope.close(lifetimeScope)` (in `ensuring`)
+          // would never run and the lifetime scope + its resources would leak indefinitely (a later
+          // `createStore`/registry dispose on the same `storeId` would observe a never-closed store).
+          // Drain up to the bound, then force-close the scope regardless. The bound exceeds the
+          // caller-side wait below so an in-flight (but progressing) push is not cut short.
+          const closeFiber = yield* (shutdownSyncProcessor?.(exit) ?? Effect.void).pipe(
+            Effect.timeoutOrElse({
+              duration: SHUTDOWN_DRAIN_HARD_TIMEOUT_MS,
+              orElse: () =>
+                Effect.logError(
+                  `@livestore/livestore:shutdown: drain exceeded hard bound of ${SHUTDOWN_DRAIN_HARD_TIMEOUT_MS}ms; forcing scope close`,
+                ),
+            }),
+            Effect.ensuring(Scope.close(lifetimeScope, exit)),
+            Effect.forkDetach,
+          )
+          // Caller-side soft wait: stop blocking the shutdown() caller after 1s without cancelling
+          // the detached teardown above (which remains bounded by SHUTDOWN_DRAIN_HARD_TIMEOUT_MS).
+          yield* Fiber.join(closeFiber).pipe(
             Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
-            Effect.timeout(1000),
-            Effect.catchTag('TimeoutError', () =>
-              Effect.logError('@livestore/livestore:shutdown: Timed out after 1 second'),
-            ),
+            Effect.timeoutOrElse({
+              duration: 1000,
+              orElse: () => Effect.logError('@livestore/livestore:shutdown: Timed out after 1 second'),
+            }),
           )
 
           if (shutdownDeferred !== undefined) {
@@ -364,6 +408,7 @@ export const createStore = <
       const clientSession: ClientSession = yield* adapter({
         schema,
         storeId,
+        params: { stateRebuildBatchSize },
         devtoolsEnabled: getDevtoolsEnabled(disableDevtools),
         bootStatusQueue,
         shutdown,
@@ -401,16 +446,17 @@ export const createStore = <
         params: {
           leaderPushBatchSize: params?.leaderPushBatchSize ?? STORE_DEFAULT_PARAMS.leaderPushBatchSize,
           eventQueryBatchSize: params?.eventQueryBatchSize ?? STORE_DEFAULT_PARAMS.eventQueryBatchSize,
-          ...omitUndefineds({ simulation: params?.simulation }),
         },
       })
+      shutdownSyncProcessor = store[StoreInternalsSymbol].syncProcessor.shutdown
 
       // Starts background fibers (syncing, event processing, etc) for store
       yield* store[StoreInternalsSymbol].boot
 
       if (boot !== undefined) {
         // TODO also incorporate `boot` function progress into `bootStatusQueue`
-        yield* Effect.tryAll(() =>
+        // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- user boot errors are immediately normalized to LiveStore UnknownError
+        yield* Effect.trySyncOrPromiseOrEffect(() =>
           boot(store, { migrationsReport: clientSession.leaderThread.initialState.migrationsReport, parentSpan: span }),
         ).pipe(
           UnknownError.mapToUnknownError,

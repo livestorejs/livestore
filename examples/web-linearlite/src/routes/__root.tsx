@@ -1,14 +1,15 @@
 import '../app/init-theme.ts'
-import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
-import React, { type ReactNode, Suspense } from 'react'
 
 import type { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
+import React, { type ReactNode, Suspense } from 'react'
 
 import { MenuContext, NewIssueModalContext } from '../app/contexts.ts'
 import stylesheetUrl from '../app/style.css?url'
 import { Icon } from '../components/icons/index.tsx'
 import { VersionBadge } from '../components/VersionBadge.tsx'
+import type { Status } from '../types/status.ts'
 
 const RootDocument = ({ children }: { children: ReactNode }) => {
   return (
@@ -30,7 +31,7 @@ const RootComponent = () => {
   const { storeRegistry } = Route.useRouteContext()
 
   const [showMenu, setShowMenu] = React.useState(false)
-  const [newIssueModalStatus, setNewIssueModalStatus] = React.useState<0 | 1 | 2 | 3 | 4 | false>(false)
+  const [newIssueModalStatus, setNewIssueModalStatus] = React.useState<Status | false>(false)
   const menuContextValue = React.useMemo(() => ({ showMenu, setShowMenu }), [showMenu])
   const newIssueModalContextValue = React.useMemo(
     () => ({ newIssueModalStatus, setNewIssueModalStatus }),

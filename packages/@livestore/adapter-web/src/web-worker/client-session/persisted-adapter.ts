@@ -3,14 +3,13 @@ import {
   IntentionalShutdownCause,
   liveStoreVersion,
   makeClientSession,
+  StateHead,
   StoreInterrupted,
-  sessionChangesetMetaTable,
   UnknownError,
 } from '@livestore/common'
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
-import { EventSequenceNumber } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { isDevEnv, omitUndefineds, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
@@ -190,6 +189,7 @@ export const makePersistedAdapter =
         shutdown,
         syncPayloadSchema: _syncPayloadSchema,
         syncPayloadEncoded,
+        params,
       } = adapterArgs
 
       // NOTE: The schema travels with the worker bundle (developers call
@@ -204,6 +204,7 @@ export const makePersistedAdapter =
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
       const sqlite3 = yield* Effect.promise(() => loadSqlite3())
+      const makeSqliteDb = sqliteDbFactory({ sqlite3 })
 
       const LIVESTORE_TAB_LOCK = `livestore-tab-lock-${storeId}`
       const LIVESTORE_SHARED_WORKER_TERMINATION_LOCK = `livestore-shared-worker-termination-lock-${storeId}`
@@ -234,11 +235,10 @@ export const makePersistedAdapter =
       // we're here trying to get the snapshot directly from storage
       // we usually speeds up the boot process by a lot.
       // We need to be extra careful though to not run into any race conditions or inconsistencies.
-      // TODO also verify persisted data
       const dataFromFile =
         options.experimental?.disableFastPath === true || opfsWarning !== undefined
           ? undefined
-          : yield* readPersistedStateDbFromClientSession({ storageOptions, storeId, schema }).pipe(
+          : yield* readPersistedStateDbFromClientSession({ storageOptions, storeId, schema, makeSqliteDb }).pipe(
               Effect.tapError((error) =>
                 Effect.logDebug('[@livestore/adapter-web:client-session] Could not read persisted state db', error, {
                   storeId,
@@ -351,6 +351,7 @@ export const makePersistedAdapter =
               devtoolsEnabled,
               debugInstanceId,
               syncPayloadEncoded,
+              params,
             },
           })
           .pipe(
@@ -433,54 +434,33 @@ export const makePersistedAdapter =
 
       // TODO maybe bring back transfering the initially created in-memory db snapshot instead of
       // re-exporting the db
-      const initialResult =
+      const { sqliteDb, snapshotByteLength, migrationsReport } =
         dataFromFile === undefined
-          ? yield* runInWorker('GetRecreateSnapshot', sharedWorker.GetRecreateSnapshot({})).pipe(
-              Effect.map(({ snapshot, migrationsReport }) => ({
-                _tag: 'from-leader-worker' as const,
-                snapshot,
-                migrationsReport,
-              })),
-            )
-          : { _tag: 'fast-path' as const, snapshot: dataFromFile }
-
-      const migrationsReport =
-        initialResult._tag === 'from-leader-worker' ? initialResult.migrationsReport : { migrations: [] }
-
-      const makeSqliteDb = sqliteDbFactory({ sqlite3 })
-      const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
-
-      sqliteDb.import(initialResult.snapshot)
+          ? yield* Effect.gen(function* () {
+              const { snapshot, migrationsReport } = yield* runInWorker(
+                'GetRecreateSnapshot',
+                sharedWorker.GetRecreateSnapshot({}),
+              )
+              const sqliteDb = yield* Effect.acquireRelease(makeSqliteDb({ _tag: 'in-memory' }), (db) =>
+                Effect.sync(() => db.close()),
+              )
+              sqliteDb.import(snapshot)
+              return { sqliteDb, snapshotByteLength: snapshot.byteLength, migrationsReport }
+            })
+          : { ...dataFromFile, migrationsReport: { migrations: [] } }
 
       const numberOfTables =
         sqliteDb.select<{ count: number }>(`select count(*) as count from sqlite_master`)[0]?.count ?? 0
       if (numberOfTables === 0) {
         return yield* UnknownError.make({
           cause: `Encountered empty or corrupted database`,
-          payload: { snapshotByteLength: initialResult.snapshot.byteLength, storageOptions: options.storage },
+          payload: { snapshotByteLength, storageOptions: options.storage },
         })
       }
 
-      // We're restoring the leader head from the SESSION_CHANGESET_META_TABLE, not from the eventlog db/table
-      // in order to avoid exporting/transferring the eventlog db/table, which is important to speed up the fast path.
-      const initialLeaderHeadRes = sqliteDb.select(
-        sessionChangesetMetaTable
-          .select('seqNumClient', 'seqNumGlobal', 'seqNumRebaseGeneration')
-          .orderBy([
-            { col: 'seqNumGlobal', direction: 'desc' },
-            { col: 'seqNumClient', direction: 'desc' },
-          ])
-          .first(),
-      )
-
-      const initialLeaderHead =
-        initialLeaderHeadRes !== undefined
-          ? EventSequenceNumber.Client.Composite.make({
-              global: initialLeaderHeadRes.seqNumGlobal,
-              client: initialLeaderHeadRes.seqNumClient,
-              rebaseGeneration: initialLeaderHeadRes.seqNumRebaseGeneration,
-            })
-          : EventSequenceNumber.Client.ROOT
+      // The state snapshot carries its own cursor, so the fast path does not
+      // need to export or transfer the eventlog database.
+      const initialLeaderHead = yield* StateHead.make({ dbState: sqliteDb }).get
 
       // console.debug('[@livestore/adapter-web:client-session] initialLeaderHead', initialLeaderHead)
 

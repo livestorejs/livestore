@@ -39,7 +39,7 @@ When you rely on `syncPayload`, treat it as untrusted input. Decode the token in
 
 - `validatePayload` runs once per connection and rejects mismatched tokens before LiveStore upgrades to WebSocket.
 - `onPush` (and `onPull`, if you need it) must repeat the verification because the payload forwarded to the Durable Object is the original client input.
-- The HTTP transport does not forward payloads today; embed the necessary authorization context directly in the events or move those clients to WebSocket/DO-RPC if you must rely on shared payload metadata.
+- All transports (WebSocket, HTTP, and DO-RPC) forward the payload to `onPush`/`onPull`, so this verification applies uniformly regardless of transport.
 
 You can extend `ensureAuthorized` to project additional claims, memoise verification per `authToken`, or enforce application-specific policies without changing LiveStore internals.
 

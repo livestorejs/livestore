@@ -86,6 +86,11 @@
       "description": "Trigger docs deployment for fork PRs · Set: manual"
     },
     {
+      "name": "ci:publish-snapshot",
+      "color": "0e8a16",
+      "description": "Trust this fork PR branch for snapshot publishing · Set: manual"
+    },
+    {
       "name": "cli",
       "color": "d23bad",
       "description": "CLI · Set: manual"

@@ -267,6 +267,7 @@ export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(
     }
     case 'real': {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
+      // @effect-diagnostics-next-line schemaNumber:off -- SQLite REAL permits Infinity/NaN; SqliteReal is the documented domain carve-out
       return SqliteReal as Schema.Codec<T>
     }
     case 'blob': {

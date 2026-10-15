@@ -8,7 +8,7 @@
 import { livestoreCurrentPackageNames, workspaceCatalogForPackageNames } from './repo-topology.ts'
 
 /** Effect v4 packages share one release version; keep LiveStore pins aligned as a single catalog unit. */
-export const effectVersion = '4.0.0-beta.99'
+export const effectVersion = '4.0.3'
 
 export const effectV4Catalog = {
   effect: effectVersion,
@@ -22,42 +22,18 @@ export const effectV4Catalog = {
   '@effect/vitest': effectVersion,
 } as const
 
-/**
- * effect-utils is still pinned to an Effect v3 catalog. Filter these packages
- * out before catalog composition so generated metadata cannot accidentally
- * reintroduce v3-era peers that v4 moved into `effect` or unstable modules.
- */
-export const obsoleteEffectV3Packages = [
-  '@effect/ai',
-  '@effect/cli',
-  '@effect/cluster',
-  '@effect/experimental',
-  '@effect/platform',
-  '@effect/printer',
-  '@effect/printer-ansi',
-  '@effect/rpc',
-  '@effect/sql',
-  '@effect/typeclass',
-  '@effect/workflow',
-] as const
-
 export {
   livestoreCorePackageNames,
   livestoreCurrentPackageNames,
   livestoreEffectUtilsPackageNames,
   livestorePackageTopology,
-  materializedMemberPathsForProjection,
-  memberPathsForProjection,
   packageDescriptorForPackageName,
   packageDirForPackageName,
   packageJsonNameForPackageName,
   packageNamesForOwner,
-  packageNamesForProjection,
   workspaceCatalogForPackageNames,
-  workspaceCatalogForProjection,
   type LivestorePackageName,
   type LivestorePackageOwner,
-  type LivestorePackageProjection,
   type LivestorePackageTopologyEntry,
 } from './repo-topology.ts'
 
@@ -183,7 +159,6 @@ export const livestoreOnlyCatalog = {
   '@opentelemetry/sdk-trace-base': '2.2.0',
   '@opentelemetry/sdk-trace-node': '2.2.0',
   '@opentelemetry/sdk-trace-web': '2.2.0',
-  '@playwright/test': '1.61.0',
   '@tailwindcss/vite': '4.1.18',
   tailwindcss: '4.1.18',
   '@tanstack/react-router': '1.145.7',

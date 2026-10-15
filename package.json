@@ -1,9 +1,14 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "livestore-workspace",
   "private": true,
   "workspaces": [
     "docs",
     "docs/src/content/_assets/code",
+    "examples/*",
     "packages/@livestore/adapter-cloudflare",
     "packages/@livestore/adapter-web",
     "packages/@livestore/common",
@@ -31,6 +36,7 @@
     "tests/sync-provider",
     "tests/wa-sqlite"
   ],
+  "packageManager": "pnpm@12.4.1",
   "scripts": {
     "changeset": "changeset",
     "changeset:status": "changeset status",
@@ -39,12 +45,7 @@
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
     "@types/node": "25.3.3",
-    "typescript": "6.0.3",
+    "typescript": "7.0.2",
     "vitest": "4.1.9"
-  },
-  "packageManager": "pnpm@11.8.0",
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

@@ -1,25 +1,17 @@
 /**
- * Production deploy workflow — operator recovery entry point.
+ * Production deploy workflow — operator-controlled stable docs promotion.
  *
- * Hoisted out of `release.yml#publish-release` so each prod deploy target
- * (docs, examples, search index) can be re-dispatched independently when a
- * publish-release run has already succeeded the npm/DevTools-artifact stages
- * but a downstream deploy hangs or fails.
+ * After publishing a latest release, advance docs/stable to the release commit
+ * via a reviewed PR, then dispatch docs, examples, and search from docs/stable.
+ * Production surfaces must never build from unreleased main content.
  *
- * Trigger: `workflow_dispatch` only. The forward orchestration spine lives in
- * `release.yml#publish-release`, which runs the same per-phase Nix tasks
- * inline so dev-tag releases and stable releases follow the same code path.
- * The reason this file isn't called from `release.yml` via `workflow_call` is
- * that the genie workflow schema does not yet support reusable-workflow `uses:`
- * jobs (see livestorejs/livestore#1279 for context).
+ * Operator deploy/recovery flow:
+ *   gh workflow run deploy-prod.yml --ref docs/stable -f target=docs
+ *   gh workflow run deploy-prod.yml --ref docs/stable -f target=examples
+ *   gh workflow run deploy-prod.yml --ref docs/stable -f target=search
  *
- * Operator recovery flow (e.g. docs deploy hangs on orphan Chromium):
- *   gh workflow run deploy-prod.yml -f target=docs
- *
- * Docs deploy is intentionally split into 6 phases (snippets, diagrams, astro,
- * upload, verify, purge), each with its own `timeout(1)` + heartbeat at the
- * OS boundary. The shell-level cap reaps orphan child processes (PID-tree kill
- * on SIGKILL) that Effect-level timeouts cannot reach.
+ * Docs deploy has three bounded phases (build-deploy, verify, purge), with
+ * timeout(1) and heartbeats at the OS boundary to reap orphan Chromium children.
  */
 import {
   bashShellDefaults,
@@ -60,16 +52,23 @@ const docsProdLogsArtifactStep = {
 
 const targetGate = (target: 'docs' | 'examples' | 'search') => `inputs.target == '${target}' || inputs.target == 'all'`
 
+const assertStableDocsRefStep = {
+  name: 'Require stable docs source',
+  run: `set -euo pipefail
+if [ "$GITHUB_REF" != "refs/heads/docs/stable" ]; then
+  echo "Production docs, examples, and search must be deployed from docs/stable." >&2
+  exit 1
+fi`,
+}
+
 export default githubWorkflow({
   name: 'Deploy production',
   actionlint: defaultActionlintConfig,
 
   on: {
     /**
-     * Operator recovery: if docs/examples/search deploy fails or hangs after
-     * `release.yml#publish-release` has already published the npm packages and
-     * DevTools artifact, the maintainer dispatches this workflow with the
-     * failing target instead of re-running the entire publish chain.
+     * Deploy the reviewed stable docs branch after npm/artifact publication,
+     * or retry a failing target without re-running the publish chain.
      */
     workflow_dispatch: {
       inputs: {
@@ -90,7 +89,6 @@ export default githubWorkflow({
   },
 
   env: {
-    CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}',
     CI: 'true',
     FORCE_SETUP: '1',
   },
@@ -112,6 +110,7 @@ export default githubWorkflow({
       'timeout-minutes': 90,
       defaults: bashShellDefaults,
       steps: withNixDiagnosticsOnFailure([
+        assertStableDocsRefStep,
         ...livestoreSetupSteps,
         otelSetupStep,
         {
@@ -153,6 +152,7 @@ export default githubWorkflow({
       'timeout-minutes': 30,
       defaults: bashShellDefaults,
       steps: withNixDiagnosticsOnFailure([
+        assertStableDocsRefStep,
         ...livestoreSetupSteps,
         otelSetupStep,
         {
@@ -167,18 +167,20 @@ export default githubWorkflow({
     },
 
     'deploy-search': {
-      if: `\${{ ${targetGate('search')} }}`,
+      needs: ['deploy-docs'],
+      if: `\${{ !cancelled() && (needs.deploy-docs.result == 'success' || needs.deploy-docs.result == 'skipped') && (${targetGate('search')}) }}`,
       'runs-on': 'ubuntu-24.04',
       'timeout-minutes': 15,
       defaults: bashShellDefaults,
       steps: withNixDiagnosticsOnFailure([
+        assertStableDocsRefStep,
         ...livestoreSetupSteps,
         {
           name: 'Sync production docs search',
           run: runDevenvTasksBefore('docs:search:sync:prod'),
           env: {
             MXBAI_API_KEY: '${{ secrets.MXBAI_API_KEY }}',
-            MXBAI_VECTOR_STORE_ID: '${{ secrets.MXBAI_VECTOR_STORE_ID }}',
+            MXBAI_VECTOR_STORE_ID_PROD: '${{ secrets.MXBAI_VECTOR_STORE_ID_PROD }}',
           },
         },
       ]),

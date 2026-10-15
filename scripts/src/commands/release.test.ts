@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest'
 
-import { sliceChangelogSection } from './release.ts'
+import { releaseNotesSectionForPlan, sliceChangelogSection } from './release.ts'
+
+describe('releaseNotesSectionForPlan', () => {
+  it('uses the exact promoted section for stable releases', () => {
+    expect(releaseNotesSectionForPlan({ version: '0.5.0', npmTag: 'latest' })).toBe('0.5.0')
+  })
+
+  it('uses Unreleased while prereleases preserve pending Changesets', () => {
+    expect(releaseNotesSectionForPlan({ version: '0.5.0-dev.0', npmTag: 'dev' })).toBe('Unreleased')
+    expect(releaseNotesSectionForPlan({ version: '0.5.0-next.0', npmTag: 'next' })).toBe('Unreleased')
+  })
+})
 
 describe('sliceChangelogSection', () => {
   it('extracts the verbatim block for a stable version with date heading', () => {

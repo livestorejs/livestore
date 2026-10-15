@@ -57,8 +57,15 @@ export const makeMockSyncBackend = (
     const syncIsConnectedRef = yield* SubscriptionRef.make(options?.startConnected ?? false)
 
     // Queues for streaming
-    const syncPullQueue = yield* Queue.unbounded<LiveStoreEvent.Global.Encoded>()
+    const syncPullQueues = new Set<Queue.Queue<LiveStoreEvent.Global.Encoded>>()
     const pushedEventsQueue = yield* Queue.unbounded<LiveStoreEvent.Global.Encoded>()
+
+    yield* Effect.addFinalizer(() =>
+      Effect.gen(function* () {
+        for (const queue of syncPullQueues) yield* Queue.shutdown(queue)
+        syncPullQueues.clear()
+      }),
+    )
 
     // Failure simulation state
     const failPushRef = yield* Ref.make<
@@ -97,27 +104,12 @@ export const makeMockSyncBackend = (
 
     const pullNonLive = (cursor: Option.Option<{ eventSequenceNumber: EventSequenceNumber.Global.Type }>) =>
       Effect.gen(function* () {
-        const lastSeen = Option.match(cursor, {
-          onNone: () => EventSequenceNumber.Client.ROOT.global,
-          onSome: (_) => _.eventSequenceNumber,
-        })
+        const lastSeen = cursorPosition(cursor)
         const allEvents = yield* Ref.get(allEventsRef)
-        const slice = allEvents.filter((e) => e.seqNum > lastSeen)
-
-        // Split into chunks with remaining count for pageInfo
-        const chunks: Array<{ events: LiveStoreEvent.Global.Encoded[]; remaining: number }> = []
-        for (let i = 0; i < slice.length; i += nonLiveChunkSize) {
-          const end = Math.min(i + nonLiveChunkSize, slice.length)
-          chunks.push({
-            events: slice.slice(i, end),
-            remaining: Math.max(slice.length - end, 0),
-          })
-        }
-        // Always return at least one empty chunk
-        if (chunks.length === 0) {
-          chunks.push({ events: [], remaining: 0 })
-        }
-        return chunks
+        return chunkEvents(
+          allEvents.filter((event) => event.seqNum > lastSeen),
+          nonLiveChunkSize,
+        )
       }).pipe(
         Effect.map((chunks) =>
           Stream.fromIterable(chunks).pipe(
@@ -131,18 +123,38 @@ export const makeMockSyncBackend = (
         Stream.flatten(),
       )
 
-    const pullLive = Stream.concat(
-      Stream.make(SyncBackend.pullResItemEmpty()),
-      Stream.fromQueue(syncPullQueue).pipe(
-        Stream.chunks,
-        Stream.map((chunk) => ({
-          batch: [...chunk].map((eventEncoded) => ({ eventEncoded, metadata: Option.none() })),
-          pageInfo: SyncBackend.pageInfoNoMore,
-        })),
-      ),
-    )
-
     const makeSyncBackend = Effect.gen(function* () {
+      // Every backend connection needs its own live cursor. A shared queue would
+      // load-balance events across Clients instead of broadcasting the log.
+      const syncPullQueue = yield* Effect.acquireRelease(
+        Queue.unbounded<LiveStoreEvent.Global.Encoded>(),
+        Queue.shutdown,
+      )
+      yield* semaphore.withPermits(1)(
+        Effect.gen(function* () {
+          const existingEvents = yield* Ref.get(allEventsRef)
+          syncPullQueues.add(syncPullQueue)
+          yield* Queue.offerAll(syncPullQueue, existingEvents)
+        }),
+      )
+      yield* Effect.addFinalizer(() => Effect.sync(() => syncPullQueues.delete(syncPullQueue)))
+
+      const pullLive = (cursor: Option.Option<{ eventSequenceNumber: EventSequenceNumber.Global.Type }>) => {
+        const lastSeen = cursorPosition(cursor)
+        return Stream.concat(
+          Stream.make(SyncBackend.pullResItemEmpty()),
+          Stream.fromQueue(syncPullQueue).pipe(
+            Stream.chunks,
+            Stream.map((chunk) => ({
+              batch: [...chunk]
+                .filter((eventEncoded) => eventEncoded.seqNum > lastSeen)
+                .map((eventEncoded) => ({ eventEncoded, metadata: Option.none() })),
+              pageInfo: SyncBackend.pageInfoNoMore,
+            })),
+          ),
+        )
+      }
+
       // TODO consider making offline state actively error pull/push.
       // Currently, offline only reflects in `isConnected`, while operations still succeed,
       // mirroring how some real providers behave during transient disconnects.
@@ -157,7 +169,7 @@ export const makeMockSyncBackend = (
               new UnknownError({ cause: new Error('MockSyncBackend: simulated pull failure') }),
             ),
           ).pipe(
-            Stream.flatMap(() => (pullOptions?.live === true ? pullLive : pullNonLive(cursor))),
+            Stream.flatMap(() => (pullOptions?.live === true ? pullLive(cursor) : pullNonLive(cursor))),
             Stream.withSpan('MockSyncBackend:pull', { parent: span }),
           ),
         push: (batch) =>
@@ -174,7 +186,10 @@ export const makeMockSyncBackend = (
             yield* Effect.sleep(10).pipe(Effect.withSpan('MockSyncBackend:push:sleep')) // Simulate network latency
 
             yield* Queue.offerAll(pushedEventsQueue, batch)
-            yield* Queue.offerAll(syncPullQueue, batch)
+            yield* Effect.forEach(syncPullQueues, (queue) => Queue.offerAll(queue, batch), {
+              concurrency: 'unbounded',
+              discard: true,
+            })
             yield* Ref.update(allEventsRef, (events) => events.concat(batch))
             yield* Ref.set(syncHeadRef, batch.at(-1)!.seqNum)
           }).pipe(
@@ -199,7 +214,10 @@ export const makeMockSyncBackend = (
       Effect.gen(function* () {
         yield* Ref.set(syncHeadRef, batch.at(-1)!.seqNum)
         yield* Ref.update(allEventsRef, (events) => events.concat(batch))
-        yield* Queue.offerAll(syncPullQueue, batch)
+        yield* Effect.forEach(syncPullQueues, (queue) => Queue.offerAll(queue, batch), {
+          concurrency: 'unbounded',
+          discard: true,
+        })
       }).pipe(
         Effect.withSpan('MockSyncBackend:advance', {
           parent: span,
@@ -233,4 +251,22 @@ export const makeMockSyncBackend = (
 interface FailureState<E, Args extends unknown[]> {
   remaining: number
   error: ((...args: Args) => Effect.Effect<never, E>) | undefined
+}
+
+const cursorPosition = (
+  cursor: Option.Option<{ eventSequenceNumber: EventSequenceNumber.Global.Type }>,
+): EventSequenceNumber.Global.Type =>
+  Option.match(cursor, {
+    onNone: () => EventSequenceNumber.Client.ROOT.global,
+    onSome: (_) => _.eventSequenceNumber,
+  })
+
+const chunkEvents = (events: ReadonlyArray<LiveStoreEvent.Global.Encoded>, chunkSize: number) => {
+  const chunks: Array<{ events: ReadonlyArray<LiveStoreEvent.Global.Encoded>; remaining: number }> = []
+  for (let index = 0; index < events.length; index += chunkSize) {
+    const end = Math.min(index + chunkSize, events.length)
+    chunks.push({ events: events.slice(index, end), remaining: Math.max(events.length - end, 0) })
+  }
+  if (chunks.length === 0) chunks.push({ events: [], remaining: 0 })
+  return chunks
 }

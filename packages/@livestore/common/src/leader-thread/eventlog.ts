@@ -258,9 +258,13 @@ export const insertIntoEventlog = (
   })
 
 export const updateSyncMetadata = (items: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) =>
-  Effect.gen(function* () {
-    const { dbEventlog } = yield* LeaderThreadCtx
+  LeaderThreadCtx.pipe(Effect.flatMap(({ dbEventlog }) => updateSyncMetadataForDb(dbEventlog, items)))
 
+export const updateSyncMetadataForDb = (
+  dbEventlog: SqliteDb,
+  items: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+) =>
+  Effect.gen(function* () {
     // TODO try to do this in a single query
     for (let i = 0; i < items.length; i++) {
       const event = items[i]!
@@ -277,10 +281,14 @@ export const updateSyncMetadata = (items: ReadonlyArray<LiveStoreEvent.Client.En
     }
   })
 
-export const getSyncBackendCursorInfo = ({ remoteHead }: { remoteHead: EventSequenceNumber.Global.Type }) =>
-  Effect.gen(function* () {
-    const { dbEventlog } = yield* LeaderThreadCtx
+export const getSyncBackendCursorInfo = (args: { remoteHead: EventSequenceNumber.Global.Type }) =>
+  LeaderThreadCtx.pipe(Effect.flatMap(({ dbEventlog }) => getSyncBackendCursorInfoForDb(dbEventlog, args)))
 
+export const getSyncBackendCursorInfoForDb = (
+  dbEventlog: SqliteDb,
+  { remoteHead }: { remoteHead: EventSequenceNumber.Global.Type },
+) =>
+  Effect.gen(function* () {
     if (remoteHead === EventSequenceNumber.Client.ROOT.global) return Option.none()
 
     const EventlogQuerySchema = Schema.Struct({

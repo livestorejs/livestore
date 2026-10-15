@@ -278,9 +278,7 @@ export const createExpressiveCodeConfig = (
   return { config, fingerprintHash }
 }
 
-export const normalizeRuntimeOptions = (
-  options: TwoslashRuntimeOptions | undefined = undefined,
-): TwoslashRuntimeOptions => {
+export const normalizeRuntimeOptions = (options?: TwoslashRuntimeOptions): TwoslashRuntimeOptions => {
   const normalized: TwoslashRuntimeOptions = {}
 
   if (options?.snippetTsconfigPath !== undefined) {

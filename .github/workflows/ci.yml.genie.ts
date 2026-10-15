@@ -1,4 +1,5 @@
 import { playwrightSuites, syncProviderMatrix } from '../../genie/ci.ts'
+import { releaseTopologyPath } from '../../genie/pr-snapshot-paths.ts'
 import {
   bashShellDefaults,
   defaultActionlintConfig,
@@ -17,12 +18,20 @@ import {
   workflowReportCommentBodyStep,
   workflowReportPublisherStep,
 } from '../../genie/repo.ts'
+// Use the pinned member checkout so local generation and CI resolve the same snapshot helper.
+import {
+  prReviewsResolvedJob,
+  prReviewsResolvedJobId,
+  prSnapshotPackJob,
+} from '../../repos/effect-utils/genie/ci-workflow.ts'
 
 // =============================================================================
 // Shared Constants
 // =============================================================================
 
 const GITHUB_RUN_ID = '${{ github.run_id }}'
+const CACHE_PUBLISHER_IF =
+  "github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')"
 const PR_HEAD_SHA = '${{ github.event.pull_request.head.sha || github.sha }}'
 const IS_NOT_FORK = 'github.event.pull_request.head.repo.fork != true'
 const DLX_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `--allow-build=${name}`).join(' ')
@@ -123,69 +132,77 @@ export default githubWorkflow({
     pull_request: {},
   },
 
+  concurrency: {
+    group: '${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}',
+    'cancel-in-progress': "${{ github.event_name == 'pull_request' }}",
+  },
+
   env: {
     GITHUB_BRANCH_NAME: '${{ github.head_ref || github.ref_name }}',
-    CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}',
     FORCE_SETUP: '1',
     CI: 'true',
   },
 
   jobs: {
     'source-policy': livestoreDefaultRefPolicyJob,
-    'pack-pr-snapshot': {
-      if: "github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository",
-      'runs-on': 'ubuntu-24.04',
-      permissions: { contents: 'read' },
-      env: {
-        CACHIX_AUTH_TOKEN: '',
-        SNAPSHOT_OUT_DIR: '${{ github.workspace }}/tmp/pr-snapshot-artifact',
-      },
-      defaults: bashShellDefaults,
+    'publish-nix-cache': standardCIJob({
+      if: CACHE_PUBLISHER_IF,
+      steps: [
+        ...livestoreSetupSteps,
+        {
+          name: 'Build pinned CI setup outputs',
+          run: [
+            'set -euo pipefail',
+            'effect_utils_rev=$(jq -r \'.members["effect-utils"].commit\' megarepo.lock)',
+            'effect_utils="github:overengineeringstudio/effect-utils/$effect_utils_rev"',
+            'nix build --no-link --print-out-paths "$effect_utils#megarepo" "$effect_utils#buck2-capabilities" "$effect_utils#oxlint-npm" nixpkgs#cachix > "$RUNNER_TEMP/livestore-cache-roots"',
+            'mapfile -t roots < "$RUNNER_TEMP/livestore-cache-roots"',
+            'mapfile -t derivations < <(nix-store -q --deriver "${roots[@]}")',
+            'nix-store -q -R "${derivations[@]}" > "$RUNNER_TEMP/livestore-cache-derivations"',
+            'while IFS= read -r drv; do',
+            '  case "$drv" in',
+            '    *-oxc-config*.drv|*-oxlint*.drv|*-closure-info.drv|*-buck2-capabilit*.drv|*-megarepo-buck2-candidate.drv|*-cabal2nix-cachix*.drv|*-mr.js.drv|*-binding-linux-x64-gnu*.drv)',
+            '      nix-store -q --outputs "$drv" ;;',
+            '  esac',
+            'done < "$RUNNER_TEMP/livestore-cache-derivations" | cat "$RUNNER_TEMP/livestore-cache-roots" - | sort -u | while IFS= read -r path; do',
+            '  if nix path-info --offline "$path" >/dev/null 2>&1; then printf "%s\\n" "$path"; fi',
+            'done > "$RUNNER_TEMP/livestore-cache-paths"',
+            'cat "$RUNNER_TEMP/livestore-cache-paths"',
+          ].join('\n'),
+        },
+        {
+          name: 'Push pinned setup outputs to livestore Cachix',
+          if: CACHE_PUBLISHER_IF,
+          env: { CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_PUSH_TOKEN }}' },
+          run: [
+            'set -euo pipefail',
+            'mapfile -t paths < "$RUNNER_TEMP/livestore-cache-paths"',
+            'cachix push livestore "${paths[@]}"',
+          ].join('\n'),
+        },
+      ],
+    }),
+    [prReviewsResolvedJobId]: prReviewsResolvedJob(),
+    'minimal-dev': {
+      if: "github.event_name == 'pull_request'",
+      'runs-on': 'ubuntu-latest',
       steps: [
         {
-          name: 'Checkout exact PR head',
+          name: 'Checkout code',
           uses: 'actions/checkout@v4',
-          with: {
-            ref: '${{ github.event.pull_request.head.sha }}',
-            'persist-credentials': false,
-          },
-        },
-        ...livestoreSetupStepsAfterCheckout,
-        {
-          name: 'Test snapshot artifact boundary',
-          run: 'node --test .github/scripts/pr-snapshot-artifact.test.mjs',
+          with: { ref: PR_HEAD_SHA },
         },
         {
-          name: 'Pack exact-SHA snapshot',
-          run: runDevenvTasksBefore('release:snapshot:pack:git-sha'),
-          env: {
-            GIT_SHA: '${{ github.event.pull_request.head.sha }}',
-            PR_NUMBER: '${{ github.event.pull_request.number }}',
-          },
-        },
-        {
-          name: 'Create snapshot manifest',
-          run: `node .github/scripts/pr-snapshot-artifact.mjs create \\
-  --artifact-dir="$SNAPSHOT_OUT_DIR" \\
-  --topology=scripts/src/generated/release-topology.json \\
-  --repository="$GITHUB_REPOSITORY" \\
-  --pr-number="\${{ github.event.pull_request.number }}" \\
-  --head-sha="\${{ github.event.pull_request.head.sha }}" \\
-  --run-id="$GITHUB_RUN_ID" \\
-  --run-attempt="$GITHUB_RUN_ATTEMPT"`,
-        },
-        {
-          name: 'Upload immutable PR snapshot candidate',
-          uses: 'actions/upload-artifact@v4',
-          with: {
-            name: 'pr-snapshot-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}',
-            path: '${{ github.workspace }}/tmp/pr-snapshot-artifact/',
-            'if-no-files-found': 'error',
-            'retention-days': 7,
-          },
+          name: 'Verify minimal development setup',
+          run: 'docker build --tag livestore-minimal-dev:ci .',
         },
       ],
     },
+    ...prSnapshotPackJob({
+      topologyPath: releaseTopologyPath,
+      setupStepsAfterCheckout: livestoreSetupStepsAfterCheckout,
+      packTask: 'release:snapshot:pack:git-sha',
+    }),
     lint: standardCIJob({
       steps: [
         ...livestoreSetupSteps,
@@ -460,35 +477,30 @@ export default githubWorkflow({
       defaults: bashShellDefaults,
       steps: withNixDiagnosticsOnFailure([
         ...livestoreSetupSteps,
-        // TODO(oep-bbd): Restore once root cause is fixed and diagnostics are removed.
+        // Restore the monolithic docs build once the hang's root cause is fixed and diagnostics are removed.
         // { name: 'Build docs', run: runDevenvTasksBefore('docs:build:api') },
-        // TODO(oep-bbd): Temporary phase split + hard timeouts for docs CI hang triage.
-        // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
+        // Temporary phase split and hard timeouts for docs CI hang triage; remove once the root cause is fixed.
         {
           name: 'Build docs snippets',
           run: runDevenvTasksBefore('docs:build:phase:snippets'),
         },
-        // TODO(oep-bbd): Temporary diagnostics step for docs CI hang triage.
-        // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
+        // Temporary diagnostics step for docs CI hang triage; remove once the root cause is fixed.
         {
           name: 'Build docs diagrams',
           run: runDevenvTasksBefore('docs:build:phase:diagrams'),
         },
-        // TODO(oep-bbd): Temporary heartbeat/process logging for Astro build visibility.
-        // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
+        // Temporary heartbeat/process logging for Astro build visibility; remove once the root cause is fixed.
         {
           name: 'Build Astro docs bundle',
           run: runDevenvTasksBefore('docs:build:phase:astro'),
         },
-        // TODO(oep-bbd): Temporary failure-time process dump for docs CI hang triage.
-        // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
+        // Temporary failure-time process dump for docs CI hang triage; remove once the root cause is fixed.
         {
           name: 'Collect docs build diagnostics on failure',
           if: '${{ failure() }}',
           run: runDevenvTasksBefore('docs:build:diagnostics'),
         },
-        // TODO(oep-bbd): Temporary artifact upload for docs CI diagnostics.
-        // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
+        // Temporary artifact upload for docs CI diagnostics; remove once the root cause is fixed.
         {
           name: 'Upload docs build logs',
           if: '${{ always() }}',

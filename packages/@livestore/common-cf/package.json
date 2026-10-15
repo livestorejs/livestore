@@ -1,10 +1,25 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/common-cf",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev"
+    ]
+  },
   "name": "@livestore/common-cf",
-  "version": "0.4.0",
+  "version": "0.5.0",
+  "type": "module",
+  "sideEffects": false,
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/livestorejs/livestore.git"
+  },
+  "exports": {
+    ".": "./src/mod.ts",
+    "./declare": "./src/declare/mod.ts"
   },
   "files": [
     "dist",
@@ -12,19 +27,6 @@
     "src",
     "README.md"
   ],
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    ".": "./src/mod.ts",
-    "./declare": "./src/declare/mod.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/mod.js",
-      "./declare": "./dist/declare/mod.js"
-    }
-  },
   "scripts": {
     "test": "vitest run"
   },
@@ -38,24 +40,22 @@
     "wrangler": "4.42.2"
   },
   "peerDependencies": {
-    "@effect/opentelemetry": "^4.0.0-beta.99",
-    "@effect/platform-browser": "^4.0.0-beta.99",
-    "@effect/platform-bun": "^4.0.0-beta.99",
-    "@effect/platform-node": "^4.0.0-beta.99",
-    "@effect/platform-node-shared": "^4.0.0-beta.99",
-    "@effect/vitest": "^4.0.0-beta.99",
+    "@effect/opentelemetry": "^4.0.3",
+    "@effect/platform-browser": "^4.0.3",
+    "@effect/platform-bun": "^4.0.3",
+    "@effect/platform-node": "^4.0.3",
+    "@effect/platform-node-shared": "^4.0.3",
+    "@effect/vitest": "^4.0.3",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/resources": "^2.2.0",
     "@standard-schema/spec": "^1.1.0",
-    "effect": "^4.0.0-beta.99"
+    "effect": "^4.0.3"
   },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/common-cf",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev"
-    ]
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./declare": "./dist/declare/mod.js"
+    }
   }
 }

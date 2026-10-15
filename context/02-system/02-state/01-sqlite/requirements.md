@@ -36,10 +36,9 @@ Builds on [../requirements.md](../requirements.md). Code:
   set events carry `{id, value}`; a partial set merges against the current
   value; the value column schema tolerates historical formats. Adopted
   2026-07-16 (interview). `refines: LS.SYS.STATE.SQLITE-R03`
-- **LS.SYS.STATE.SQLITE-R08 Migration strategies:** Schema migration is
-  `auto` (rematerialize from the eventlog) or `manual` (user-provided
-  `migrate(oldData)`), with `init`/`pre`/`post` hooks — a first-class
-  contract (see
+- **LS.SYS.STATE.SQLITE-R08 Automatic migration:** Schema migration
+  rematerializes state from the eventlog, with `init`/`pre`/`post` hooks as
+  a first-class contract (see
   [02-schema-management](./02-schema-management/requirements.md)). Adopted
   2026-07-16 (interview). `refines: LS-T04`
 

@@ -57,7 +57,7 @@ export const NewIssueModal = () => {
       }),
     )
     closeModal()
-  }, [closeModal, frontendState.user, status, priority, store, title, description])
+  }, [closeModal, frontendState.user, priority, store, title, description, status])
 
   return (
     <Modal show={newIssueModalStatus !== false} setShow={closeModal}>
@@ -72,11 +72,7 @@ export const NewIssueModal = () => {
           className="focus:!bg-transparent -mt-2"
         />
         <div className="mt-2 flex gap-px w-full">
-          <StatusMenu
-            showLabel
-            status={status}
-            onStatusChange={setNewIssueModalStatus}
-          />
+          <StatusMenu showLabel status={status} onStatusChange={setNewIssueModalStatus} />
           <PriorityMenu showLabel priority={priority} onPriorityChange={setPriority} />
           <Button
             onPress={createIssue}

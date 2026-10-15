@@ -1,16 +1,18 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
-import { Effect, Option } from '@livestore/utils/effect'
+import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { Effect, Option, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
 import * as syncProviderTestsPrepare from '@local/tests-sync-provider/prepare-ci'
 import {
   providerKeys,
-  providerRegistry,
+  providerSelectionEnvVar,
   type ProviderKey as TSyncProviderChoice,
 } from '@local/tests-sync-provider/registry'
+
+import * as TestPolicy from '../shared/test-policy.ts'
 
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
@@ -27,14 +29,17 @@ const ciUnitTestPackageConcurrency = (() => {
 })()
 
 // GitHub actions log groups
+/**
+ * Closes the log group on every exit path. A group left open on failure swallows the
+ * rest of the job output into a collapsed section, hiding the very failure that caused it.
+ */
 const runTestGroup =
   (name: string) =>
   <E, C>(effect: Effect.Effect<unknown, E, C>) =>
     Effect.gen(function* () {
       console.log(`::group::${name}`)
       yield* effect
-      console.log(`::endgroup::`)
-    }).pipe(Effect.withSpan(`test-group(${name})`))
+    }).pipe(Effect.ensuring(Effect.sync(() => console.log(`::endgroup::`))), Effect.withSpan(`test-group(${name})`))
 
 interface TestTarget {
   path: string
@@ -112,15 +117,20 @@ const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: strin
       }
     }
 
-    // Also check tests/package-common if not excluded
-    if (excludePackages.includes('tests/package-common') === false) {
-      const packageCommonPath = path.join(workspaceRoot, 'tests/package-common')
-      if (fs.existsSync(packageCommonPath) === true && hasTestFiles(packageCommonPath) === true) {
-        addPackage(packageCommonPath, 'tests/package-common')
+    // Test roots outside packages/*. Without these the unit lane silently omits suites that
+    // exist and pass locally — `scripts/` carried 4 test files that no CI job ever ran.
+    for (const extraRoot of ['tests/package-common', 'scripts']) {
+      if (excludePackages.includes(extraRoot) === true) continue
+
+      const extraPath = path.join(workspaceRoot, extraRoot)
+      if (fs.existsSync(extraPath) === true && hasTestFiles(extraPath) === true) {
+        addPackage(extraPath, extraRoot)
       }
     }
   } catch (error) {
-    console.warn('Warning: Failed to discover packages with tests:', error)
+    // Swallowing this would silently shrink the unit lane to a partial run that still
+    // reports success — the failure mode the whole lane exists to rule out.
+    throw new Error(`Failed to discover packages with tests under ${workspaceRoot}`, { cause: error })
   }
 
   return results.toSorted((a, b) => a.path.localeCompare(b.path))
@@ -171,11 +181,20 @@ const runUnitTests = Effect.fn(function* ({ filter }: { filter: Option.Option<st
     if (configs.length > 0) {
       yield* Effect.forEach(
         configs,
-        (config) => cmd(['vitest', 'run', '--config', config]).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+        (config) =>
+          TestPolicy.runTestTarget({
+            label: config,
+            policy: TestPolicy.blocking,
+            run: cmd(['vitest', 'run', '--config', config]).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+          }),
         { concurrency: 'unbounded' },
       )
     } else {
-      yield* cmd(['vitest', 'run', target]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+      yield* TestPolicy.runTestTarget({
+        label: target,
+        policy: TestPolicy.blocking,
+        run: cmd(['vitest', 'run', target]).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+      })
     }
     return
   }
@@ -192,11 +211,13 @@ const runUnitTests = Effect.fn(function* ({ filter }: { filter: Option.Option<st
 
     const vitestPathsToRunSequentially = sequentialPackages.map((pkg) => `${workspaceRoot}/${pkg}`)
 
-    // Currently getting a bunch of flaky webmesh tests on CI (https://share.cleanshot.com/Q2WWD144)
-    // Ignoring them for now but we should fix them eventually
     for (const vitestPath of vitestPathsToRunSequentially) {
       yield* runTestGroup(vitestPath)(
-        cmd(`vitest run ${vitestPath}`).pipe(Effect.ignore, Effect.provide(LivestoreWorkspace.toCwd())),
+        TestPolicy.runTestTarget({
+          label: vitestPath,
+          policy: TestPolicy.blocking,
+          run: cmd(`vitest run ${vitestPath}`).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+        }),
       )
     }
 
@@ -210,7 +231,11 @@ const runUnitTests = Effect.fn(function* ({ filter }: { filter: Option.Option<st
               target.config !== undefined
                 ? ['vitest', 'run', '--config', target.config]
                 : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
-            return cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+            return TestPolicy.runTestTarget({
+              label: target.config ?? target.path,
+              policy: TestPolicy.blocking,
+              run: cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+            })
           },
           { concurrency: ciUnitTestPackageConcurrency },
         ),
@@ -219,29 +244,34 @@ const runUnitTests = Effect.fn(function* ({ filter }: { filter: Option.Option<st
   } else {
     // For local development, run all in parallel (including sequential packages)
     const sequentialTargets: TestTarget[] = sequentialPackages.map((pkg) => ({ path: pkg }))
-    yield* Effect.forEach(
-      [...sequentialTargets, ...allPackagesWithTests],
-      (target) => {
-        const args =
-          target.config !== undefined
-            ? ['vitest', 'run', '--config', target.config]
-            : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
-        const label = target.config ?? target.path
-        // TODO use this https://x.com/luxdav/status/1942532247833436656
-        return cmdText(args.join(' '), { stderr: 'pipe' }).pipe(
-          Effect.provide(LivestoreWorkspace.toCwd()),
-          Effect.tap((text) => Effect.sync(() => console.log(`Output for ${label}:\n\n${text}\n\n`))),
-        )
-      },
-      { concurrency: 'unbounded' },
-    )
+    yield* runLocalUnitTests([...sequentialTargets, ...allPackagesWithTests])
   }
+})
+
+/** Local package failures must reach the CLI just as they do in the CI runner. */
+export const runLocalUnitTests = Effect.fn(function* (targets: readonly TestTarget[]) {
+  const workspaceRoot = yield* LivestoreWorkspace
+  yield* Effect.forEach(
+    targets,
+    (target) => {
+      const args =
+        target.config !== undefined
+          ? ['vitest', 'run', '--config', target.config]
+          : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
+      return TestPolicy.runTestTarget({
+        label: target.config ?? target.path,
+        policy: TestPolicy.blocking,
+        run: cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+      })
+    },
+    { concurrency: 'unbounded' },
+  )
 })
 
 export const testUnitCommand = Cli.Command.make(
   'unit',
   {
-    filter: Cli.Flag.string('filter').pipe(
+    filter: Cli.Flag.String('filter').pipe(
       Cli.Flag.optional,
       Cli.Flag.withDescription('Run only test suites whose path includes this substring'),
     ),
@@ -250,43 +280,111 @@ export const testUnitCommand = Cli.Command.make(
 )
 
 const runPerfTests = Effect.fn(function* () {
-  yield* cmd('NODE_OPTIONS=--disable-warning=ExperimentalWarning pnpm playwright test', {
-    shell: true,
-    env: { FORCE_PLAYWRIGHT_VIA_CLI: '1' },
-  }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/perf')))
+  yield* TestPolicy.runTestTarget({
+    label: 'tests/perf',
+    policy: TestPolicy.blocking,
+    run: cmd('NODE_OPTIONS=--disable-warning=ExperimentalWarning pnpm playwright test', {
+      shell: true,
+      env: { FORCE_PLAYWRIGHT_VIA_CLI: '1' },
+    }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/perf'))),
+  })
 })
 
 export const testPerfCommand = Cli.Command.make('perf', {}, runPerfTests)
 
 const runWaSqliteTests = Effect.fn(function* () {
-  yield* cmd('vitest run').pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/wa-sqlite')))
+  yield* TestPolicy.runTestTarget({
+    label: 'tests/wa-sqlite',
+    policy: TestPolicy.blocking,
+    run: cmd('vitest run').pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/wa-sqlite'))),
+  })
 })
 
 export const waSqliteTest = Cli.Command.make('wa-sqlite', {}, runWaSqliteTests)
 
 // the sync provider tests are actually part of another tests package but for now we run them from here too
 // TODO clean this up at some point
-const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** A run in which the suite that had to prove something never executed. */
+export class NoTestsExecutedError extends Schema.TaggedError<NoTestsExecutedError>()('NoTestsExecutedError', {
+  reportPath: Schema.String,
+  suiteFile: Schema.String,
+}) {}
+
+/** The subset of Vitest's JSON reporter output this guard depends on. */
+const VitestRunReport = Schema.Struct({
+  testResults: Schema.Array(
+    Schema.Struct({
+      name: Schema.String,
+      assertionResults: Schema.Array(Schema.Struct({ status: Schema.String })),
+    }),
+  ),
+})
+
+/** File whose tests every sync-provider cell must actually execute to have proven anything. */
+const syncProviderConformanceSuite = 'sync-provider.test.ts'
+
+/**
+ * Fails when `suiteFile` executed no tests. Selection is resolved in-process against the
+ * provider registry, so a cell can no longer silently select nothing — this is the backstop
+ * against a bad `include` glob or an over-broad skip leaving the job vacuously green.
+ *
+ * Scoped to one file rather than the run's total: utility suites that run in every cell
+ * (`registry.test.ts`) would otherwise keep the count non-zero even if the conformance suite
+ * were skipped entirely. Failed tests count as executed — a quarantined run where everything
+ * fails has still proven something, and rejecting it here would defeat the quarantine.
+ */
+export const assertTestsExecuted = Effect.fn(function* ({
+  reportPath,
+  suiteFile,
+}: {
+  readonly reportPath: string
+  readonly suiteFile: string
+}) {
+  const raw = fs.readFileSync(reportPath, 'utf8')
+  const report = yield* Schema.decodeEffect(Schema.fromJsonString(VitestRunReport))(raw)
+
+  const executed = report.testResults
+    .filter((file) => path.basename(file.name) === suiteFile)
+    .flatMap((file) => file.assertionResults)
+    .filter((assertion) => assertion.status === 'passed' || assertion.status === 'failed').length
+
+  if (executed === 0) {
+    return yield* new NoTestsExecutedError({ reportPath, suiteFile })
+  }
+})
 
 const runSyncProviderTests = Effect.fn(function* ({ provider }: { provider: Option.Option<TSyncProviderChoice> }) {
   yield* syncProviderTestsPrepare.prepareCi
 
-  const args: string[] = ['vitest', 'run']
-  if (Option.isSome(provider) === true) {
-    const suite = providerRegistry[provider.value].name
-    // Vitest may render the provider name wrapped in quotes in the full test title.
-    // Use a forgiving pattern that matches with or without surrounding quotes.
-    const pattern = `["']?${escapeRegex(suite)}["']? sync provider`
-    args.push('--testNamePattern', pattern)
-  }
+  const workspaceRoot = yield* LivestoreWorkspace
+  const reportPath = path.join(workspaceRoot, 'tmp/sync-provider-run-report.json')
+  fs.mkdirSync(path.dirname(reportPath), { recursive: true })
+  // A run that dies before writing the report would otherwise be validated against the
+  // previous run's data — the guard has to fail closed.
+  fs.rmSync(reportPath, { force: true })
 
-  yield* cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/sync-provider')))
+  yield* TestPolicy.runTestTarget({
+    label: Option.isSome(provider) === true ? `sync-provider:${provider.value}` : 'sync-provider',
+    policy: TestPolicy.blocking,
+    run: cmd(['vitest', 'run', '--reporter=default', '--reporter=json', `--outputFile.json=${reportPath}`], {
+      // Selection happens at collection time via the registry rather than by matching test
+      // titles, so renaming a suite can no longer remove it from a CI cell (#1429).
+      //
+      // Explicitly cleared when no provider is pinned: CI sets TEST_SYNC_PROVIDER at step
+      // level, so inheriting it would silently collapse a full sweep to a single provider
+      // while still reporting success as a full run.
+      env: { [providerSelectionEnvVar]: Option.isSome(provider) === true ? provider.value : undefined },
+    }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/sync-provider'))),
+  })
+
+  yield* assertTestsExecuted({ reportPath, suiteFile: syncProviderConformanceSuite })
 })
 
 export const syncProviderTest = Cli.Command.make(
   'sync-provider',
   {
-    provider: Cli.Flag.choice('provider', [...providerKeys]).pipe(
+    provider: Cli.Flag.Literals('provider', [...providerKeys]).pipe(
       Cli.Flag.optional,
       Cli.Flag.withDescription('Run only a specific sync provider test suite'),
     ),
@@ -316,15 +414,33 @@ const runIntegrationAllTests = Effect.fn('integration-tests:run-all')(function* 
 const testIntegrationAllCommand = Cli.Command.make(
   'all',
   {
-    concurrency: Cli.Flag.choice('concurrency', ['sequential', 'parallel']).pipe(Cli.Flag.withDefault('parallel')),
+    concurrency: Cli.Flag.Literals('concurrency', ['sequential', 'parallel']).pipe(Cli.Flag.withDefault('parallel')),
     localDevtoolsPreview: integrationTests.localDevtoolsPreviewOption,
   },
   runIntegrationAllTests,
 ).pipe(Cli.Command.withDescription('Run all integration tests'))
 
+/**
+ * Wraps the DevTools suite so its declared quarantine is enforced at the invocation, rather
+ * than as an `|| echo` in the CI task wrapper that nothing records and devenv discards.
+ */
+const devtoolsCommand = Cli.Command.make(
+  'devtools',
+  { mode: integrationTests.modeOption, localDevtoolsPreview: integrationTests.localDevtoolsPreviewOption },
+  (args) =>
+    TestPolicy.runTestTarget({
+      label: 'tests/integration:devtools',
+      policy: TestPolicy.quarantined('devtools-suite'),
+      run: integrationTests.runDevtoolsTest(args),
+    }),
+)
+
 export const testIntegrationCommand = Cli.Command.make('integration').pipe(
   Cli.Command.withSubcommands([
-    ...integrationTests.commands,
+    integrationTests.miscTest,
+    integrationTests.todomvcTest,
+    integrationTests.setupDevtools,
+    devtoolsCommand,
     syncProviderTest,
     waSqliteTest,
     testIntegrationAllCommand,

@@ -1,7 +1,7 @@
 import '../global.ts'
 
-export { Otlp } from 'effect/unstable/observability'
-export { Msgpack } from 'effect/unstable/encoding'
+export { Otlp } from 'effect/observability'
+export { Base64Url, SchemaBinary } from 'effect/encoding'
 export {
   FetchHttpClient,
   Headers,
@@ -16,12 +16,12 @@ export {
   HttpServerRequest,
   HttpServerResponse,
   UrlParams,
-} from 'effect/unstable/http'
-export { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup } from 'effect/unstable/httpapi'
-export { KeyValueStore } from 'effect/unstable/persistence'
-export { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
-export { Socket } from 'effect/unstable/socket'
-export { Transferable, Worker, WorkerError, WorkerRunner } from 'effect/unstable/workers'
+} from 'effect/http'
+export { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup } from 'effect/http-api'
+export { KeyValueStore } from 'effect/persistence'
+export { ChildProcess, ChildProcessSpawner } from 'effect/process'
+export { Socket } from 'effect/socket'
+export { Transferable, Worker, WorkerError, WorkerRunner } from 'effect/workers'
 export {
   Rpc,
   RpcClientError,
@@ -33,7 +33,7 @@ export {
   RpcServer,
   RpcTest,
   RpcWorker,
-} from 'effect/unstable/rpc'
+} from 'effect/rpc'
 export * as StandardSchema from '@standard-schema/spec'
 export {
   Array as ReadonlyArray,
@@ -42,6 +42,7 @@ export {
   Cause,
   Channel,
   Chunk,
+  Clock,
   Config,
   ConfigProvider,
   Console,
@@ -83,6 +84,7 @@ export {
   PubSub,
   pipe,
   Queue,
+  Random,
   RcMap,
   RcRef,
   Record as ReadonlyRecord,
@@ -110,7 +112,7 @@ export {
   TxRef,
   Types,
 } from 'effect'
-export * as FastCheck from 'effect/testing/FastCheck'
+export * as Arbitrary from 'effect/Arbitrary'
 export * as TestClock from 'effect/testing/TestClock'
 export * as TestConsole from 'effect/testing/TestConsole'
 export * as Debug from './Debug.ts'

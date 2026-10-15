@@ -19,19 +19,19 @@ export type ReleaseSnapshotOptions = {
   readonly tscBin?: string | undefined
 }
 
-class PackageJsonParseError extends Schema.TaggedErrorClass<PackageJsonParseError>()('PackageJsonParseError', {
+class PackageJsonParseError extends Schema.TaggedError<PackageJsonParseError>()('PackageJsonParseError', {
   message: Schema.String,
   cause: Schema.Defect(),
 }) {}
 
 /** Expected failures in the release/publish flow (validation, packing, npm state). */
-class ReleaseError extends Schema.TaggedErrorClass<ReleaseError>()('ReleaseError', {
+class ReleaseError extends Schema.TaggedError<ReleaseError>()('ReleaseError', {
   message: Schema.String,
   cause: Schema.optional(Schema.Defect()),
 }) {}
 
 /** Module-scoped JSON decoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
-const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
+const jsonParse = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))
 
 type TDependencyField = 'dependencies' | 'devDependencies' | 'peerDependencies' | 'optionalDependencies'
 
@@ -171,12 +171,20 @@ export const sliceChangelogSection = (changelog: string, version: string): strin
   return `${lines.slice(start, end).join('\n')}\n`
 }
 
-const extractReleaseNotes = ({ cwd, version }: { cwd: string; version: string }) =>
+/**
+ * Stable releases review the changelog section already promoted to their exact
+ * version. Prereleases intentionally preserve pending Changesets, so their
+ * reviewable notes still live under `Unreleased` when the release PR is built.
+ */
+export const releaseNotesSectionForPlan = ({ version, npmTag }: { version: string; npmTag: string }) =>
+  npmTag === 'latest' ? version : 'Unreleased'
+
+const extractReleaseNotes = ({ cwd, version, npmTag }: { cwd: string; version: string; npmTag: string }) =>
   Effect.gen(function* () {
     const fsEffect = yield* FileSystem.FileSystem
     const changelogPath = `${cwd}/CHANGELOG.md`
     const changelog = yield* fsEffect.readFileString(changelogPath)
-    const section = sliceChangelogSection(changelog, version)
+    const section = sliceChangelogSection(changelog, releaseNotesSectionForPlan({ version, npmTag }))
     yield* fsEffect.makeDirectory(`${cwd}/release`, { recursive: true })
     const outPath = releaseNotesPath(cwd)
     yield* fsEffect.writeFileString(outPath, section)
@@ -188,7 +196,7 @@ const readReleasePlan = (cwd: string, planPath: string) =>
     const fsEffect = yield* FileSystem.FileSystem
     const absolutePlanPath = planPath.startsWith('/') === true ? planPath : `${cwd}/${planPath}`
     const content = yield* fsEffect.readFileString(absolutePlanPath)
-    const plan = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(ReleasePlan))(content)
+    const plan = yield* Schema.decodeEffect(Schema.fromJsonString(ReleasePlan))(content)
     yield* validateReleasePlan(plan)
     return plan
   })
@@ -414,7 +422,7 @@ const packPackageForPublish = ({ cwd, pkg, version }: { cwd: string; pkg: string
     const safePackageName = pkg.replaceAll('/', '__').replaceAll('@', '')
     const packDir = `${cwd}/tmp/release-pack/${version}/${safePackageName}`
 
-    yield* fsEffect.remove(packDir, { recursive: true }).pipe(Effect.catch(() => Effect.void))
+    yield* fsEffect.remove(packDir, { recursive: true }).pipe(Effect.ignore)
     yield* fsEffect.makeDirectory(packDir, { recursive: true })
 
     /**
@@ -550,9 +558,9 @@ const publishReleasePackages = ({
 export const releasePlanCommand = Cli.Command.make(
   'plan',
   {
-    releaseVersion: Cli.Flag.string('release-version'),
-    npmTag: Cli.Flag.string('npm-tag').pipe(Cli.Flag.withDefault('latest')),
-    cwd: Cli.Flag.string('cwd').pipe(
+    releaseVersion: Cli.Flag.String('release-version'),
+    npmTag: Cli.Flag.String('npm-tag').pipe(Cli.Flag.withDefault('latest')),
+    cwd: Cli.Flag.String('cwd').pipe(
       Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
@@ -568,19 +576,19 @@ export const releasePlanCommand = Cli.Command.make(
 export const releaseStableCommand = Cli.Command.make(
   'stable',
   {
-    plan: Cli.Flag.string('plan').pipe(Cli.Flag.withDefault('release/release-plan.json')),
-    dryRun: Cli.Flag.boolean('dry-run').pipe(Cli.Flag.withDefault(false)),
-    allowExisting: Cli.Flag.boolean('allow-existing').pipe(Cli.Flag.withDefault(false)),
-    yes: Cli.Flag.boolean('yes').pipe(
+    plan: Cli.Flag.String('plan').pipe(Cli.Flag.withDefault('release/release-plan.json')),
+    dryRun: Cli.Flag.Boolean('dry-run').pipe(Cli.Flag.withDefault(false)),
+    allowExisting: Cli.Flag.Boolean('allow-existing').pipe(Cli.Flag.withDefault(false)),
+    yes: Cli.Flag.Boolean('yes').pipe(
       Cli.Flag.withDefault(false),
       Cli.Flag.withDescription('Skip interactive confirmation prompt'),
     ),
-    cwd: Cli.Flag.string('cwd').pipe(
+    cwd: Cli.Flag.String('cwd').pipe(
       Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
     ),
-    tscBin: Cli.Flag.string('tsc-bin').pipe(Cli.Flag.optional),
+    tscBin: Cli.Flag.String('tsc-bin').pipe(Cli.Flag.optional),
   },
   Effect.fn(function* ({ plan: planPath, dryRun, allowExisting, yes, cwd, tscBin: tscBinOption }) {
     const plan = yield* readReleasePlan(cwd, planPath)
@@ -592,7 +600,7 @@ export const releaseStableCommand = Cli.Command.make(
       yield* Effect.log(
         `About to publish ${packages.length} package(s) as ${plan.version} with npm tag ${plan.npmTag}${dryRun === true ? ' (dry-run)' : ''}`,
       )
-      const confirmed = yield* Cli.Prompt.confirm({ message: 'Proceed with stable release?' })
+      const confirmed = yield* Cli.Prompt.Confirm({ message: 'Proceed with stable release?' })
       if (confirmed === false) {
         yield* Effect.log('Stable release aborted by user')
         return
@@ -645,7 +653,7 @@ export const releaseSnapshot = Effect.fn(function* ({
     yield* Effect.log(
       `About to publish ${snapshotPackages.length} package(s) as ${snapshotVersion}${dryRun === true ? ' (dry-run)' : ''}`,
     )
-    const confirmed = yield* Cli.Prompt.confirm({ message: 'Proceed with snapshot release?' })
+    const confirmed = yield* Cli.Prompt.Confirm({ message: 'Proceed with snapshot release?' })
     if (confirmed === false) {
       yield* Effect.log('Snapshot release aborted by user')
       return
@@ -740,15 +748,15 @@ export const packSnapshot = Effect.fn(function* ({
 export const packSnapshotCommand = Cli.Command.make(
   'snapshot-pack',
   {
-    gitSha: Cli.Flag.string('git-sha'),
-    prNumber: Cli.Flag.integer('pr-number'),
-    outDir: Cli.Flag.string('out-dir'),
-    cwd: Cli.Flag.string('cwd').pipe(
+    gitSha: Cli.Flag.String('git-sha'),
+    prNumber: Cli.Flag.Int('pr-number'),
+    outDir: Cli.Flag.String('out-dir'),
+    cwd: Cli.Flag.String('cwd').pipe(
       Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
     ),
-    tscBin: Cli.Flag.string('tsc-bin').pipe(Cli.Flag.optional),
+    tscBin: Cli.Flag.String('tsc-bin').pipe(Cli.Flag.optional),
   },
   ({ gitSha, prNumber, outDir, cwd, tscBin }) =>
     packSnapshot({
@@ -763,19 +771,19 @@ export const packSnapshotCommand = Cli.Command.make(
 export const releaseSnapshotCommand = Cli.Command.make(
   'snapshot',
   {
-    gitShaOption: Cli.Flag.string('git-sha').pipe(Cli.Flag.optional),
-    dryRun: Cli.Flag.boolean('dry-run').pipe(Cli.Flag.withDefault(false)),
-    yes: Cli.Flag.boolean('yes').pipe(
+    gitShaOption: Cli.Flag.String('git-sha').pipe(Cli.Flag.optional),
+    dryRun: Cli.Flag.Boolean('dry-run').pipe(Cli.Flag.withDefault(false)),
+    yes: Cli.Flag.Boolean('yes').pipe(
       Cli.Flag.withDefault(false),
       Cli.Flag.withDescription('Skip interactive confirmation prompt'),
     ),
-    cwd: Cli.Flag.string('cwd').pipe(
+    cwd: Cli.Flag.String('cwd').pipe(
       Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
     ),
-    versionOption: Cli.Flag.string('version').pipe(Cli.Flag.optional),
-    tscBin: Cli.Flag.string('tsc-bin').pipe(Cli.Flag.optional),
+    versionOption: Cli.Flag.String('version').pipe(Cli.Flag.optional),
+    tscBin: Cli.Flag.String('tsc-bin').pipe(Cli.Flag.optional),
   },
   ({ gitShaOption, dryRun, yes, cwd, versionOption, tscBin }) =>
     releaseSnapshot({
@@ -791,8 +799,8 @@ export const releaseSnapshotCommand = Cli.Command.make(
 export const releaseNotesExtractCommand = Cli.Command.make(
   'extract-release-notes',
   {
-    plan: Cli.Flag.string('plan').pipe(Cli.Flag.withDefault('release/release-plan.json')),
-    cwd: Cli.Flag.string('cwd').pipe(
+    plan: Cli.Flag.String('plan').pipe(Cli.Flag.withDefault('release/release-plan.json')),
+    cwd: Cli.Flag.String('cwd').pipe(
       Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
@@ -800,7 +808,7 @@ export const releaseNotesExtractCommand = Cli.Command.make(
   },
   Effect.fn(function* ({ plan: planPath, cwd }) {
     const plan = yield* readReleasePlan(cwd, planPath)
-    const outPath = yield* extractReleaseNotes({ cwd, version: plan.version })
+    const outPath = yield* extractReleaseNotes({ cwd, version: plan.version, npmTag: plan.npmTag })
     yield* Effect.log(`Wrote release notes for ${plan.version} to ${outPath}`)
     console.log(outPath)
   }),

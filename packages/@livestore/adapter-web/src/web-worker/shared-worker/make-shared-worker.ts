@@ -132,6 +132,7 @@ const makeWorkerRunner = Effect.gen(function* () {
   })
 
   // Cache first-applied invariants to enforce stability across leader transitions
+  // Per-client runtime params are intentionally excluded so a new leader can apply its own tuning.
   const InvariantsSchema = Schema.Struct({
     storeId: Schema.String,
     storageOptions: WorkerSchema.StorageType,
@@ -148,7 +149,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     // sends a new MessagePort to the shared worker which proxies messages to the new leader thread.
     UpdateMessagePort: ({ port, initial, liveStoreVersion: clientLiveStoreVersion }) =>
       Effect.gen(function* () {
-        // Enforce invariants: storeId, storageOptions, syncPayloadEncoded, liveStoreVersion must remain stable
+        // Enforce configuration stability across leader transitions.
         const invariants: Invariants = {
           storeId: initial.storeId,
           storageOptions: initial.storageOptions,

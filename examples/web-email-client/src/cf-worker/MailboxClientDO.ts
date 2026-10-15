@@ -26,7 +26,7 @@ export class MailboxClientDO extends DurableObject<Env> implements ClientDoWithR
         env: this.env,
         bindingName: 'MAILBOX_CLIENT_DO',
       },
-      syncBackendStub: this.env.SYNC_BACKEND_DO.getByName(storeId),
+      getSyncBackendStub: () => this.env.SYNC_BACKEND_DO.getByName(storeId),
       livePull: true,
     })
     this.hasStore = true
@@ -119,8 +119,8 @@ export class MailboxClientDO extends DurableObject<Env> implements ClientDoWithR
     }
   }
 
-  async syncUpdateRpc(payload: unknown) {
+  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
     // Make sure to wake up the store before processing the sync update
-    await handleSyncUpdateRpc(payload)
+    await handleSyncUpdateRpc(this.ctx as SyncBackend.CfTypes.DurableObjectState, payload)
   }
 }

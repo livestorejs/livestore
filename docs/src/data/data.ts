@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 
 import { liveStoreVersion } from '@livestore/common'
 import { isNonEmptyString } from '@livestore/utils'
@@ -10,10 +10,20 @@ export const officeHours = [
   'https://www.youtube.com/embed/2GYKgI1GU8k', // 1
 ]
 
-export const getBranchName = () =>
-  isNonEmptyString(process.env.GITHUB_BRANCH_NAME) === true
-    ? process.env.GITHUB_BRANCH_NAME
-    : execSync('git rev-parse --abbrev-ref HEAD').toString().trim()
+export const getBranchName = () => {
+  for (const value of [process.env.GITHUB_BRANCH_NAME, process.env.GITHUB_HEAD_REF, process.env.GITHUB_REF_NAME]) {
+    if (isNonEmptyString(value) === true) return value
+  }
+
+  try {
+    const branchName = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8' }).trim()
+    if (isNonEmptyString(branchName) === true) return branchName
+  } catch {}
+
+  throw new Error(
+    'Unable to determine the documentation branch. Set GITHUB_BRANCH_NAME, GITHUB_HEAD_REF, or GITHUB_REF_NAME.',
+  )
+}
 
 export const versionNpmSuffix = liveStoreVersion.includes('dev') === true ? `@${liveStoreVersion}` : ''
 
