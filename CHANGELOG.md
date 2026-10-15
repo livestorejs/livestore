@@ -6,6 +6,21 @@
 > for more info. LiveStore is following a semver-like release strategy where
 > breaking changes are released in minor versions before the 1.0 release.
 
+## Unreleased
+
+See the [development documentation](https://docs.livestore.dev) for current
+features. Try the development build with `npm install @livestore/livestore@dev`.
+
+### Internal Changes
+
+For maintainers and contributors:
+
+- **Release tooling:** Treat npm's previously-staged version conflicts as
+  pending publication, verify public visibility for core and DevTools packages,
+  and fail with bounded, logged recovery instructions when approval or registry
+  intervention is needed
+  ([npm/cli#9889](https://github.com/npm/cli/issues/9889)).
+
 ## 0.5.0
 
 ### Changed

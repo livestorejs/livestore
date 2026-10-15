@@ -5,10 +5,11 @@ import semver from 'semver'
 
 import { shouldNeverHappen } from '@livestore/utils'
 import { CurrentWorkingDirectory, cmd, cmdText } from '@livestore/utils-dev/node'
-import { Effect, FileSystem, Result, Schedule, Schema } from '@livestore/utils/effect'
+import { Effect, FileSystem, Result, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
+import { runNpmPublish, submitNpmPackage, verifyNpmPackageVisibility } from '../shared/npm-publish.ts'
 
 export type ReleaseSnapshotOptions = {
   readonly cwd: string
@@ -463,8 +464,6 @@ const publishReleasePackages = ({
   tscBin: string
 }) =>
   Effect.gen(function* () {
-    const isCI = process.env.CI === 'true' || process.env.CI === '1'
-
     /**
      * Regenerate all genie-managed files with the release version (writable for pnpm publish).
      * TODO: Replace CLI invocations with genie SDK once skipValidation is available
@@ -513,44 +512,34 @@ const publishReleasePackages = ({
         '--ignore-scripts',
       ]
       if (dryRun === true) publishArgs.push('--dry-run')
-      const versionIsVisible = cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
-        Effect.provide(cwdLayer),
-        Effect.as(true),
-        Effect.catchTag('CmdError', () => Effect.succeed(false)),
-      )
-      yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 ${publishArgs.join(' ')}`, { shell: true }).pipe(
-        Effect.provide(cwdLayer),
-        Effect.catchTag('CmdError', (error) => {
-          if (isCI === false || dryRun === true || isSnapshotVersion(version) === false) return Effect.fail(error)
-
-          return versionIsVisible.pipe(
-            Effect.flatMap((isVisible) => {
-              if (isVisible === true) {
-                return Effect.logWarning(`${pkg}@${version} became visible after a failed publish; continuing`)
-              }
-
-              return Effect.logError(
-                [
-                  `Failed to publish ${pkg}@${version} from CI.`,
-                  'Snapshot publishing must authenticate through npm trusted publishing from .github/workflows/release.yml.',
-                  'Check that npm has this package configured for GitHub Actions trusted publishing and that this job uses a GitHub-hosted runner with id-token: write.',
-                ].join(' '),
-              ).pipe(Effect.andThen(Effect.fail(error)))
-            }),
-          )
-        }),
-      )
-      yield* Effect.log(`${dryRun === true ? 'Dry-ran' : 'Published'} ${pkg}@${version}`)
+      if (dryRun === true) {
+        yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 ${publishArgs.join(' ')}`, { shell: true }).pipe(
+          Effect.provide(cwdLayer),
+        )
+        yield* Effect.log(`Dry-ran ${pkg}@${version}`)
+      } else {
+        yield* submitNpmPackage({
+          packageSpec: `${pkg}@${version}`,
+          publish: runNpmPublish(publishArgs.slice(2), pkgDir),
+          versionIsVisible: cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
+            Effect.provide(cwdLayer),
+            Effect.as(true),
+            Effect.catchTag('CmdError', () => Effect.succeed(false)),
+          ),
+        })
+      }
     }
 
     if (dryRun === false) {
-      yield* Effect.log('Verifying packages are available on the registry...')
       for (const pkg of packages) {
-        yield* cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
-          Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
-          Effect.retry(Schedule.spaced('5 seconds').pipe(Schedule.upTo({ times: 60 }))),
-        )
-        yield* Effect.log(`Verified ${pkg}@${version}`)
+        yield* verifyNpmPackageVisibility({
+          packageSpec: `${pkg}@${version}`,
+          versionIsVisible: cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
+            Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
+            Effect.as(true),
+            Effect.catchTag('CmdError', () => Effect.succeed(false)),
+          ),
+        })
       }
     }
   }).pipe(Effect.ensuring(restoreGeneratedReleaseFiles(cwd)))
