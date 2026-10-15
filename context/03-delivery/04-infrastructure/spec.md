@@ -116,3 +116,13 @@ config cannot name it —
 
 Closing the undeclared rows is tracked by
 [.delta/DELTA-002-infrastructure-largely-undeclared.md](./.delta/DELTA-002-infrastructure-largely-undeclared.md).
+
+## CI capacity scheduling
+
+Namespace jobs use the static cross-project queue priorities documented in
+[the workflow guide](../../../.github/workflows/README.md#namespace-queue-priorities).
+LiveStore delivery work has priority 3 and optional background work priority 6.
+Required checks and their prerequisites remain delivery work, as do main
+verification and release/deployment outputs. Scheduled verification retains its
+delivery classification. Queue priorities reserve no capacity and do not
+preempt running jobs; Linux and macOS capacity are independent.

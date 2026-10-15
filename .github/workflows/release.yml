@@ -70,7 +70,7 @@ env:
 
 jobs:
   source-policy:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64;job.priority=3, 'namespace-features:github.run-id=${{ github.run_id }}']
     permissions:
       contents: read
     defaults:

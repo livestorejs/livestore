@@ -264,7 +264,7 @@ import {
   bashShellDefaults,
   cachixCliBuildStep,
   cachixStep,
-  defaultActionlintConfig,
+  defaultActionlintConfig as defaultActionlintConfigBase,
   dispatchAlignmentStep,
   namespaceRunner as namespaceRunnerBase,
   installNixStep,
@@ -297,7 +297,6 @@ export {
   cachixCliBuildStep,
   cachixStep,
   checkoutStep,
-  defaultActionlintConfig,
   dispatchAlignmentStep,
   installNixStep,
   nixDiagnosticsArtifactStep,
@@ -313,8 +312,20 @@ export {
   workflowReportPublisherStep,
 }
 
-export const namespaceRunner = (runId: string) =>
-  namespaceRunnerBase({ profile: 'namespace-profile-linux-x86-64', runId })
+export const defaultActionlintConfig = {
+  ...defaultActionlintConfigBase,
+  selfHostedRunnerLabels: [
+    ...(defaultActionlintConfigBase.selfHostedRunnerLabels ?? []),
+    'namespace-profile-linux-x86-64;job.priority=3',
+    'namespace-profile-linux-x86-64;job.priority=6',
+  ],
+}
+
+/** LiveStore delivery is priority 3; optional background work is priority 6. */
+export const namespaceRunner = (runId: string, priority: 3 | 6 = 3) => {
+  const [profile, features] = namespaceRunnerBase({ profile: 'namespace-profile-linux-x86-64', runId })
+  return [`${profile};job.priority=${priority}`, features] as const
+}
 
 const shellSingleQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
 

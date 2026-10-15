@@ -179,3 +179,32 @@ sync is also run by the stable release publish workflow.
 It runs on pushes to `main` that touch docs content and can also be dispatched
 manually. It is separate from the docs build/deploy jobs in `ci.yml`: CI verifies
 and deploys the website, while this workflow updates the external search index.
+
+## Namespace queue priorities
+
+The shared capacity policy uses explicit `job.priority` runner features. Lower
+numbers start first among waiting jobs; running jobs are not preempted. Priorities
+reserve no capacity and apply independently to Linux and macOS pools.
+
+| Priority | Work                                                                      |
+| -------- | ------------------------------------------------------------------------- |
+| 1        | effect-utils required CI, delivery verification, releases and deployments |
+| 2        | Smalltalk, PTY and similar tooling dependencies: equivalent delivery work |
+| 3        | LiveStore delivery work                                                   |
+| 4        | effect-utils background work                                              |
+| 5        | Smalltalk and tooling background work                                     |
+| 6        | LiveStore background work                                                 |
+
+LiveStore's `namespaceRunner` helper defaults to delivery priority 3. Required
+checks and their prerequisites, main verification, release orchestration,
+docs/examples builds and deployments, and DevTools artifact verification use
+that default. The optional `perf-test`, independent `publish-nix-cache`, and
+advisory `report-pr-preview` jobs use background priority 6. None supplies a
+required check or a prerequisite for delivery jobs. The source-policy job keeps
+priority 3 wherever it is reused, including release and deployment workflows.
+A scheduled verification job retains delivery priority; its trigger alone does
+not make it background work. GitHub-hosted runners do not consume Namespace
+capacity and retain their existing routing.
+
+This policy leaves runner shapes, caches, access controls, required checks,
+triggers, cancellation, test frequency and account limits unchanged.

@@ -26,7 +26,7 @@ env:
 
 jobs:
   source-policy:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64;job.priority=3, 'namespace-features:github.run-id=${{ github.run_id }}']
     permissions:
       contents: read
     defaults:
@@ -411,7 +411,7 @@ jobs:
           NODE
         shell: bash
   publish-nix-cache:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64;job.priority=6, 'namespace-features:github.run-id=${{ github.run_id }}']
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     defaults:
       run:
@@ -809,7 +809,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
   lint:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64;job.priority=3, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -957,7 +957,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   changeset-check:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64;job.priority=3, 'namespace-features:github.run-id=${{ github.run_id }}']
     if: github.event_name == 'pull_request'
     defaults:
       run:
@@ -1114,7 +1114,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   type-check:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64;job.priority=3, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -1262,7 +1262,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   test-unit:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64;job.priority=3, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -1420,7 +1420,7 @@ jobs:
           - cf-ws-do
           - cf-do-rpc-d1
           - cf-do-rpc-do
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64;job.priority=3, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -1584,7 +1584,7 @@ jobs:
     strategy:
       matrix:
         suite: [misc, todomvc, devtools]
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64;job.priority=3, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -1758,7 +1758,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   perf-test:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64;job.priority=6, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -1921,7 +1921,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   wa-sqlite-test:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64;job.priority=3, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -2089,7 +2089,7 @@ jobs:
   report-pr-preview:
     if: ${{ github.event_name == 'pull_request' && !cancelled() }}
     needs: [build-deploy-docs, build-and-deploy-examples-src]
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64;job.priority=6, 'namespace-features:github.run-id=${{ github.run_id }}']
     permissions:
       contents: read
       pull-requests: write
@@ -2286,7 +2286,7 @@ jobs:
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run workflow-report:publish --show-output' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run workflow-report:publish --show-output'
   build-and-deploy-examples-src:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64;job.priority=3, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -2465,7 +2465,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   build-deploy-docs:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64;job.priority=3, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash

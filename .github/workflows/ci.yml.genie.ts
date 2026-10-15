@@ -90,8 +90,8 @@ const withNixDiagnosticsOnFailure = (steps: unknown[]) => [
 ]
 
 /** Standard CI job configuration (namespace runner + bash shell) */
-const standardCIJob = (config: { env?: Record<string, string>; if?: string; steps: unknown[] }) => ({
-  ...namespaceRunnerConfig,
+const standardCIJob = (config: { env?: Record<string, string>; if?: string; steps: unknown[]; priority?: 3 | 6 }) => ({
+  'runs-on': namespaceRunner(GITHUB_RUN_ID, config.priority),
   if: config.if,
   env: config.env,
   defaults: bashShellDefaults,
@@ -146,6 +146,7 @@ export default githubWorkflow({
   jobs: {
     'source-policy': livestoreDefaultRefPolicyJob,
     'publish-nix-cache': standardCIJob({
+      priority: 6,
       if: CACHE_PUBLISHER_IF,
       steps: [
         ...livestoreSetupSteps,
@@ -306,7 +307,7 @@ export default githubWorkflow({
 
     // Run on namespace runners to align CI environment with the rest of the test matrix.
     'perf-test': {
-      ...namespaceRunnerConfig,
+      'runs-on': namespaceRunner(GITHUB_RUN_ID, 6),
       defaults: bashShellDefaults,
       steps: [
         {
@@ -362,7 +363,7 @@ export default githubWorkflow({
     'report-pr-preview': {
       if: `\${{ github.event_name == 'pull_request' && !cancelled() }}`,
       needs: ['build-deploy-docs', 'build-and-deploy-examples-src'],
-      ...namespaceRunnerConfig,
+      'runs-on': namespaceRunner(GITHUB_RUN_ID, 6),
       permissions: {
         contents: 'read',
         'pull-requests': 'write',
