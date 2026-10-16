@@ -475,3 +475,29 @@ Vitest.describe('otel', () => {
     ),
   )
 })
+
+Vitest.describe('raw query bind values', () => {
+  Vitest.live(
+    'supports boolean bind values',
+    () =>
+      Effect.gen(function* () {
+        const store = yield* makeTodoMvc()
+
+        store.commit(events.todoCreated({ id: 'completed', text: 'done', completed: true }))
+        store.commit(events.todoCreated({ id: 'active', text: 'todo', completed: false }))
+
+        const completedTodos$ = queryDb({
+          query: 'SELECT id, completed FROM todos WHERE completed = ?',
+          bindValues: [true],
+          schema: Schema.Array(
+            Schema.Struct({
+              id: Schema.String,
+              completed: Schema.BooleanFromBit,
+            }),
+          ),
+        })
+
+        expect(store.query(completedTodos$)).toEqual([{ id: 'completed', completed: true }])
+      }).pipe(Effect.scoped),
+  )
+})
