@@ -1,12 +1,8 @@
-// Shared transport limits for Cloudflare sync provider
-// Keep payloads comfortably below ~1MB frame caps across Cloudflare transports.
+// Keep payloads 4 MiB below Cloudflare's 32 MiB received-message limit for framing headroom.
 // References:
-// - Durable Objects WebSockets + hibernation best practices:
-//   https://developers.cloudflare.com/durable-objects/best-practices/websockets/
-// - Workers platform limits (general context):
-//   https://developers.cloudflare.com/workers/platform/limits/
-// Empirically, frames just below 1MB can fail on hibernated DO WebSockets; we use 900_000 bytes to keep a safety margin.
-export const MAX_TRANSPORT_PAYLOAD_BYTES = 900_000
+// - https://developers.cloudflare.com/workers/runtime-apis/websockets/
+// - https://developers.cloudflare.com/changelog/post/2025-10-31-increased-websocket-message-size-limit/
+export const MAX_TRANSPORT_PAYLOAD_BYTES = 28 * 1024 * 1024
 
 export const MAX_WS_MESSAGE_BYTES = MAX_TRANSPORT_PAYLOAD_BYTES
 export const MAX_DO_RPC_REQUEST_BYTES = MAX_TRANSPORT_PAYLOAD_BYTES
