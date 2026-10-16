@@ -367,7 +367,7 @@ export const make = Effect.fnUntraced(function* ({
       return true
     })
 
-  const processUpstreamBatch = (batch: UpstreamBatch) =>
+  const processUpstreamBatch = (batch: CoalescedUpstreamBatch) =>
     Effect.gen(function* () {
       const mergeExit = yield* SyncState.merge({
         syncState: model.syncState,
@@ -414,7 +414,7 @@ export const make = Effect.fnUntraced(function* ({
           ? SyncState.PayloadUpstreamRebase.make({ rollbackEvents, newEvents: receipt.persistedEvents })
           : SyncState.PayloadUpstreamAdvance.make({ newEvents: receipt.persistedEvents })
       yield* publish({ syncState: merge.newSyncState, payload, materializerHashes: receipt.materializerHashes })
-      yield* completePullBatch(pullBatches, batch.batchId)
+      yield* Effect.forEach(batch.batchIds, (batchId) => completePullBatch(pullBatches, batchId), { discard: true })
       yield* replacePushPlan(merge.newSyncState.pending.filter((event) => !isClientOnlyEvent(event)))
       yield* send({ _tag: 'ContinueWork' })
       return true
@@ -425,9 +425,9 @@ export const make = Effect.fnUntraced(function* ({
       if (model.lifecycle !== 'running') return true
       // Apply backend truth before more local work. This avoids assigning local events on top of a head that is
       // already known to need an upstream advance or rebase.
-      const [upstream, ...remainingUpstream] = model.upstreamQueue
+      const upstream = coalesceUpstreamBatches(model.upstreamQueue)
       if (upstream !== undefined) {
-        model = { ...model, upstreamQueue: remainingUpstream }
+        model = { ...model, upstreamQueue: model.upstreamQueue.slice(upstream.batchIds.length) }
         return yield* processUpstreamBatch(upstream)
       }
       // When a backend page says another page follows, keep local work paused until that page arrives. Together the
@@ -780,6 +780,39 @@ interface UpstreamBatch {
   readonly pageInfo: SyncBackend.PullResPageInfo
 }
 
+/** Pages of one pull applied together; `batchIds` are released once the combined batch is durable. */
+interface CoalescedUpstreamBatch {
+  readonly batchIds: ReadonlyArray<PullBatchId>
+  readonly events: ReadonlyArray<LiveStoreEvent.Client.Encoded>
+  readonly pulledEvents: ReadonlyArray<LeaderPersistence.PulledEvent>
+}
+
+/** Pages a pull may read ahead of the page currently being made durable. */
+const MAX_PAGES_AHEAD = 16
+
+interface OutstandingPage {
+  readonly completion: Deferred.Deferred<void>
+  readonly processed: number
+  readonly pageInfo: SyncBackend.PullResPageInfo
+}
+
+/**
+ * Combines the queued pages at the front of the upstream queue that belong to the same pull. Consecutive pages
+ * describe one contiguous stretch of backend history, so merging them is the same upstream advance as applying them
+ * one after another, without rebasing pending events and publishing to sessions in between.
+ */
+const coalesceUpstreamBatches = (queue: ReadonlyArray<UpstreamBatch>): CoalescedUpstreamBatch | undefined => {
+  const first = queue[0]
+  if (first === undefined) return undefined
+  const otherPull = queue.findIndex((page) => page.pullId !== first.pullId)
+  const pages = otherPull === -1 ? queue : queue.slice(0, otherPull)
+  return {
+    batchIds: pages.map((page) => page.batchId),
+    events: pages.flatMap((page) => page.events),
+    pulledEvents: pages.flatMap((page) => page.pulledEvents),
+  }
+}
+
 type ProviderPushError = IsOfflineError | BackendIdMismatchError | UnknownError | ServerAheadError
 type ProviderPullError = IsOfflineError | BackendIdMismatchError | UnknownError
 
@@ -945,6 +978,20 @@ const runProviderPull = ({
 }) =>
   Effect.gen(function* () {
     const cursorInfo = yield* Eventlog.getSyncBackendCursorInfoForDb(dbEventlog, { remoteHead: cursor.global })
+    // Pages handed to the mailbox but not yet durable. Offering blocks while MAX_PAGES_AHEAD are waiting, which is
+    // the provider stream's backpressure. A child fiber awaits them in order and reports initial-sync progress.
+    const outstanding = yield* Queue.bounded<OutstandingPage | 'end'>(MAX_PAGES_AHEAD)
+    const allDurable = yield* Deferred.make<void>()
+    yield* Effect.forkChild(
+      Effect.gen(function* () {
+        while (true) {
+          const page = yield* Queue.take(outstanding)
+          if (page === 'end') return yield* Deferred.succeed(allDurable, undefined)
+          yield* Deferred.await(page.completion)
+          yield* initialBlockingSyncContext.update({ processed: page.processed, pageInfo: page.pageInfo })
+        }
+      }),
+    )
     yield* syncBackend.pull(cursorInfo, { live }).pipe(
       Stream.runForEach(({ batch, pageInfo }) =>
         Effect.gen(function* () {
@@ -961,14 +1008,18 @@ const runProviderPull = ({
             _tag: 'UpstreamBatchReceived',
             batch: { pullId, batchId, events: pulledEvents.map(({ event }) => event), pulledEvents, pageInfo },
           })
-          // Backpressure the provider stream until this page is durably committed (or deliberately discarded).
-          // This keeps later pages from racing ahead of the cursor stored by LeaderPersistence.
-          yield* Deferred.await(completion)
-          yield* initialBlockingSyncContext.update({ processed: batch.length, pageInfo })
+          // Read on without waiting for this page to become durable (up to MAX_PAGES_AHEAD). Pages that are already
+          // available, such as a backlog released on reconnect, then queue up while the mailbox applies one page, and
+          // it applies the queued ones as one upstream batch: a leader with pending events rebases them once instead
+          // of once per page, and every session applies one rebase instead of many. Pages are still applied in order,
+          // and the persisted backend cursor is the head of the last page applied.
+          yield* Queue.offer(outstanding, { completion, processed: batch.length, pageInfo })
           yield* Effect.yieldNow
         }),
       ),
     )
+    yield* Queue.offer(outstanding, 'end')
+    yield* Deferred.await(allDurable)
   }).pipe(
     Effect.withSpan('@livestore/common:LeaderSyncProcessor:backend-pulling'),
     Effect.matchEffect({
