@@ -93,6 +93,31 @@ LiveStore release-group version and npm dist-tag:
 }
 ```
 
+#### Release PR App prerequisites
+
+Install the dedicated `livestore-release` GitHub App on `livestorejs/livestore`
+only, granting Contents: write and Pull requests: write. Configure repository
+variable `LIVESTORE_RELEASE_APP_ID` and repository secret
+`LIVESTORE_RELEASE_APP_PRIVATE_KEY` before running `create-release-pr`.
+Do not reuse the ruleset reconciler App: release automation does not need its
+administration permissions.
+
+The job checks for a missing App ID before checkout and fails with an explicit
+configuration error. It then mints a short-lived, repository-scoped installation
+token for checkout's persisted push credential and every `gh` PR operation,
+including prerelease auto-merge. Missing installation or key configuration fails
+token creation; the job never falls back to `GITHUB_TOKEN`.
+
+App-authored PR creation and branch updates trigger ordinary `pull_request` and
+`synchronize` CI. The release workflow's PR path filter includes
+`release/release-plan.json`, and `validate-release-plan` runs on PR events, so no
+extra CI or validation dispatch is needed. The built-in job token retains only
+Contents: read and ID token: write for the existing setup; it has no Actions
+write permission. Commits retain the conventional `github-actions[bot]` author
+identity to describe the Actions generator without an extra bot-ID lookup;
+the authenticated push and PR actor is the dedicated release App.
+
+
 The preferred flow is:
 
 1. Ensure pending changesets and `CHANGELOG.md` agree on the intended release
