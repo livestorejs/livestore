@@ -61,7 +61,7 @@ One loop (`run`, `:668-681`) takes a `LeaderMessage` from an unbounded mailbox
 (`:129`) and handles it completely before taking the next (`handleMessage`,
 `:504-666`). `model` is a local variable rather than a `Ref`; only the loop
 changes it, including at boot (`:154-156`). `LeaderMessage` is a closed union of 12
-tags (`:786-802`): `Started` (sent once by boot), `LocalPushRequested`,
+tags (`:819-835`): `Started` (sent once by boot), `LocalPushRequested`,
 `UpstreamBatchReceived`, `PullCompleted`, `PullFailed`, `PullRetryElapsed`,
 `PushSucceeded`, `PushFailed`, `PushRetryElapsed`, `ContinueWork`,
 `LocalWorkEnabled` (test-delay release only) and `ShutdownRequested`.
@@ -76,7 +76,7 @@ push:       disabled | idle { queued } | in-flight { operationId, attempt, batch
 plus:       syncState, localQueue, upstreamQueue, localWorkEnabled, nextOperationId
 ```
 
-(`:804-845`.) Operation, pull, and retry ids come from one counter
+(`:837-878`.) Operation, pull, and retry ids come from one counter
 (`allocateOperationId`, `:160-165`).
 
 ### Admission
@@ -86,7 +86,7 @@ remaining-event count before waiting for boot, so shutdown can interrupt every
 admitted caller (`:688-700`), then sends `LocalPushRequested`. The handler
 (`:525-546`) validates the batch against the tail of `localQueue`, or the
 local head when the queue is empty, so it checks committed plus admitted
-history, then appends it to `localQueue`. `validatePushBatch` (`:987-1062`)
+history, then appends it to `localQueue`. `validatePushBatch` (`:1038-1113`)
 requires a strictly ascending batch (`NonMonotonicBatchError`), a first event
 ahead of that head (`LeaderAheadError`), a first event no older than the head's
 rebase generation (`StaleRebaseGenerationError`), and an exact sequence/parent
@@ -107,7 +107,10 @@ were numbered on top of the rejected batch; the session rebases and re-pushes
 ### Precedence
 
 A `ContinueWork` turn always applies queued upstream pages before local work
-(`:426-432`). While the current page reports `more-expected`, local work waits
+(`:426-432`). The queued pages of one pull are merged into a single upstream
+batch (`coalesceUpstreamBatches`, `:804-814`): consecutive pages are one
+contiguous stretch of backend history, so a leader with pending events rebases
+them once, and every session applies one rebase, instead of once per page. While the current page reports `more-expected`, local work waits
 until the paginated advance is complete (`:433-435`, LS.SYS.SYNC.PROC-R02).
 
 ### Durability inside the turn
@@ -133,7 +136,7 @@ At most one provider push runs (`pushHandle`). `startProviderPush` takes up to
 `backendPushBatchSize` events (default 50, `:147`) from `push.queued` and
 records `in-flight { operationId }` before forking the call (`:201-222`). The
 fiber waits for the backend to be connected and for the devtools latch, then
-pushes `toGlobal()` events (`:880-921`). Results come back as `PushSucceeded`
+pushes `toGlobal()` events (`:913-954`). Results come back as `PushSucceeded`
 or `PushFailed` carrying the operation id; a stale id is ignored (`:614-656`).
 
 - `ServerAheadError` moves the push to `awaiting-pull`, keeping batch and queue
@@ -141,11 +144,11 @@ or `PushFailed` carrying the operation id; a stale id is ignored (`:614-656`).
   PROC-R04). The next upstream page rebuilds the plan.
 - `BackendIdMismatchError` applies `onBackendIdMismatch` (`:464-502`): `ignore`
   disables pushing (or completes pulling), `shutdown` stops the leader, and
-  `reset` interrupts all work, clears both databases (`:1279-1299`), and stops.
+  `reset` interrupts all work, clears both databases (`:1330-1350`), and stops.
 - Any other failure (`IsOfflineError`, `UnknownError`, including a defect
-  wrapped as `UnknownError`, `:913-919`) moves the push to `retry-wait` with
+  wrapped as `UnknownError`, `:946-952`) moves the push to `retry-wait` with
   capped exponential backoff: `min(30s, 1s · 2^(attempt-1))`, no jitter, no
-  attempt cap (`:639-656`, `:1302`). `PushRetryElapsed` with the current
+  attempt cap (`:639-656`, `:1353`). `PushRetryElapsed` with the current
   `retryId` re-runs the same batch (`:657-662`).
 
 Each upstream page rebuilds the push plan from committed non-client-only
@@ -157,11 +160,15 @@ that interruption is awaited inside the turn.
 
 At most one provider pull runs (`pullHandle`, `:249-269`). Its cursor is
 `Eventlog.getSyncBackendCursorInfoForDb` for the current upstream head — the
-persisted backend head plus provider-opaque sync metadata (`:947`). Each page
-becomes one `UpstreamBatchReceived` with its pull id; the stream then waits
-until the turn durably commits or deliberately discards that page before it
-delivers the next, so later pages cannot race ahead of the persisted cursor
-(`:949-969`). A page from a superseded pull is released without changing the
+persisted backend head plus provider-opaque sync metadata (`:980`). Each page
+becomes one `UpstreamBatchReceived` with its pull id. The stream reads on
+without waiting for that page to become durable, up to `MAX_PAGES_AHEAD` = 16
+pages (`:983-1022`), so pages that are already available (a backlog released on
+reconnect) queue up while a turn applies earlier ones and are then applied
+together. Pages are still applied in order, and the persisted backend cursor is
+the head of the last page applied. A child fiber awaits each page's durable
+commit (or deliberate discard) in order and reports progress to a blocking
+initial sync; the stream end waits for all of them. A page from a superseded pull is released without changing the
 model (`:554-559`). Pages merge with `ignoreClientOnlyEvents: true`
 (`:372-378`). `IsOfflineError` moves the pull to `retry-wait` (`:590-600`). The retry waits for
 whichever comes first: a false→true transition of `syncBackend.isConnected`, or
@@ -170,7 +177,7 @@ connectivity that stays stale-true (`awaitPullRetry`, `:224-247`). Waking on a
 reconnect, or receiving any page (even an empty one), resets the backoff
 (`:560-562`, `:610-611`); other failures stop the leader when `onError: 'shutdown'`,
 otherwise the pull is marked `completed` (`:603-607`). The stream end sends
-`PullCompleted` (`:983`).
+`PullCompleted` (`:1034`).
 
 ### What waits concurrently, and why
 
@@ -179,7 +186,7 @@ outside a turn. Three kinds of waiting could otherwise block the mailbox
 indefinitely:
 
 - **Backend pull** (at most one): a live stream that can sit idle for hours.
-  Pages stay serial through the per-page completion handshake above.
+  Pages are applied in order; at most 16 wait to become durable.
 - **Backend push** (at most one): a round trip that can hang or fail
   repeatedly while offline. Awaiting it inside a turn would stop local pushes
   from becoming durable and stop shutdown from proceeding.
@@ -201,7 +208,7 @@ before any push or page is handled; boot itself never changes the model. The ini
 eventlog by the leader layer (`getInitialSyncState`,
 `make-leader-thread-layer.ts:288-326`; see `../../04-runtime/spec.md`
 Leadership Handover), and the initial push plan is its non-client-only pending
-suffix (`:856-873`).
+suffix (`:889-906`).
 
 ### Failure and shutdown
 
@@ -453,12 +460,14 @@ checks it.
 
 - The leader mailbox, `localQueue`, `upstreamQueue`, and the session job queue
   are unbounded; there is no producer backpressure. Provider pull pages are the
-  exception: one page at a time.
+  exception: at most 16 wait to become durable.
 - Every rebasing reconciliation step replays the full pending suffix, so large
   rebases produce long tasks (about 2 s of catch-up and ~68 ms frame gaps in
   the RFC's largest browser workload). Sizing those steps by the pending count
   bounds how often a pull replays the suffix, but one step still replays all of
-  it.
+  it. A leader rebase's first step must also reach the old upstream head, so it
+  replays the leader's whole pending tail in one task (about 167 ms per rebase
+  over 1,000 pending events with a React list subscribed).
 - Every upstream page interrupts and rebuilds an in-flight backend push, even
   when the page does not touch the in-flight batch.
 - With `livePull: false`, nothing starts a new pull after `ServerAheadError`,

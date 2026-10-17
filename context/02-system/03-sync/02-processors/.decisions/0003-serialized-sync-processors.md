@@ -97,9 +97,19 @@ pairs each after a warmup, Chromium 147 on an Apple M1 Pro, with a real
   browser. All stack samples passed. The
   remaining commit cost is the session's per-event journal record (see the
   journal follow-ups in `../../../02-state/01-sqlite/spec.md`).
+- **UI frame drops (2026-10-16):** browser participants rendering a React list of
+  every todo, production builds, reconnecting over a backlog of 2,000 remote
+  events. A catch-up with nothing pending matched `main`. A rebase of 300
+  pending events dropped 38 frames (633 ms jank) against `main`'s 2, because
+  the leader rebased its pending tail once per backend page and each rebase is
+  one uninterrupted session step. Applying queued pages as one upstream batch
+  brought that to 12 frames (200 ms) and convergence from 30 s on `main` to
+  2.7 s. At 1,000 pending, where `main` did not converge, jank fell from 5.0 s
+  to 0.9 s; each remaining rebase step still blocks for about 167 ms.
 - **Not measured:** OPFS, workers, multiple tabs, the network, and tail
-  latency. Replaying a large pending suffix in a step remains a long task
-  (maximum frame gaps of about 68 ms).
+  latency. Replaying a large pending suffix in a step remains a long task (about
+  68 ms in the RFC's largest workload, about 167 ms per leader rebase over 1,000
+  pending events in the React frame benchmark).
 
 ## Consequences
 
