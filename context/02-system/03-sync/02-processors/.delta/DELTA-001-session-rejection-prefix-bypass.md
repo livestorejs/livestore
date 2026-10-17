@@ -19,7 +19,7 @@ per-session fence for a previously rejected generation. The later event can be
 accepted and delivered first. The session then presents incoming `[B]` and
 pending `[A, B]` to positional merge, which schedules `[B, A', B']` and
 materializes `B` twice
-(`packages/@livestore/common/src/leader-thread/LeaderSyncProcessor.ts:1037-1066`).
+(`packages/@livestore/common/src/leader-thread/LeaderSyncProcessor.ts:1056-1085`).
 
 Evidence: contrib Scenario System finding SF-03 (`many-writer-convergence`),
 the captured `many-writer-396` transition, and the deterministic core regression
