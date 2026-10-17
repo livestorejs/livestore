@@ -533,6 +533,40 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     )
   }
 
+  // The pull reads ahead of the pages it sent to the mailbox. A failure right after the last page must still report
+  // that page's progress, or a blocking initial sync waits for its timeout although the events are already durable.
+  Vitest.live('releases a blocking initial sync when the pull fails after its last page', (test) => {
+    const startedAt = Date.now()
+    const pullFailed = Deferred.makeUnsafe<void>()
+    return Effect.gen(function* () {
+      expect(Date.now() - startedAt).toBeLessThan(5_000)
+      const rows = (yield* StateSqliteDb.StateSqliteDb).select<{ id: string }>(tables.todos.asSql().query)
+      expect(rows.map((row) => row.id).toSorted()).toEqual(['backend-1', 'backend-2', 'backend-3'])
+    }).pipe(
+      withTestCtx({
+        syncOptions: {
+          livePull: false,
+          onSyncError: 'ignore',
+          initialSyncOptions: { _tag: 'Blocking', timeout: 10_000 },
+        },
+        // Hold the page in the mailbox until the pull has failed, so it becomes durable only after the failure.
+        testing: {
+          syncProcessor: {
+            hooks: { upstreamBatchReceived: () => Deferred.await(pullFailed).pipe(Effect.andThen(Effect.sleep(50))) },
+          },
+        },
+        seedMockBackend: seedPaginatedBackendTodos,
+        mockBackendOverride: endPullAfterFirstPage(
+          Deferred.succeed(pullFailed, undefined).pipe(
+            Effect.andThen(
+              Effect.fail(new UnknownError({ cause: new Error('Simulated pull failure after the last page') })),
+            ),
+          ),
+        ),
+      })(test),
+    )
+  })
+
   Vitest.live('provider push defects re-enter the machine and retry', (test) => {
     let shouldDefect = true
 

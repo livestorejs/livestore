@@ -97,6 +97,8 @@ interface Options {
     }
     readonly hooks?: {
       readonly localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.Encoded>) => Effect.Effect<void>
+      /** Runs in the mailbox before it handles a backend page, allowing tests to hold the page while the pull moves on. */
+      readonly upstreamBatchReceived?: (events: ReadonlyArray<LiveStoreEvent.Client.Encoded>) => Effect.Effect<void>
       /** Observes connectivity after the offline wait has subscribed, allowing tests to synchronize without sleeps. */
       readonly backendPullReconnectWait?: (state: { isConnected: boolean; fallbackMs: number }) => Effect.Effect<void>
     }
@@ -551,6 +553,7 @@ export const make = Effect.fnUntraced(function* ({
         case 'ContinueWork':
           return yield* processNextWork()
         case 'UpstreamBatchReceived': {
+          yield* testing.hooks?.upstreamBatchReceived?.(message.batch.events) ?? Effect.void
           if (model.pull._tag !== 'streaming' || model.pull.pullId !== message.batch.pullId) {
             // The provider fiber waits for every page to be released. Even a late page from an old pull must be
             // released, although it must not change the current model.
@@ -977,7 +980,6 @@ const runProviderPull = ({
   send: (message: LeaderMessage) => Effect.Effect<void>
 }) =>
   Effect.gen(function* () {
-    const cursorInfo = yield* Eventlog.getSyncBackendCursorInfoForDb(dbEventlog, { remoteHead: cursor.global })
     // Pages handed to the mailbox but not yet durable. Offering blocks while MAX_PAGES_AHEAD are waiting, which is
     // the provider stream's backpressure. A child fiber awaits them in order and reports initial-sync progress.
     const outstanding = yield* Queue.bounded<OutstandingPage | 'end'>(MAX_PAGES_AHEAD)
@@ -992,45 +994,51 @@ const runProviderPull = ({
         }
       }),
     )
-    yield* syncBackend.pull(cursorInfo, { live }).pipe(
-      Stream.runForEach(({ batch, pageInfo }) =>
-        Effect.gen(function* () {
-          yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (connected) => connected === true)
-          if (devtoolsLatch !== undefined) yield* devtoolsLatch.await
-          const batchId = yield* Ref.modify(nextPullBatchId, (id) => [id, id + 1])
-          const completion = yield* Deferred.make<void>()
-          yield* Ref.update(pullBatches, (batches) => new Map(batches).set(batchId, completion))
-          const pulledEvents = batch.map((item) => ({
-            event: LiveStoreEvent.Client.fromGlobal(item.eventEncoded),
-            syncMetadata: item.metadata,
-          }))
-          yield* send({
-            _tag: 'UpstreamBatchReceived',
-            batch: { pullId, batchId, events: pulledEvents.map(({ event }) => event), pulledEvents, pageInfo },
-          })
-          // Read on without waiting for this page to become durable (up to MAX_PAGES_AHEAD). Pages that are already
-          // available, such as a backlog released on reconnect, then queue up while the mailbox applies one page, and
-          // it applies the queued ones as one upstream batch: a leader with pending events rebases them once instead
-          // of once per page, and every session applies one rebase instead of many. Pages are still applied in order,
-          // and the persisted backend cursor is the head of the last page applied.
-          yield* Queue.offer(outstanding, { completion, processed: batch.length, pageInfo })
-          yield* Effect.yieldNow
-        }),
+    yield* Effect.gen(function* () {
+      const cursorInfo = yield* Eventlog.getSyncBackendCursorInfoForDb(dbEventlog, { remoteHead: cursor.global })
+      yield* syncBackend.pull(cursorInfo, { live }).pipe(
+        Stream.runForEach(({ batch, pageInfo }) =>
+          Effect.gen(function* () {
+            yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (connected) => connected === true)
+            if (devtoolsLatch !== undefined) yield* devtoolsLatch.await
+            const batchId = yield* Ref.modify(nextPullBatchId, (id) => [id, id + 1])
+            const completion = yield* Deferred.make<void>()
+            yield* Ref.update(pullBatches, (batches) => new Map(batches).set(batchId, completion))
+            const pulledEvents = batch.map((item) => ({
+              event: LiveStoreEvent.Client.fromGlobal(item.eventEncoded),
+              syncMetadata: item.metadata,
+            }))
+            yield* send({
+              _tag: 'UpstreamBatchReceived',
+              batch: { pullId, batchId, events: pulledEvents.map(({ event }) => event), pulledEvents, pageInfo },
+            })
+            // Read on without waiting for this page to become durable (up to MAX_PAGES_AHEAD). Pages that are already
+            // available, such as a backlog released on reconnect, then queue up while the mailbox applies one page, and
+            // it applies the queued ones as one upstream batch: a leader with pending events rebases them once instead
+            // of once per page, and every session applies one rebase instead of many. Pages are still applied in order,
+            // and the persisted backend cursor is the head of the last page applied.
+            yield* Queue.offer(outstanding, { completion, processed: batch.length, pageInfo })
+            yield* Effect.yieldNow
+          }),
+        ),
+      )
+    }).pipe(
+      Effect.matchEffect({
+        onFailure: (error) => send({ _tag: 'PullFailed', pullId, error }),
+        onSuccess: () => Effect.void,
+      }),
+      Effect.catchCauseIf(
+        (cause) => Cause.hasInterruptsOnly(cause) === false,
+        (cause) =>
+          send({ _tag: 'PullFailed', pullId, error: UnknownError.make({ cause, note: 'Sync backend pull defected' }) }),
       ),
     )
+    // Pages sent before a failure are still applied, so keep reporting their progress: one of them may be the `NoMore`
+    // page that ends a blocking initial sync. A retry replaces this fiber, which ends the wait.
     yield* Queue.offer(outstanding, 'end')
     yield* Deferred.await(allDurable)
   }).pipe(
     Effect.withSpan('@livestore/common:LeaderSyncProcessor:backend-pulling'),
-    Effect.matchEffect({
-      onFailure: (error) => send({ _tag: 'PullFailed', pullId, error }),
-      onSuccess: () => Effect.void,
-    }),
-    Effect.catchCauseIf(
-      (cause) => Cause.hasInterruptsOnly(cause) === false,
-      (cause) =>
-        send({ _tag: 'PullFailed', pullId, error: UnknownError.make({ cause, note: 'Sync backend pull defected' }) }),
-    ),
     Effect.ensuring(send({ _tag: 'PullCompleted', pullId })),
     Effect.interruptible,
   )
