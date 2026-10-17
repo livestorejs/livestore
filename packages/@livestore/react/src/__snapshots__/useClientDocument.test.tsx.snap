@@ -9,9 +9,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -24,8 +21,18 @@ exports[`useClientDocument > otel > should update the data based on component ke
       },
     },
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "client-session-sync-processor:boot",
       "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
         {
           "_name": "client-session-sync-processor:pull",
           "attributes": {
@@ -37,10 +44,12 @@ exports[`useClientDocument > otel > should update the data based on component ke
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "effect.fiber.interrupted": true,
           },
         },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -191,13 +200,20 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encode-events",
-      },
-      {
-        "_name": "client-session-sync-processor:materialize-events",
+        "_name": "client-session-sync-processor:commit",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "UserInfoSet": 1
+}",
+          "mergeResultTag": "advance",
+        },
         "children": [
           {
-            "_name": "client-session-sync-processor:materialize-event",
+            "_name": "client-session-sync-processor:encode-events",
+          },
+          {
+            "_name": "client-session-sync-processor:materialize-events",
             "children": [
               {
                 "_name": "livestore.in-memory-db:execute",
@@ -212,12 +228,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
               {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
-                  "bindValueKeys": [
-                    "$id",
-                    "$seqNumGlobal",
-                    "$seqNumClient",
-                    "$seqNumRebaseGeneration",
-                  ],
+                  "bindValueKeys": "$id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration",
                   "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                   "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
@@ -225,16 +236,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
             ],
           },
         ],
-      },
-      {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "UserInfoSet": 1
-}",
-          "mergeResultTag": "advance",
-        },
       },
     ],
   },
@@ -248,13 +249,20 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encode-events",
-      },
-      {
-        "_name": "client-session-sync-processor:materialize-events",
+        "_name": "client-session-sync-processor:commit",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "UserInfoSet": 1
+}",
+          "mergeResultTag": "advance",
+        },
         "children": [
           {
-            "_name": "client-session-sync-processor:materialize-event",
+            "_name": "client-session-sync-processor:encode-events",
+          },
+          {
+            "_name": "client-session-sync-processor:materialize-events",
             "children": [
               {
                 "_name": "livestore.in-memory-db:execute",
@@ -269,12 +277,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
               {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
-                  "bindValueKeys": [
-                    "$id",
-                    "$seqNumGlobal",
-                    "$seqNumClient",
-                    "$seqNumRebaseGeneration",
-                  ],
+                  "bindValueKeys": "$id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration",
                   "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                   "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
@@ -282,16 +285,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
             ],
           },
         ],
-      },
-      {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "UserInfoSet": 1
-}",
-          "mergeResultTag": "advance",
-        },
       },
     ],
   },
@@ -307,9 +300,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -322,8 +312,18 @@ exports[`useClientDocument > otel > should update the data based on component ke
       },
     },
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "client-session-sync-processor:boot",
       "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
         {
           "_name": "client-session-sync-processor:pull",
           "attributes": {
@@ -335,10 +335,12 @@ exports[`useClientDocument > otel > should update the data based on component ke
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "effect.fiber.interrupted": true,
           },
         },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -427,13 +429,20 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encode-events",
-      },
-      {
-        "_name": "client-session-sync-processor:materialize-events",
+        "_name": "client-session-sync-processor:commit",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "UserInfoSet": 1
+}",
+          "mergeResultTag": "advance",
+        },
         "children": [
           {
-            "_name": "client-session-sync-processor:materialize-event",
+            "_name": "client-session-sync-processor:encode-events",
+          },
+          {
+            "_name": "client-session-sync-processor:materialize-events",
             "children": [
               {
                 "_name": "livestore.in-memory-db:execute",
@@ -448,12 +457,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
               {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
-                  "bindValueKeys": [
-                    "$id",
-                    "$seqNumGlobal",
-                    "$seqNumClient",
-                    "$seqNumRebaseGeneration",
-                  ],
+                  "bindValueKeys": "$id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration",
                   "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                   "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
@@ -461,16 +465,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
             ],
           },
         ],
-      },
-      {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "UserInfoSet": 1
-}",
-          "mergeResultTag": "advance",
-        },
       },
     ],
   },
@@ -484,13 +478,20 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encode-events",
-      },
-      {
-        "_name": "client-session-sync-processor:materialize-events",
+        "_name": "client-session-sync-processor:commit",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "UserInfoSet": 1
+}",
+          "mergeResultTag": "advance",
+        },
         "children": [
           {
-            "_name": "client-session-sync-processor:materialize-event",
+            "_name": "client-session-sync-processor:encode-events",
+          },
+          {
+            "_name": "client-session-sync-processor:materialize-events",
             "children": [
               {
                 "_name": "livestore.in-memory-db:execute",
@@ -505,12 +506,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
               {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
-                  "bindValueKeys": [
-                    "$id",
-                    "$seqNumGlobal",
-                    "$seqNumClient",
-                    "$seqNumRebaseGeneration",
-                  ],
+                  "bindValueKeys": "$id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration",
                   "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                   "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
@@ -518,16 +514,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
             ],
           },
         ],
-      },
-      {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "UserInfoSet": 1
-}",
-          "mergeResultTag": "advance",
-        },
       },
     ],
   },

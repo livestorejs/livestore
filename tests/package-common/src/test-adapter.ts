@@ -7,7 +7,6 @@ import {
   makeClientSession,
   migrateDb,
   type SqliteDb,
-  StateHead,
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
@@ -39,6 +38,8 @@ import {
   type Scope,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
+
+import { makeSqliteServicesLayer } from './leader-thread/fixture.ts'
 
 export type TestingOverrides = {
   clientSession?: {
@@ -173,19 +174,16 @@ const makeLocalLeaderThread = ({
         clientId,
         makeSqliteDb,
         syncOptions,
-        dbState,
-        dbEventlog,
         devtoolsOptions: { enabled: false },
         shutdownChannel,
         syncPayloadEncoded,
         syncPayloadSchema,
         params,
-      }).pipe(Layer.provide(StateHead.layer({ dbState }))),
+      }).pipe(Layer.provide(makeSqliteServicesLayer({ dbState, dbEventlog }))),
     )
 
     return yield* Effect.gen(function* () {
-      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
-        yield* LeaderThreadCtx
+      const { syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } = yield* LeaderThreadCtx
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
@@ -193,7 +191,7 @@ const makeLocalLeaderThread = ({
         {
           events: {
             pull: ({ cursor }) => syncProcessor.pull({ cursor }),
-            push: (batch) => syncProcessor.push(batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item))),
+            push: syncProcessor.push,
             stream: (options) =>
               streamEventsWithSyncState({
                 dbEventlog,

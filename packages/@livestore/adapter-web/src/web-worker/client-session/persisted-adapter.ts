@@ -3,6 +3,7 @@ import {
   IntentionalShutdownCause,
   liveStoreVersion,
   makeClientSession,
+  StateSqliteDb,
   StateHead,
   StoreInterrupted,
   UnknownError,
@@ -460,7 +461,8 @@ export const makePersistedAdapter =
 
       // The state snapshot carries its own cursor, so the fast path does not
       // need to export or transfer the eventlog database.
-      const initialLeaderHead = yield* StateHead.make({ dbState: sqliteDb }).get
+      const stateHead = yield* StateHead.make.pipe(Effect.provideService(StateSqliteDb.StateSqliteDb, sqliteDb))
+      const initialLeaderHead = yield* stateHead.get
 
       // console.debug('[@livestore/adapter-web:client-session] initialLeaderHead', initialLeaderHead)
 

@@ -12,8 +12,6 @@ type Opaque<BaseType, BrandType = unknown> = BaseType & {
 export type CacheKey = Opaque<string, string>
 type TableName = string
 
-const ignore = ['begin', 'rollback', 'commit', 'savepoint', 'release']
-
 // TODO: profile to see how big we need this cache to be.
 const cacheSize = 200
 export default class QueryCache {
@@ -59,7 +57,7 @@ export default class QueryCache {
   }
 
   ignoreQuery = (query: string) => {
-    return ignore.some((prefix) => query.startsWith(prefix))
+    return /^\s*(?:begin|rollback|commit|savepoint|release)\b/i.test(query)
   }
 
   // The next simplest step is to create a specific implementation for invalidating

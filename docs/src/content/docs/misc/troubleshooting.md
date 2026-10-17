@@ -34,12 +34,12 @@ See the [Backend Reset Detection](/building-with-livestore/syncing#backend-reset
 
 Symptoms
 
-- Logs repeatedly show messages like: `merge:pull:rebase: rollback` and the same local events being rolled back and replayed.
+- The same local events are repeatedly rolled back and replayed, and reactive effects re-run each time.
 
 Why this happens
 
-- LiveStore uses optimistic local commits and rebasing during sync. On pull, the client rolls back local events, applies the remote head, then replays local events — and only then refreshes reactive queries (transactional from the UI’s perspective).
-- If your app emits events from a reactive effect based on read‑model changes (e.g., “when the latest item changes, emit X”), the effect runs after each completed rebase. Without a rebase‑safe guard, it can emit the same logical event repeatedly across rebases.
+- LiveStore uses optimistic local commits and rebasing during sync. On pull, the client rolls back local events, applies the remote events, then replays local events, and refreshes reactive queries after each applied step. A large pull is applied in several steps, so queries can observe complete intermediate states before the pull finishes.
+- If your app emits events from a reactive effect based on read‑model changes (e.g., “when the latest item changes, emit X”), the effect runs after each applied rebase step. Without a rebase‑safe guard, it can emit the same logical event repeatedly across rebases.
 - Multiple windows/devices for the same user can also emit the same logical event at nearly the same time. Even if writes are idempotent, the extra local commits still cause additional rebases and effect re‑runs.
 
 Circuit breaker fix (rebase‑safe)
