@@ -604,6 +604,32 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     )
   })
 
+  Vitest.live('provider push defects follow the configured shutdown path', (test) =>
+    Effect.gen(function* () {
+      const testContext = yield* TestContext
+
+      yield* testContext.pushEncoded(
+        testContext.eventFactory.todoCreated.next({ id: 'push-defect', text: 'defect', completed: false }),
+      )
+
+      const shutdownError = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
+      expect(shutdownError._tag).toEqual('UnknownError')
+    }).pipe(
+      withTestCtx({
+        syncOptions: { livePull: false, onSyncError: 'shutdown' },
+        captureShutdown: true,
+        mockBackendOverride: (mockBackend) => () =>
+          Effect.gen(function* () {
+            const syncBackend = yield* mockBackend.makeSyncBackend
+            return {
+              ...syncBackend,
+              push: () => Effect.die(new Error('Simulated provider push defect')),
+            }
+          }),
+      })(test),
+    ),
+  )
+
   Vitest.live('provider pull defects follow the configured shutdown path', (test) =>
     Effect.gen(function* () {
       const testContext = yield* TestContext

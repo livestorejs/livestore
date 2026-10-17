@@ -639,6 +639,10 @@ export const make = Effect.fnUntraced(function* ({
           }
           if (message.error._tag === 'BackendIdMismatchError')
             return yield* handleBackendMismatch(message.error, 'push')
+          // Provider errors are retried indefinitely. A defect is not a provider error: like a failed pull, it follows
+          // `onError`, so a deterministic defect stops the leader instead of retrying forever.
+          if (message.defect === true && config.onError === 'shutdown')
+            return yield* stop({ lifecycle: 'failed', error: message.error, notify: true })
           const retryId = allocateOperationId()
           const attempt = model.push.attempt + 1
           model = {
@@ -832,7 +836,13 @@ type LeaderMessage =
   | { readonly _tag: 'PullFailed'; readonly pullId: OperationId; readonly error: ProviderPullError }
   | { readonly _tag: 'PullRetryElapsed'; readonly retryId: OperationId; readonly reconnected: boolean }
   | { readonly _tag: 'PushSucceeded'; readonly operationId: OperationId }
-  | { readonly _tag: 'PushFailed'; readonly operationId: OperationId; readonly error: ProviderPushError }
+  | {
+      readonly _tag: 'PushFailed'
+      readonly operationId: OperationId
+      readonly error: ProviderPushError
+      /** The provider push died rather than failing; `onError: 'shutdown'` stops the leader, as for pull failures. */
+      readonly defect: boolean
+    }
   | { readonly _tag: 'PushRetryElapsed'; readonly retryId: OperationId }
   | { readonly _tag: 'Started' }
   | { readonly _tag: 'ShutdownRequested'; readonly reason: string }
@@ -934,7 +944,7 @@ const runProviderPush = (
           error: error.toString(),
           retries: operation.attempt,
           batchSize: operation.batch.length,
-        }).pipe(Effect.andThen(send({ _tag: 'PushFailed', operationId: operation.operationId, error }))),
+        }).pipe(Effect.andThen(send({ _tag: 'PushFailed', operationId: operation.operationId, error, defect: false }))),
       onSuccess: () =>
         Effect.gen(function* () {
           if (operation.attempt > 0) {
@@ -951,6 +961,7 @@ const runProviderPush = (
         _tag: 'PushFailed',
         operationId: operation.operationId,
         error: UnknownError.make({ cause, note: 'Sync backend push defected' }),
+        defect: Cause.hasInterruptsOnly(cause) === false,
       }),
     ),
     Effect.interruptible,
