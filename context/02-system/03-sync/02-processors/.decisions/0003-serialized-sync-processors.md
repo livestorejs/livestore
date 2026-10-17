@@ -106,9 +106,16 @@ pairs each after a warmup, Chromium 147 on an Apple M1 Pro, with a real
   brought that to 12 frames (200 ms) and convergence from 30 s on `main` to
   2.7 s. At 1,000 pending, where `main` did not converge, jank fell from 5.0 s
   to 0.9 s; each remaining rebase step still blocks for about 167 ms.
+- **Cheaper rebase steps (2026-10-17):** most of that step was bookkeeping
+  rather than materialization: a state-head write and a journal savepoint per
+  event, one journal SELECT per rolled-back event, and per-event spans. Without
+  them the longest frame at 1,000 pending fell from 167 ms to 67 ms, jank from
+  0.95 s to 0.25 s and convergence from 6.6 s to 5.1 s. At 300 pending the
+  rebase dropped 2 frames (33 ms jank), as on `main`, and converged in 1.9 s.
+  Catch-up was unchanged.
 - **Not measured:** OPFS, workers, multiple tabs, the network, and tail
   latency. Replaying a large pending suffix in a step remains a long task (about
-  68 ms in the RFC's largest workload, about 167 ms per leader rebase over 1,000
+  68 ms in the RFC's largest workload, about 70 ms per leader rebase over 1,000
   pending events in the React frame benchmark).
 
 ## Consequences

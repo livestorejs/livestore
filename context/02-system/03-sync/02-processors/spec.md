@@ -268,35 +268,35 @@ synchronously inside one owner, and all waiting moves out to a runner.
 
 ### Owner, outbox, runner
 
-- **Owner** — `owned(body)` (`:155-189`), the only code that writes `model`.
+- **Owner** — `owned(body)` (`:158-192`), the only code that writes `model`.
   Exclusion relies on the body being synchronous; `PreventSchedulerYield`
-  suppresses Effect's automatic yields (`:186`). A queued microtask detects a
+  suppresses Effect's automatic yields (`:189`). A queued microtask detects a
   body that suspends anyway (for example an asynchronous materializer); the
-  session then fails with a named defect (`failIfSuspended`, `:193-202`). A
-  nested `owned` call from inside a body dies as reentrant (`:165-167`).
-- **`SessionMessage`** — 11 tags entered through `dispatch` (`:191`,
-  `:823-834`): `Started`, `PullReceived`, `PullFinished`, `PushCancelled`,
+  session then fails with a named defect (`failIfSuspended`, `:196-205`). A
+  nested `owned` call from inside a body dies as reentrant (`:168-170`).
+- **`SessionMessage`** — 11 tags entered through `dispatch` (`:194`,
+  `:850-861`): `Started`, `PullReceived`, `PullFinished`, `PushCancelled`,
   `PushSucceeded`, `PushRejected`, `PushFailed`, `Failed`,
   `ShutdownRequested`, `DrainStarted`, `Stopped`; `transition` routes each to
-  its workflow (`:106-145`). `commit` and a pull step also enter the owner but
+  its workflow (`:109-148`). `commit` and a pull step also enter the owner but
   return results to their caller.
-- **Job** — work for the runner (`RunnerJob`, `:835-847`): `Push`,
+- **Job** — work for the runner (`RunnerJob`, `:862-874`): `Push`,
   `Reconcile`, `BeginShutdown`, `FinishShutdown`, `NotifyFailure`. The runner
-  takes jobs one at a time from an unbounded queue (`:87`, `runJobs`,
-  `:735-741`) and reports each outcome back as a message.
+  takes jobs one at a time from an unbounded queue (`:90`, `runJobs`,
+  `:762-768`) and reports each outcome back as a message.
 - **Notification** — a `syncState` update, pull completion, or shutdown result.
 - **Outbox** — where the owner holds jobs and notifications (`addToOutbox`,
-  `:204-208`). It is delivered after the owner is released and dropped if the
-  body fails (`:173-183`). Completing a `Deferred` or offering to a `Queue`
+  `:207-211`). It is delivered after the owner is released and dropped if the
+  body fails (`:176-186`). Completing a `Deferred` or offering to a `Queue`
   resumes the waiting fiber inline, in the caller's stack; delivering
   mid-change would let woken code observe half-finished state or re-enter the
   owner.
 - **Savepoint** — a SQLite `SAVEPOINT` on the session's state database
   (`SqliteDbHelper.withSavepoint`). The journal and state head are tables in
-  that same database, so one savepoint covers rows, journal, and head; the
-  journal's per-event savepoints nest inside it.
+  that same database, so one savepoint covers rows, journal, and head; journal
+  records open no savepoint of their own.
 
-The model (`:900-905`):
+The model (`:928-933`):
 
 ```text
 lifecycle: starting ─► running { reconciliation? } ─► shutdown-requested { exit, reconciliation? } ─► stopping ─► stopped
@@ -307,80 +307,80 @@ push:      idle { queued } ─► in-flight { operationId, batch, queued }
 ```
 
 At boot the in-memory sync state starts from the leader head the adapter
-reports, with no pending events (`:92-98`); the runner and pull fiber are then
-forked (`:779-789`). Nothing else writes the session database after boot. In
+reports, with no pending events (`:95-101`); the runner and pull fiber are then
+forked (`:806-816`). Nothing else writes the session database after boot. In
 development, every owner release checks that the push queue is the unpushed
-suffix of pending (`checkModelInvariants`, `:468-490`).
+suffix of pending (`checkModelInvariants`, `:471-493`).
 
 ### Commit
 
-`Store.commit` runs `processor.commit` (`:799-801`) synchronously via
-`Effect.runSyncWith` (`store.ts:893`, `:934`). Inside the owner,
-`commitLocalEvents` (`:212-249`) checks admission (lifecycle `running`, else a
+`Store.commit` runs `processor.commit` (`:826-828`) synchronously via
+`Effect.runSyncWith` (`store.ts:886`, `:927`). Inside the owner,
+`commitLocalEvents` (`:215-252`) checks admission (lifecycle `running`, else a
 defect), encodes events and assigns sequence numbers from the local head
-(`:508-535`), merges them as `local-push`, and materializes the batch in one
-savepoint (`:233-236`). Only after the savepoint is released does it assign the
+(`:511-538`), merges them as `local-push`, and materializes the batch and sets the state
+head to its last event in one savepoint (`:236-239`). Only after the savepoint is released does it assign the
 in-memory sync state and append the new events to `push.queued` — unless the
 push is `awaiting-reconciliation`, whose queue the next pull rebuilds
-(`:237-245`). It then reserves a `Push` job if propagation is eligible
-(`reserveNextPush`, `:366-383`). After release the outbox is delivered, and
-Store refreshes the written tables (`store.ts:895-914`). No browser task runs
+(`:240-248`). It then reserves a `Push` job if propagation is eligible
+(`reserveNextPush`, `:369-386`). After release the outbox is delivered, and
+Store refreshes the written tables (`store.ts:888-907`). No browser task runs
 before `store.commit` returns; subscriber callbacks and resumed fibers may
 commit again, entering the same path as a new commit.
 
 ### Pull: stepped reconciliation
 
-The pull fiber (`:743-761`) streams from the leader at the current upstream
+The pull fiber (`:770-788`) streams from the leader at the current upstream
 head (behind the devtools pull latch when enabled) and restarts the stream when
-it ends. `PullReceived` (`acceptPull`, `:251-279`) validates the whole payload
+it ends. `PullReceived` (`acceptPull`, `:254-282`) validates the whole payload
 by merging it, registers a reconciliation id, and queues a `Reconcile` job; the
 stream waits for that job before it delivers the next item. A pull arriving
-after admission closed completes without being applied (`:255-258`).
+after admission closed completes without being applied (`:258-261`).
 
 The runner applies the payload in steps of `PULL_CHUNK_SIZE` = 32 events
-(`:906-907`). A step that does not start by confirming the oldest pending
+(`:936-937`). A step that does not start by confirming the oldest pending
 event rebases and replays every pending event, so it takes at least as many
 incoming events as there are pending events; this keeps a pull's replay work
-proportional to its size (`stepSize`, `:629-643`). An explicit leader
+proportional to its size (`stepSize`, `:653-667`). An explicit leader
 rebase's first step extends far enough to reach the old upstream head
-(`minimumEnd`, `:265-270`). Each step
-(`reconcile`, `:645-678`; `applyPullStep`, `:281-307`) runs in the owner:
+(`minimumEnd`, `:268-273`). Each step
+(`reconcile`, `:669-705`; `applyPullStep`, `:284-310`) runs in the owner:
 
 1. Merge the incoming prefix against the **live** pending events, never against
    a plan from before the last yield.
 2. In one savepoint, roll back the journal, materialize incoming events,
    replay pending events, and set the state head (`applyPullToSqlite`,
-   `:553-600`).
+   `:559-624`).
 3. Assign the in-memory sync state; a rebase also resets the push to
    `idle { queued: pending }`, invalidating the old operation. Release the
    owner and deliver the outbox.
 
 The runner then refreshes the written tables — all user tables after a
-rollback (`:578-583`) — and yields. A local commit can land between steps.
+rollback (`:592-597`) — and yields. A local commit can land between steps.
 Only the last step discards the journal up to the payload's global head
-(`:595`). `PullFinished` (`finishPull`, `:309-324`) clears the
+(`:612`). `PullFinished` (`finishPull`, `:312-327`) clears the
 reconciliation; if a step rebased or a rejected batch is now recovered (judged
 against current state, not a snapshot from pull start), it rebuilds the push
 queue from current pending. It then reserves the next push. No replacement
-push starts while a reconciliation is active (`:368`).
+push starts while a reconciliation is active (`:371`).
 
 ### Cancellation
 
 If a step needs a rebase while a leader push is in flight, the owner sets
 `push: cancelling` and returns `cancel-push` without touching SQLite or sync
-state (`:287-293`). The runner interrupts the push fiber outside the owner,
+state (`:290-296`). The runner interrupts the push fiber outside the owner,
 sends `PushCancelled`, and retries the same prefix from live state
-(`:663-669`, `:326-331`). Commits during that wait apply against the previous
+(`:690-696`, `:329-334`). Commits during that wait apply against the previous
 coherent state. A late success or rejection from the cancelled push is
-ignored; a fatal failure still fails the session (`:338-346`).
+ignored; a fatal failure still fails the session (`:341-349`).
 
 ### Push results
 
 The owner records `in-flight { operationId }` before the `Push` job becomes
-visible to the runner (`:375-382`). The runner starts at most one leader push
+visible to the runner (`:378-385`). The runner starts at most one leader push
 and skips a job that became obsolete while queued (`startLeaderPush`,
-`:680-704`). `PushSucceeded`, `PushRejected`, and `PushFailed` carry the id
-(`completePush`, `:333-364`). A rejection moves the push to
+`:707-731`). `PushSucceeded`, `PushRejected`, and `PushFailed` carry the id
+(`completePush`, `:336-367`). A rejection moves the push to
 `awaiting-reconciliation` unless current pending events already show the batch
 was recovered; later commits accumulate in pending without crossing the
 boundary until a pull confirms or rebases the rejected prefix
@@ -391,50 +391,50 @@ session.
 
 In development, materializers' results are hashed on both sides. The session
 records its hash for each pending event it materializes — on commit
-(`materializeEvents`, `:537-551`) and when replaying pending events during a
-pull step (`:591`) — in `pendingMaterializerHashes` (`:100-104`, `:494-497`).
+(`materializeEvents`, `:540-557`) and when replaying pending events during a
+pull step (`:608`) — in `pendingMaterializerHashes` (`:103-107`, `:497-500`).
 The leader publishes the hashes from its persist receipts in
 `PullItem.materializerHashes` (decoded as `[]` when absent). When an advance
 confirms a pending event, the session compares its recorded hash with the
 leader's and fails with `MaterializerHashMismatchError` on divergence
-(`:560-572`). This catches a side-effecting or non-deterministic materializer
+(`:574-586`). This catches a side-effecting or non-deterministic materializer
 even though confirmed events are not re-materialized. Rolled-back events drop
-their recorded hashes (`:573-576`). Incoming events are materialized with the
+their recorded hashes (`:587-590`). Incoming events are materialized with the
 leader's hash, and the session materializer compares it with its own
-(`store.ts:266-279`).
+(`store.ts:265-278`).
 
 ### Failure and shutdown
 
 - Pull, reconciliation, and handler failures arrive as `Failed`
-  (`reportFailure`, `:605-608`), which sets `lifecycle: failed` and queues
+  (`reportFailure`, `:629-632`), which sets `lifecycle: failed` and queues
   `NotifyFailure`; the runner then stops pull and push and shuts down the Store
-  (`:435-454`, `:724-729`). If even `Failed` cannot be recorded, the processor
-  logs both causes and shuts down the Store directly (`:610-626`).
-- **Orderly shutdown** (`shutdown(exit)`, `:793-798`) closes admission
-  immediately (`shutdown-requested`, `:385-414`). The `BeginShutdown` job runs
+  (`:438-457`, `:751-756`). If even `Failed` cannot be recorded, the processor
+  logs both causes and shuts down the Store directly (`:634-650`).
+- **Orderly shutdown** (`shutdown(exit)`, `:820-825`) closes admission
+  immediately (`shutdown-requested`, `:388-417`). The `BeginShutdown` job runs
   after any accepted `Reconcile` job, stops the pull fiber, and sends
-  `DrainStarted` (`:715-718`). For a successful exit the processor enters
+  `DrainStarted` (`:742-745`). For a successful exit the processor enters
   `stopping` and drains the rebuilt pending suffix in batches until the queue
-  is empty (`:416-433`, `:370-373`); an unresolved rejection or a fatal leader
-  failure fails the drain instead of claiming durability (`:359-361`,
-  `:439-442`; LS.SYS.SYNC.PROC-R03). A shutdown requested with a failure exit,
+  is empty (`:419-436`, `:373-376`); an unresolved rejection or a fatal leader
+  failure fails the drain instead of claiming durability (`:362-364`,
+  `:442-445`; LS.SYS.SYNC.PROC-R03). A shutdown requested with a failure exit,
   or a failed session, never drains. `FinishShutdown` stops pull and push and
-  completes the shutdown result (`:719-723`).
+  completes the shutdown result (`:746-750`).
 - The Store runs this cleanup detached under a **hard bound**: the caller stops
   waiting after 1s, and the detached drain is itself force-closed after
-  `SHUTDOWN_DRAIN_HARD_TIMEOUT_MS` (`create-store.ts:53`, `:389-410`,
-  `:560-571`) so an unresponsive leader cannot leak the lifetime scope
+  `SHUTDOWN_DRAIN_HARD_TIMEOUT_MS` (`create-store.ts:53`, `:392-413`,
+  `:574-585`) so an unresponsive leader cannot leak the lifetime scope
   (LS.SYS.STORE-R07). A successful close of the scope the Store was created in
   triggers the same drain.
 
 ### Observability and test hooks
 
 `syncState.changes` streams a queue the owner offers to on every state change;
-it is for debugging and observability only (`:88`, `:802-805`). With
+it is for debugging and observability only (`:91`, `:829-832`). With
 `confirmUnsavedChanges`, a `beforeunload` handler warns while pending events
-exist (`:763-777`). Deterministic `rebaseBarriers` pause the runner (never the
+exist (`:790-804`). Deterministic `rebaseBarriers` pause the runner (never the
 owner) at two labeled points around push cancellation and the end of a rebasing
-pull (`:604`, `:665`, `:676`).
+pull (`:628`, `:692`, `:703`).
 
 ## Invariants
 
@@ -471,7 +471,7 @@ checks it.
   the RFC's largest browser workload). Sizing those steps by the pending count
   bounds how often a pull replays the suffix, but one step still replays all of
   it. A leader rebase's first step must also reach the old upstream head, so it
-  replays the leader's whole pending tail in one task (about 167 ms per rebase
+  replays the leader's whole pending tail in one task (about 70 ms per rebase
   over 1,000 pending events with a React list subscribed).
 - Every upstream page interrupts and rebuilds an in-flight backend push, even
   when the page does not touch the in-flight batch.

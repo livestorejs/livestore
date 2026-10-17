@@ -103,12 +103,16 @@ services (`packages/@livestore/common/src/`):
 | `MaterializationJournal` (`MaterializationJournal.ts`) | `record`, `rollback`, `discardUpTo` over `__livestore_materialization_journal`    |
 
 `StateHead` and `MaterializationJournal` are built on `StateSqliteDb`; every
-materialization writes its journal record and the state head next to its state
-rows. On the leader the three commit in one state-DB savepoint
-(`materialize-event.ts`). Journal semantics:
+materialization writes its journal record next to its state rows, and the state
+head names the last event the rows reflect. The leader writes the record and
+the head per event in one state-DB savepoint (`materialize-event.ts`). The
+client session writes records per event and the head once per commit batch or
+pull step, inside the savepoint that holds the batch. Journal semantics:
 
-- `record` replaces any record at the same key. Events whose definition is
-  unknown are recorded with a `null` changeset.
+- `record` replaces any record at the same key. It opens no savepoint of its
+  own: it runs inside the caller's savepoint or transaction, which every
+  materialization opens. Events whose definition is unknown are recorded with a
+  `null` changeset.
 - `rollback(keys)` runs in one savepoint: it fails with
   `MaterializationJournalError` and leaves state unchanged if any key has no
   record, applies inverse changesets newest-first, then deletes the records.
@@ -116,14 +120,14 @@ rows. On the leader the three commit in one state-DB savepoint
   of rebase generation, once those events are confirmed upstream.
 
 The client session records an entry for every committed and replayed event,
-so `record` is on the commit path: a savepoint, a delete of any record at the
-key, and an insert. It is most of what a session commit costs beyond `main`'s
+so `record` is on the commit path: a delete of any record at the key and an
+insert, run without a span per statement. It is most of what a session commit costs beyond `main`'s
 in-memory changesets (in a 400-commit loop, a no-op `record` matched `main`'s
 time). Possible follow-up improvements:
 
 - Give the journal table a primary key on the sequence-number triple (the
   table definition still carries a TODO for it). `record` could then be one
-  `INSERT OR REPLACE`, without the delete and its savepoint. The key changes
+  `INSERT OR REPLACE`, without the delete. The key changes
   state-DB layout, so it is cheapest while this release already rebuilds state
   for the renamed table.
 - Savepoint names are unique per use (`SqliteDbHelper.withSavepoint`), so the
@@ -131,8 +135,6 @@ time). Possible follow-up improvements:
   cacheable, but only if every savepoint stays strictly nested.
 - `discardUpTo` interpolates its key into the SQL, so each call prepares a new
   statement; bound parameters would make it reusable.
-- Each journal statement creates an Effect span through `execSqlPrepared` or
-  `execSql`; the hot journal writes could skip per-statement spans.
 
 The client session's Store provides `StateSqliteDb` from its cache-aware
 wrapper rather than the raw connection
