@@ -64,7 +64,10 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 }: {
   schema: LiveStoreSchema
   clientSession: ClientSession
-  /** Must remain synchronous, including the SQLite/journal/head services, just like Store.commit. */
+  /**
+   * Materializes one event and records its journal entry. Must remain synchronous, including the SQLite and journal
+   * services, just like Store.commit. It does not move the state head: the processor sets it once per savepoint.
+   */
   materializeEvent: (
     eventEncoded: LiveStoreEvent.Client.Encoded,
     options: { materializerHashLeader: Option.Option<number> },
@@ -547,6 +550,9 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         writeTables.add(table)
       }
     }
+    // One head write per batch: the savepoint commits the events and the head together.
+    const last = events.at(-1)
+    if (last !== undefined) yield* stateHead.set(last.seqNum)
     return { writeTables }
   })
 
@@ -554,9 +560,17 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   const applyPullToSqlite = (result: SyncState.MergeResultAdvance | SyncState.MergeResultRebase, step: PullStep) =>
     Effect.gen(function* () {
       const writeTables = new Set<string>()
+      // A rebase step can materialize thousands of events, so look up per-event data by sequence number instead of
+      // scanning the payload for each event.
       const leaderHashOf = (event: LiveStoreEvent.Client.Encoded) =>
-        step.materializerHashes.find(({ eventNum }) => EventSequenceNumber.Client.isEqual(eventNum, event.seqNum))
-          ?.hash ?? Option.none()
+        step.leaderHashes.get(EventSequenceNumber.Client.toString(event.seqNum)) ?? Option.none()
+      const incomingByPosition = new Map<string, Array<LiveStoreEvent.Client.Encoded>>()
+      for (const event of step.payload.newEvents) {
+        const key = positionKey(event)
+        const events = incomingByPosition.get(key)
+        if (events === undefined) incomingByPosition.set(key, [event])
+        else events.push(event)
+      }
       if (result._tag === 'advance') {
         for (const event of result.confirmedEvents) {
           const key = EventSequenceNumber.Client.toString(event.seqNum)
@@ -584,7 +598,10 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       }
       for (const item of result.newEvents) {
         // A replayed pending event can temporarily share a sequence number with a later incoming event.
-        const incoming = step.payload.newEvents.some((event) => LiveStoreEvent.Client.isEqualEncoded(event, item))
+        const incoming =
+          incomingByPosition
+            .get(positionKey(item))
+            ?.some((event) => LiveStoreEvent.Client.isEqualEncoded(event, item)) === true
         const materialized = yield* materializeEvent(item, {
           materializerHashLeader: incoming === true ? leaderHashOf(item) : Option.none(),
         })
@@ -597,6 +614,13 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     }).pipe(
       SqliteDbHelper.withSavepoint(dbState),
       Effect.mapError((cause) => (cause._tag === 'SqliteError' ? new UnknownError({ cause }) : cause)),
+      Effect.withSpan('client-session-sync-processor:apply-pull-step', {
+        attributes: {
+          mergeResultTag: result._tag,
+          newEvents: result.newEvents.length,
+          rollbackEvents: result._tag === 'rebase' ? result.rollbackEvents.length : 0,
+        },
+      }),
     )
 
   // Asynchronous runner. It reads current state and enters the owner through dispatch or a pull step.
@@ -644,6 +668,9 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
   const reconcile = (job: Extract<RunnerJob, { _tag: 'Reconcile' }>, pushHandle: RunnerHandles['push']) =>
     Effect.gen(function* () {
+      const leaderHashes = new Map(
+        job.item.materializerHashes.map(({ eventNum, hash }) => [EventSequenceNumber.Client.toString(eventNum), hash]),
+      )
       const newEvents = job.item.payload.newEvents
       let offset = 0
       while (true) {
@@ -655,7 +682,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
             last,
             payload:
               offset === 0 ? { ...job.item.payload, newEvents: chunk } : { _tag: 'upstream-advance', newEvents: chunk },
-            materializerHashes: job.item.materializerHashes,
+            leaderHashes,
             globalHead: job.item.globalHead,
           }),
         )
@@ -851,7 +878,8 @@ interface PullStep {
   readonly payload: Pull['payload']
   readonly last: boolean
   readonly globalHead: Pull['globalHead']
-  readonly materializerHashes: Pull['materializerHashes']
+  /** The pull item's leader materializer hashes by `EventSequenceNumber.Client.toString`, built once per pull. */
+  readonly leaderHashes: ReadonlyMap<string, Option.Option<number>>
 }
 /** The owner's synchronous reply to the runner for one pull step. */
 type StepResult =
@@ -903,6 +931,8 @@ interface Model {
   readonly push: LeaderPushState
   readonly nextOperationId: number
 }
+/** Global and client position, without the rebase generation, which `isEqualEncoded` also ignores. */
+const positionKey = (event: LiveStoreEvent.Client.Encoded) => `${event.seqNum.global},${event.seqNum.client}`
 /** Pulled events applied per reconciliation step before subscribers run and the runner yields. */
 export const PULL_CHUNK_SIZE = 32
 const REENTRANT_OWNER_MESSAGE = 'Reentrant session transition from materialization'

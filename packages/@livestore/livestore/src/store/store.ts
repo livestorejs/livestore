@@ -232,99 +232,92 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const syncProcessor = makeClientSessionSyncProcessor({
       schema,
       clientSession,
-      materializeEvent: Effect.fn('client-session-sync-processor:materialize-event')(
-        (eventEncoded, { materializerHashLeader }) =>
-          Effect.gen(function* () {
-            const materializationJournal = yield* MaterializationJournal.MaterializationJournal
-            const dbState = yield* ReactiveStateSqliteDb.ReactiveStateSqliteDb
-            const stateHead = yield* StateHead.StateHead
-            const resolution = yield* resolveEventDef(schema, {
-              operation: '@livestore/livestore:store:materializeEvent',
-              event: eventEncoded,
-            })
+      // No span per event: the processor traces each commit batch and pull step, and replaying a rebase materializes
+      // every pending event, where a span per event was a large share of the step's main-thread time.
+      materializeEvent: (eventEncoded, { materializerHashLeader }) =>
+        Effect.gen(function* () {
+          const materializationJournal = yield* MaterializationJournal.MaterializationJournal
+          const dbState = yield* ReactiveStateSqliteDb.ReactiveStateSqliteDb
+          const resolution = yield* resolveEventDef(schema, {
+            operation: '@livestore/livestore:store:materializeEvent',
+            event: eventEncoded,
+          })
 
-            if (resolution._tag === 'unknown') {
-              // Runtime schema doesn't know this event yet; skip materialization but
-              // keep the log entry so upgraded clients can replay it later.
-              yield* materializationJournal.record({ key: eventEncoded.seqNum, changeset: null })
-              yield* stateHead.set(eventEncoded.seqNum)
-              return {
-                writeTables: new Set<string>(),
-                materializerHash: Option.none(),
+          if (resolution._tag === 'unknown') {
+            // Runtime schema doesn't know this event yet; skip materialization but
+            // keep the log entry so upgraded clients can replay it later.
+            yield* materializationJournal.record({ key: eventEncoded.seqNum, changeset: null })
+            return {
+              writeTables: new Set<string>(),
+              materializerHash: Option.none(),
+            }
+          }
+
+          const { eventDef, materializer } = resolution
+
+          const execArgsArr = getExecStatementsFromMaterializer({
+            eventDef,
+            materializer,
+            dbState,
+            event: { decoded: undefined, encoded: eventEncoded },
+          })
+
+          const materializerHash =
+            isDevEnv() === true ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
+
+          // Hash mismatch detection only occurs during the pull path (when receiving events from the leader).
+          // During push path (local commits), materializerHashLeader is always Option.none(), so this condition
+          // will never be met. The check happens when the same event comes back from the leader during sync,
+          // allowing us to compare the leader's computed hash with our local re-materialization hash.
+          if (
+            materializerHashLeader._tag === 'Some' &&
+            materializerHash._tag === 'Some' &&
+            materializerHashLeader.value !== materializerHash.value
+          ) {
+            return yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
+          }
+
+          const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+          const otelContext = otel.trace.setSpan(otel.context.active(), span)
+
+          const writeTablesForEvent = new Set<string>()
+
+          const exec = () => {
+            for (const { statementSql, bindValues, writeTables = dbState.getTablesUsed(statementSql) } of execArgsArr) {
+              try {
+                dbState.cachedExecute(statementSql, bindValues, {
+                  otelContext,
+                  writeTables,
+                })
+              } catch (cause) {
+                // TOOD refactor with `SqliteError`
+                throw UnknownError.make({
+                  cause,
+                  note: `Error executing materializer for event "${eventEncoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
+                })
               }
-            }
 
-            const { eventDef, materializer } = resolution
-
-            const execArgsArr = getExecStatementsFromMaterializer({
-              eventDef,
-              materializer,
-              dbState,
-              event: { decoded: undefined, encoded: eventEncoded },
-            })
-
-            const materializerHash =
-              isDevEnv() === true ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
-
-            // Hash mismatch detection only occurs during the pull path (when receiving events from the leader).
-            // During push path (local commits), materializerHashLeader is always Option.none(), so this condition
-            // will never be met. The check happens when the same event comes back from the leader during sync,
-            // allowing us to compare the leader's computed hash with our local re-materialization hash.
-            if (
-              materializerHashLeader._tag === 'Some' &&
-              materializerHash._tag === 'Some' &&
-              materializerHashLeader.value !== materializerHash.value
-            ) {
-              return yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
-            }
-
-            const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
-            const otelContext = otel.trace.setSpan(otel.context.active(), span)
-
-            const writeTablesForEvent = new Set<string>()
-
-            const exec = () => {
-              for (const {
-                statementSql,
-                bindValues,
-                writeTables = dbState.getTablesUsed(statementSql),
-              } of execArgsArr) {
-                try {
-                  dbState.cachedExecute(statementSql, bindValues, {
-                    otelContext,
-                    writeTables,
-                  })
-                } catch (cause) {
-                  // TOOD refactor with `SqliteError`
-                  throw UnknownError.make({
-                    cause,
-                    note: `Error executing materializer for event "${eventEncoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
-                  })
-                }
-
-                // durationMsTotal += durationMs
-                for (const table of writeTables) {
-                  writeTablesForEvent.add(table)
-                }
-
-                dbState.debug.head = eventEncoded.seqNum
+              // durationMsTotal += durationMs
+              for (const table of writeTables) {
+                writeTablesForEvent.add(table)
               }
+
+              dbState.debug.head = eventEncoded.seqNum
             }
+          }
 
-            const changeset = dbState.withChangeset(exec).changeset
-            yield* materializationJournal.record({ key: eventEncoded.seqNum, changeset })
-            yield* stateHead.set(eventEncoded.seqNum)
+          const changeset = dbState.withChangeset(exec).changeset
+          yield* materializationJournal.record({ key: eventEncoded.seqNum, changeset })
 
-            return { writeTables: writeTablesForEvent, materializerHash }
-          }).pipe(
-            Effect.provideContext(materializationContext),
-            Effect.mapError((cause) =>
-              MaterializationJournal.isMaterializationJournalError(cause) === true
-                ? cause
-                : MaterializeError.make({ cause }),
-            ),
+          return { writeTables: writeTablesForEvent, materializerHash }
+        }).pipe(
+          Effect.provideContext(materializationContext),
+          Effect.mapError((cause) =>
+            MaterializationJournal.isMaterializationJournalError(cause) === true
+              ? cause
+              : MaterializeError.make({ cause }),
           ),
-      ),
+        ),
       refreshTables: (tables) => {
         const tablesToUpdate = [] as [Ref<null, ReactivityGraphContext, RefreshReason>, null][]
         for (const tableName of tables) {

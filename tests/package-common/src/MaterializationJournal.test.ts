@@ -108,6 +108,35 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 
+  // Rollback reads and deletes records in chunks of 100 keys; 250 sequential updates span three chunks, including a
+  // padded partial one, and only reverse order restores the original state.
+  Vitest.live('rolls back more records than fit in one statement', (test) =>
+    Effect.gen(function* () {
+      const { dbState, journal } = yield* setup
+
+      const keys = Array.from({ length: 250 }, (_, index) =>
+        EventSequenceNumber.Client.Composite.make({ global: index + 1, client: 0, rebaseGeneration: 0 }),
+      )
+      for (const [index, key] of keys.entries()) {
+        const changeset = captureChangeset(dbState, () => {
+          if (index === 0) dbState.execute("INSERT INTO journal_test (id, value) VALUES (1, 'v0')")
+          else dbState.execute(`UPDATE journal_test SET value = 'v${index}' WHERE id = 1`)
+        })
+        yield* journal.record({ key, changeset })
+      }
+
+      const missingKey = EventSequenceNumber.Client.Composite.make({ global: 999, client: 0, rebaseGeneration: 0 })
+      const error = yield* journal.rollback([...keys, missingKey]).pipe(Effect.flip)
+      expect(error.method).toEqual('rollback')
+      expect(dbState.select('SELECT id, value FROM journal_test')).toEqual([{ id: 1, value: 'v249' }])
+
+      yield* journal.rollback(keys.toReversed())
+
+      expect(dbState.select('SELECT id, value FROM journal_test')).toEqual([])
+      expect(keys.map((key) => getRecord(dbState, key))).toEqual(keys.map(() => undefined))
+    }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
+  )
+
   Vitest.live('fails without changing state when a requested record is missing', (test) =>
     Effect.gen(function* () {
       const { dbState, journal } = yield* setup

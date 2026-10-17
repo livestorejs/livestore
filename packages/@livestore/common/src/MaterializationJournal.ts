@@ -4,7 +4,7 @@ import { SqliteError } from './adapter-types.ts'
 import { execSql, execSqlPrepared } from './leader-thread/connection.ts'
 import * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
 import { SystemTables } from './schema/mod.ts'
-import { findManyRows, insertRowPrepared } from './sql-queries/index.ts'
+import { insertRowPrepared } from './sql-queries/index.ts'
 import * as SqliteDbHelper from './sqlite-db-helper.ts'
 import * as StateSqliteDb from './StateSqliteDb.ts'
 import { prepareBindValues, sql } from './util.ts'
@@ -34,7 +34,10 @@ export type MaterializationRecord = {
 
 export interface Service {
   readonly [TypeId]: TypeId
-  /** Stores a materialization record, replacing any record at the same key. */
+  /**
+   * Stores a materialization record, replacing any record at the same key. Runs inside the caller's savepoint or
+   * transaction, which every materialization already opens, so the replacement is atomic with the materialization.
+   */
   record: (record: MaterializationRecord) => Effect.Effect<void, MaterializationJournalError>
   /** Reverts the keyed materializations in reverse order, then discards their records. */
   rollback: (
@@ -51,12 +54,9 @@ export class MaterializationJournal extends Context.Service<MaterializationJourn
 export const make = Effect.gen(function* () {
   const dbState = yield* StateSqliteDb.StateSqliteDb
 
-  /** Runs inside the savepoint of `record` or `rollback`, which keeps a multi-chunk delete atomic. */
+  /** Runs inside `rollback`'s savepoint, which keeps a multi-chunk delete atomic. */
   const deleteByKeys = Effect.fnUntraced(function* (keys: ReadonlyArray<EventSequenceNumber.Client.Composite>) {
-    // Keep DELETE statements below SQLite's bound-parameter limit.
-    const keyChunks = ReadonlyArray.chunksOf(100)(keys)
-
-    for (const keyChunk of keyChunks) {
+    for (const keyChunk of chunkKeys(keys)) {
       const placeholders = keyChunk.map(() => '(?, ?, ?)').join(', ')
       const bindValues = keyChunk.flatMap((key) => [key.global, key.client, key.rebaseGeneration])
       const statement = sql`DELETE FROM ${SystemTables.MATERIALIZATION_JOURNAL_META_TABLE}
@@ -66,64 +66,82 @@ export const make = Effect.gen(function* () {
     }
   })
 
-  // `record` runs for every materialized event, so its statement is built once.
+  /** Reads the records of `keys`, chunked like `deleteByKeys`. */
+  const selectChangesets = Effect.fnUntraced(function* (keys: ReadonlyArray<EventSequenceNumber.Client.Composite>) {
+    const changesets = new Map<string, Uint8Array<ArrayBuffer> | null>()
+    for (const keyChunk of chunkKeys(keys)) {
+      const placeholders = keyChunk.map(() => '(?, ?, ?)').join(', ')
+      const bindValues = keyChunk.flatMap((key) => [key.global, key.client, key.rebaseGeneration])
+      const statement = sql`SELECT seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset
+                            FROM ${SystemTables.MATERIALIZATION_JOURNAL_META_TABLE}
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN (${placeholders})`
+      const preparedBindValues = prepareBindValues(bindValues, statement)
+      const rows = yield* Effect.try({
+        try: () => dbState.select<SystemTables.MaterializationJournalMetaRow>(statement, preparedBindValues),
+        catch: (cause) => new SqliteError({ cause, query: { sql: statement, bindValues: preparedBindValues } }),
+      })
+      for (const row of rows) {
+        changesets.set(
+          journalKey({
+            global: row.seqNumGlobal,
+            client: row.seqNumClient,
+            rebaseGeneration: row.seqNumRebaseGeneration,
+          }),
+          row.changeset,
+        )
+      }
+    }
+    return changesets
+  })
+
+  // `record` runs for every materialized event, including every event a rebase replays, so its statements are built
+  // once and run without a span each. The materialization that records them carries the trace.
   const insertStatement = insertRowPrepared({
     tableName: SystemTables.MATERIALIZATION_JOURNAL_META_TABLE,
     columns: SystemTables.materializationJournalMetaTable.sqliteDef.columns,
   })
+  const deleteRecordStatement = sql`DELETE FROM ${SystemTables.MATERIALIZATION_JOURNAL_META_TABLE}
+    WHERE seqNumGlobal = $seqNumGlobal AND seqNumClient = $seqNumClient AND seqNumRebaseGeneration = $seqNumRebaseGeneration`
 
   return MaterializationJournal.of({
     [TypeId]: TypeId,
-    record: Effect.fnUntraced(
-      function* (record: MaterializationRecord) {
-        yield* deleteByKeys([record.key])
-
-        // The columns are plain integers and a blob, so the values bind without schema encoding.
-        const bindValues = {
-          seqNumGlobal: record.key.global,
-          seqNumClient: record.key.client,
-          seqNumRebaseGeneration: record.key.rebaseGeneration,
-          changeset: record.changeset,
-        }
-        yield* execSqlPrepared(dbState, insertStatement, prepareBindValues(bindValues, insertStatement))
-      },
-      SqliteDbHelper.withSavepoint(dbState),
-      Effect.mapError((cause) => new MaterializationJournalError({ method: 'record', cause })),
-    ),
+    record: (record) =>
+      Effect.try({
+        try: () => {
+          const bindValues = {
+            seqNumGlobal: record.key.global,
+            seqNumClient: record.key.client,
+            seqNumRebaseGeneration: record.key.rebaseGeneration,
+            changeset: record.changeset,
+          }
+          for (const statement of [deleteRecordStatement, insertStatement]) {
+            const preparedBindValues = prepareBindValues(bindValues, statement)
+            try {
+              dbState.execute(statement, preparedBindValues)
+            } catch (cause) {
+              throw new SqliteError({ cause, query: { sql: statement, bindValues: preparedBindValues } })
+            }
+          }
+        },
+        catch: (cause) => new MaterializationJournalError({ method: 'record', cause }),
+      }),
     rollback: Effect.fnUntraced(
       function* (keys: ReadonlyArray<EventSequenceNumber.Client.Composite>) {
         const sortedKeys = keys.toSorted((a, b) => EventSequenceNumber.Client.compare(b, a))
-        const rollbackChangesets = yield* Effect.forEach(
-          sortedKeys,
-          Effect.fnUntraced(function* (key) {
-            const [statement, bindValues] = findManyRows({
-              tableName: SystemTables.MATERIALIZATION_JOURNAL_META_TABLE,
-              columns: SystemTables.materializationJournalMetaTable.sqliteDef.columns,
-              where: {
-                seqNumGlobal: key.global,
-                seqNumClient: key.client,
-                seqNumRebaseGeneration: key.rebaseGeneration,
-              },
-              limit: 1,
+        const changesetsByKey = yield* selectChangesets(sortedKeys)
+        const rollbackChangesets: Array<Uint8Array<ArrayBuffer> | null> = []
+        for (const key of sortedKeys) {
+          const changeset = changesetsByKey.get(journalKey(key))
+          if (changeset === undefined) {
+            return yield* new MaterializationJournalError({
+              method: 'rollback',
+              cause: new Error(
+                `Missing materialization journal record for ${EventSequenceNumber.Client.toString(key)}`,
+              ),
             })
-            const preparedBindValues = prepareBindValues(bindValues, statement)
-            const row = yield* Effect.try({
-              try: () => dbState.select<SystemTables.MaterializationJournalMetaRow>(statement, preparedBindValues)[0],
-              catch: (cause) => new SqliteError({ cause, query: { sql: statement, bindValues: preparedBindValues } }),
-            })
-
-            if (row === undefined) {
-              return yield* new MaterializationJournalError({
-                method: 'rollback',
-                cause: new Error(
-                  `Missing materialization journal record for ${EventSequenceNumber.Client.toString(key)}`,
-                ),
-              })
-            }
-
-            return row.changeset
-          }),
-        )
+          }
+          rollbackChangesets.push(changeset)
+        }
 
         for (const changeset of rollbackChangesets) {
           if (changeset !== null) {
@@ -173,3 +191,23 @@ export const layerTest = Layer.succeed(
     discardUpTo: () => Effect.void,
   }),
 )
+
+const journalKey = (key: { global: number; client: number; rebaseGeneration: number }) =>
+  `${key.global},${key.client},${key.rebaseGeneration}`
+
+/** Keys per statement: three bound parameters each, well below SQLite's limit of 999. */
+const KEY_CHUNK_SIZE = 100
+
+/**
+ * Splits keys into chunks of exactly KEY_CHUNK_SIZE, padding the last chunk by repeating its final key. Every
+ * statement then has the same SQL, so the connection prepares and caches one statement instead of one per chunk
+ * length. A repeated key in an `IN` list matches the same row and changes no result.
+ */
+const chunkKeys = (
+  keys: ReadonlyArray<EventSequenceNumber.Client.Composite>,
+): ReadonlyArray<ReadonlyArray<EventSequenceNumber.Client.Composite>> =>
+  ReadonlyArray.chunksOf(KEY_CHUNK_SIZE)(keys).map((chunk) =>
+    chunk.length === KEY_CHUNK_SIZE
+      ? chunk
+      : [...chunk, ...Array.from({ length: KEY_CHUNK_SIZE - chunk.length }, () => chunk.at(-1)!)],
+  )
