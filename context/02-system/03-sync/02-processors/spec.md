@@ -2,7 +2,10 @@
 
 This document specifies the leader- and session-side sync processors that
 drive the [syncstate merge core](../01-syncstate/spec.md). It builds on
-[requirements.md](./requirements.md).
+[requirements.md](./requirements.md). The design was accepted as
+[RFC 0004](../../../../contributor-docs/rfcs/0004-serialized-sync-processors.md);
+the choice and its rejected alternatives are recorded in
+[.decisions/0003-serialized-sync-processors.md](./.decisions/0003-serialized-sync-processors.md).
 
 ## Status
 
@@ -10,145 +13,473 @@ Draft.
 
 ## Scope
 
-Defines: queues, batching, retry, precedence, cursor/head tracking, and the
-rebase critical sections of both processors. Does not define: merge
-semantics (`../01-syncstate/`), materializer mechanics
+Defines: each processor's owner and model, admission, batching, retry,
+precedence, cursor/head tracking, cancellation, the durable seam between the
+leader processor and SQLite, and shutdown. Does not define: merge semantics
+(`../01-syncstate/`), materializer and journal mechanics
 (`../../02-state/01-sqlite/`), or processor placement (`../../04-runtime/`).
+
+## Shared Shape
+
+Both processors are either synced with their upstream or hold pending events
+that upstream has not confirmed. The session's upstream is the leader thread;
+the leader thread's upstream is the sync backend. Each processor has **one
+owner**: the only code allowed to change its model. Everything that can change
+the model is a named, tagged message (`LeaderMessage`, `SessionMessage`), and
+every concurrent operation carries an identity (operation, retry, pull, or
+reconciliation id) so a late result from superseded work is ignored instead of
+advancing newer work.
+
+```text
+Store.commit ─► ClientSessionSyncProcessor
+                  ├─ synchronous owner: local commits, pull steps, push results
+                  └─ runner: leader push, cancellation, refresh, yield, shutdown
+                         │ leaderThread.events.push / pull
+                         ▼
+                LeaderSyncProcessor
+                  ├─ mailbox: one message at a time, one explicit model
+                  ├─ publication to sessions, acknowledgements
+                  └─ backend pull, push and retry fibers ──► sync backend
+                         │
+                         ▼
+                LeaderPersistence ──► state DB + eventlog DB
+```
+
+| Module                       | Owns                                                                                                 | Does not own                                               |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `ClientSessionSyncProcessor` | optimistic session state, leader propagation, stepped reconciliation, session shutdown               | Store's subscriber refresh after commit, leader durability |
+| `LeaderSyncProcessor`        | ordering, in-memory sync state, publication, acknowledgements, backend pull/push, retries, lifecycle | SQLite transition details                                  |
+| `LeaderPersistence`          | rollback, materialization, journal maintenance, eventlog writes, heads, coordinated SQLite commits   | queues, publication, retries, acknowledgements, lifecycle  |
 
 ## Leader Sync Processor
 
-`leader-thread/LeaderSyncProcessor.ts`. Two unbounded STM queues decouple
-the three parties:
+`leader-thread/LeaderSyncProcessor.ts` (`:54-63`).
 
-```
-sessions ──push──▶ localPushesQueue ─(batch ≤10)─▶ merge+materialize ─▶
-                                                     syncBackendPushQueue
-                                                       ─(batch ≤50)─▶ backend
-backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
+### Mailbox and model
+
+One loop (`run`, `:675-688`) takes a `LeaderMessage` from an unbounded mailbox
+(`:131`) and handles it completely before taking the next (`handleMessage`,
+`:506-673`). `model` is a local variable rather than a `Ref`; only the loop
+changes it, including at boot (`:156-158`). `LeaderMessage` is a closed union of 12
+tags (`:826-848`): `Started` (sent once by boot), `LocalPushRequested`,
+`UpstreamBatchReceived`, `PullCompleted`, `PullFailed`, `PullRetryElapsed`,
+`PushSucceeded`, `PushFailed`, `PushRetryElapsed`, `ContinueWork`,
+`LocalWorkEnabled` (test-delay release only) and `ShutdownRequested`.
+
+```text
+lifecycle:  starting ─► running ─► stopping
+                           └─────► failed
+pull:       disabled | streaming { pullId, pagination: between-pages | more-expected, attempt }
+            | retry-wait { retryId, attempt } | completed
+push:       disabled | idle { queued } | in-flight { operationId, attempt, batch, queued }
+            | retry-wait { retryId, attempt, batch, queued } | awaiting-pull { queued }
+plus:       syncState, localQueue, upstreamQueue, localWorkEnabled, nextOperationId
 ```
 
-- **Local pushes** (`:235-239, 263-296`): `localPushesQueue` holds
-  `[event, deferred]` items; a background fiber drains
-  `takeBetween(1, localPushBatchSize)` per cycle (default 10, `:214`).
-  `validatePushBatch` requires strictly ascending batches
-  (`NonMonotonicBatchError`) whose first event is ahead of
-  `pushHeadRef.current` (`LeaderAheadError`) and whose complete sequence/parent
-  chain is contiguous with that head (`NonContiguousBatchError`). Parent
-  continuity compares global/client position because a confirmed leader head
-  and a rebased session head may name the same position with different local
-  generations. Admission atomically records explicit per-item reservations
-  before queue publication; a reservation survives queue take and is released
-  only when its item is applied, dropped, or rejected. Pull reconciliation
-  derives `pushHead` from the authoritative head plus those live reservations,
-  so in-flight or old-generation suffixes cannot leave a ghost fence or expose
-  an unfenced gap (see
-  [.decisions/0002-explicit-leader-push-reservations.md](./.decisions/0002-explicit-leader-push-reservations.md)).
-- **Generations** (`:271-296, 321-366`): each queued item carries its
-  seqNum's `rebaseGeneration`. After acquiring the mutex, items with a
-  stale generation are dropped and their deferreds failed with
-  `StaleRebaseGenerationError`. A merge `reject` fails the batch's
-  deferreds with `LeaderAheadError`, bumps the generation, and drains
-  same-generation queued items present at that moment — sessions rebase and
-  re-push. The session driver fences later arrivals until that reconciliation;
-  leader-side contiguous-chain validation rejects a later suffix that bypasses
-  the fence (see resolved
-  [DELTA-001](./.delta/DELTA-001-session-rejection-prefix-bypass.md)).
-- **Backend pushing** (`:575-637`): drains
-  `takeBetween(1, backendPushBatchSize)` (default 50, `:215`), pushes
-  `toGlobal()` batches. Retry: `Schedule.exponential(1s)` clamped to 30s,
-  no jitter, no attempt cap, and only for transient errors
-  (`IsOfflineError`/`UnknownError`, `:627-631`). `ServerAheadError` is NOT
-  retried in place: the push fiber parks on `Effect.never` (`:617-621`)
-  and the pull side interrupts it — `restartBackendPushing` (`:729-741`)
-  clears the fiber, re-seeds the queue from rebased pending, restarts.
-- **Backend pulling** (`:397-573`): cursor =
-  `Eventlog.getSyncBackendCursorInfo(remoteHead)` — the persisted backend
-  head (`SYNC_STATUS_TABLE.head`) plus provider-opaque `syncMetadataJson`
-  (`eventlog.ts:280-300`). Each chunk merges with
-  `ignoreClientOnlyEvents: true`; advance restarts backend pushing with
-  current pending, offers the payload to session pull queues, and persists
-  sync metadata for confirmed events; rebase additionally rolls back
-  state+eventlog rows and re-seeds pushing from rebased pending
-  (`:466-516`). Backend head advances via `Eventlog.updateBackendHead`
-  (`:462-464`).
-- **Pull precedence** (`:241, 393, 408-438`): a 1-permit semaphore
-  (`localPushBackendPullMutex`) makes local-push application and pull-chunk
-  application mutually exclusive; the pull side holds the permit for a
-  whole chunk, so a rebase can never interleave a local-push apply.
-- **Materialization** (`:849-886`): `materializeEventsBatch` opens one
-  transaction on `dbState` and one on `dbEventlog` in lockstep, commits
-  them sequentially inside one uninterruptible effect with a joint
-  rollback finalizer. This protects against interruption and errors, but
-  is **not crash-atomic across the two databases**: a process death
-  between the two COMMITs can diverge state from eventlog (healed only by
-  state rebuild when the state DB is absent — see
-  `../../02-state/01-sqlite/`). Local push acknowledgements are completed only
-  after the batch is materialized, published in leader sync state, offered to
-  session pull queues, and queued for backend propagation.
-- **Boot** (`:684-755`): initial sync state rehydrates from the eventlog
-  (`../../04-runtime/spec.md` Leadership Handover); error routing via
-  `onError: ignore|shutdown` and `BackendIdMismatchError` handling
-  (`reset|shutdown|ignore`; reset clears local databases, `:1060-1123`).
+(`:850-891`.) Operation, pull, and retry ids come from one counter
+(`allocateOperationId`, `:162-167`).
+
+### Admission
+
+`push` (`:690-716`) registers one request-level acknowledgement with a
+remaining-event count before waiting for boot, so shutdown can interrupt every
+admitted caller (`:695-707`), then sends `LocalPushRequested`. The handler
+(`:527-548`) validates the batch against the tail of `localQueue`, or the
+local head when the queue is empty, so it checks committed plus admitted
+history, then appends it to `localQueue`. `validatePushBatch` (`:1057-1132`)
+requires a strictly ascending batch (`NonMonotonicBatchError`), a first event
+ahead of that head (`LeaderAheadError`), a first event no older than the head's
+rebase generation (`StaleRebaseGenerationError`), and an exact sequence/parent
+chain from the head (`NonContiguousBatchError`). Parent continuity compares
+global/client position only (`isSameSequencePosition`,
+`LeaderPersistence.ts:175-182`): a confirmed leader head and a rebased session
+head can name the same position with different local generations. This chain
+check is the receiver-side prefix fence of LS.SYS.SYNC.PROC-R04.
+
+A `ContinueWork` turn selects up to `localPushBatchSize` admitted items
+(default 10, `:148`). Items whose generation is older than the current local
+head's are rejected with `StaleRebaseGenerationError` (`:443-462`). If merge
+rejects the batch, the turn fails its acknowledgements with `LeaderAheadError`
+together with every queued item of the same rebase generation, because those
+were numbered on top of the rejected batch; the session rebases and re-pushes
+(`:310-337`). A local push that merge would rebase is a defect (`:338`).
+
+### Precedence
+
+A `ContinueWork` turn always applies queued upstream pages before local work
+(`:428-434`). The queued pages of one pull are merged into a single upstream
+batch (`coalesceUpstreamBatches`, `:811-821`): consecutive pages are one
+contiguous stretch of backend history, so a leader with pending events rebases
+them once, and every session applies one rebase, instead of once per page. While the current page reports `more-expected`, local work waits
+until the paginated advance is complete (`:435-437`, LS.SYS.SYNC.PROC-R02).
+
+### Durability inside the turn
+
+`processLocalBatch` (`:300-370`) and `processUpstreamBatch` (`:372-423`) merge,
+then await `LeaderPersistence`. Only after a successful receipt does the turn
+publish (update `syncState`, its `SubscriptionRef`, and every session pull
+queue; `:284-298`), update the backend push plan, and resolve acknowledgements
+or release the provider page. Nothing can observe a half-applied transition.
+The processor checks each receipt against the merge: a local receipt's state
+head must equal the new local head exactly (`:349-355`); an upstream receipt is
+compared by global/client position and backend head (`:400-412`), because the
+backend does not preserve the leader's local rebase generation — a pending
+event the leader rebased (`e1` → `e2`, generation 1) is confirmed as `e2`. A
+mismatch stops the processor as a sync failure.
+
+A push acknowledgement therefore means durable, published, and scheduled for
+the backend — not backend-accepted (`:75`).
+
+### Backend push and retry
+
+At most one provider push runs (`pushHandle`). `startProviderPush` takes up to
+`backendPushBatchSize` events (default 50, `:149`) from `push.queued` and
+records `in-flight { operationId }` before forking the call (`:203-224`). The
+fiber waits for the backend to be connected and for the devtools latch, then
+pushes `toGlobal()` events (`:926-968`). Results come back as `PushSucceeded`
+or `PushFailed` carrying the operation id; a stale id is ignored (`:617-663`).
+
+- `ServerAheadError` moves the push to `awaiting-pull`, keeping batch and queue
+  but never retrying the stale batch in place (`:628-639`, LS.SYS.SYNC.PROC-R01,
+  PROC-R04). The next upstream page rebuilds the plan.
+- `BackendIdMismatchError` applies `onBackendIdMismatch` (`:466-504`): `ignore`
+  disables pushing (or completes pulling), `shutdown` stops the leader, and
+  `reset` interrupts all work, clears both databases (`:1349-1369`), and stops.
+- A defect in the provider push is wrapped as `UnknownError` and marked as a
+  defect (`:959-966`). Like a failed pull, it stops the leader when `onError`
+  is `shutdown` (`:642-645`).
+- Any other failure (`IsOfflineError`, `UnknownError`, or a defect under
+  `onError: 'ignore'`) moves the push to `retry-wait` with capped exponential
+  backoff: `min(30s, 1s · 2^(attempt-1))`, no jitter, no attempt cap
+  (`:646-663`, `:1372`). `PushRetryElapsed` with the current `retryId` re-runs
+  the same batch (`:664-669`).
+
+Each upstream page rebuilds the push plan from committed non-client-only
+pending events (`replacePushPlan`, `:273-282`, called at `:420`): any push
+state becomes `idle` with the new queue, and an in-flight push is interrupted;
+that interruption is awaited inside the turn.
+
+### Backend pull
+
+At most one provider pull runs (`pullHandle`, `:251-271`). Its cursor is
+`Eventlog.getSyncBackendCursorInfoForDb` for the current upstream head — the
+persisted backend head plus provider-opaque sync metadata (`:1009`). Each page
+becomes one `UpstreamBatchReceived` with its pull id. The stream reads on
+without waiting for that page to become durable, up to `MAX_PAGES_AHEAD` = 16
+pages (`:996-1050`), so pages that are already available (a backlog released on
+reconnect) queue up while a turn applies earlier ones and are then applied
+together. Pages are still applied in order, and the persisted backend cursor is
+the head of the last page applied. A child fiber awaits each page's durable
+commit (or deliberate discard) in order and reports progress to a blocking
+initial sync; the stream end waits for all of them, and so does a failed pull
+after reporting `PullFailed`, because pages it already sent are still applied
+and one of them may be the `NoMore` page that releases the initial sync. A page from a superseded pull is released without changing the
+model (`:557-562`). Pages merge with `ignoreClientOnlyEvents: true`
+(`:374-380`). `IsOfflineError` moves the pull to `retry-wait` (`:593-603`). The retry waits for
+whichever comes first: a false→true transition of `syncBackend.isConnected`, or
+a jittered fallback timer on the same 1 s → 30 s backoff, which also covers
+connectivity that stays stale-true (`awaitPullRetry`, `:226-249`). Waking on a
+reconnect, or receiving any page (even an empty one), resets the backoff
+(`:563-565`, `:613-614`); other failures stop the leader when `onError: 'shutdown'`,
+otherwise the pull is marked `completed` (`:606-610`). The stream end sends
+`PullCompleted` (`:1053`).
+
+### What waits concurrently, and why
+
+The leader makes every decision one message at a time; only waiting happens
+outside a turn. Three kinds of waiting could otherwise block the mailbox
+indefinitely:
+
+- **Backend pull** (at most one): a live stream that can sit idle for hours.
+  Pages are applied in order; at most 16 wait to become durable.
+- **Backend push** (at most one): a round trip that can hang or fail
+  repeatedly while offline. Awaiting it inside a turn would stop local pushes
+  from becoming durable and stop shutdown from proceeding.
+- **Retry timers**: backoff sleeps in `backgroundFibers` (`:161`). Each
+  completion carries its `retryId`, so superseded timers are ignored.
+
+A fully serial leader would need a polling sync-provider contract, would block
+on every push round trip, would freeze while offline, and could never recover
+from `ServerAheadError`, because recovery needs a pull. The cost of concurrent
+waiting is visible in the model: operation identities, the `awaiting-pull`
+state, and interruption.
+
+### Boot
+
+`boot` (`:718-742`) runs once: it forks the loop and enqueues `Started` before
+releasing pushes that were waiting for boot. The mailbox is FIFO, so the
+`Started` turn (`:511-520`) sets `running` and starts the provider pull and push
+before any push or page is handled; boot itself never changes the model. The initial sync state is rehydrated from the
+eventlog by the leader layer (`getInitialSyncState`,
+`make-leader-thread-layer.ts:291-329`; see `../../04-runtime/spec.md`
+Leadership Handover), and the initial push plan is its non-client-only pending
+suffix (`:902-919`).
+
+### Failure and shutdown
+
+- `ShutdownRequested`, sent by the boot scope's finalizer (`:735-740`), stops
+  the processor as `stopping`: it interrupts the provider pull and push, retry
+  timers, every registered acknowledgement (closing the registry so later
+  `push` calls are interrupted at admission), and every waiting provider page
+  (`stop` and `interruptAllWork`, `:169-198`). Admitted but unprocessed local
+  pushes are interrupted, not drained.
+- A message that arrives once the lifecycle is no longer `running` changes
+  nothing; a late `LocalPushRequested` is interrupted (`:521-524`).
+- A merge failure, persist failure, or receipt mismatch is a sync failure
+  (`stopForSyncFailure`, `:200-201`): the processor stops as `failed` and
+  notifies the shutdown channel only when `onError: 'shutdown'`.
+- A defect in a handler stops the processor as `failed` and always notifies
+  the shutdown channel (`:680-682`).
+
+## LeaderPersistence: the Durable Seam
+
+`leader-thread/LeaderPersistence.ts` (`:59-66`) has two methods,
+`persistLocal` (`:90-110`) and `persistUpstream` (`:112-170`). Together they
+perform rollback, materialization (which also writes eventlog rows), journal
+maintenance, sync-metadata updates for confirmed events, state and backend
+heads, and the coordinated commit. Events are plain values that
+materialization does not mutate, so the processor's plan is persisted as is.
+Each call returns a **persist receipt** (`LocalPersistReceipt`,
+`UpstreamPersistReceipt`, `:35-49`) with the persisted events and their
+materializer hashes, so the processor publishes exactly what was written.
+
+`persistUpstream` rolls back the journal for `rollbackEvents`, resets the
+state head to the first rolled-back event's parent, and deletes those eventlog
+rows (`:118-127`); materializes the merged events with their pulled sync
+metadata (`:129`); records metadata for confirmed events (`:131-141`);
+discards journal entries up to the backend head (`:143-144`); and writes the
+backend head in the same eventlog transaction as the event inserts
+(`:146-147`).
+
+Each call opens one transaction on the state DB and one on the eventlog DB and
+commits state first, then the eventlog, inside an uninterruptible region with a
+joint rollback finalizer (`withCoordinatedTransactions`, `:184-224`). This
+protects against errors and interruption but is **not crash-atomic across the
+two databases**: a process death between the two COMMITs can leave state ahead
+of the eventlog (LS.SYS.STATE-DQ2; healed only by state rebuild, see
+`../../02-state/01-sqlite/`).
 
 ## Client Session Sync Processor
 
-`sync/ClientSessionSyncProcessor.ts`. One unbounded STM `leaderPushQueue`
-(`:104`) decouples `push()` (synchronous commit path) from leader I/O:
+`sync/ClientSessionSyncProcessor.ts` (`:50-56`). The session cannot use a
+mailbox, because `store.commit` must return with its change applied and cannot
+queue behind other work (LS.SYS.STORE-R04). Instead every state change runs
+synchronously inside one owner, and all waiting moves out to a runner.
 
-- **Push** (`:454-456`): synchronously merge into local sync state and enqueue
-  the merge's `newEvents` without waiting for pull/rebase ownership; a background fiber drains
-  `takeBetween(1, leaderPushBatchSize)` and pushes to the leader (`:153-168`).
-  Coalescing is opportunistic (whatever accumulated while the previous
-  push was in flight); there is no time-based debounce. A rejected push
-  records the unresolved batch, clears the queue, and parks the sole worker.
-  Later commits remain synchronous and accumulate in pending/the FIFO without
-  crossing the boundary. Pull recovery atomically reseeds the FIFO from live
-  pending and restarts the worker. Rejection transition setup serializes with
-  pull so a late response cannot install a fence after that pull already
-  recovered the batch (resolved
-  [DELTA-001](./.delta/DELTA-001-session-rejection-prefix-bypass.md)).
-- **Pull** (`:145-168, 226-253`): a lazily-restarted stream from the
-  leader (cursor = current `upstreamHead`) feeds `SyncState.merge`; a
-  `reject` from upstream is impossible and dies (`:162-165`). New events
-  re-materialize into the session DB with changesets and session-side
-  materializer hashes written back, then `refreshTables` runs once per
-  merge (`:232-250`).
-- **Rebase critical section** (`:209-272`): interrupt the push fiber → roll
-  back session changesets in reverse order (`meta.sessionChangeset`, then mark
-  `unset`) → **atomically reconcile** the push queue (clear + re-offer the
-  _live_ `syncStateRef.current.pending` inside one `Effect.tx`, with no async
-  park between the read, clear, and offer) → restart the push fiber. Re-reading
-  the live pending (rather than the stale merge-time snapshot) is what
-  serializes `push` against rebase **without blocking it**: `push` runs via
-  `Effect.runSyncWith` as an indivisible unit that can only interleave in the
-  pull fiber's async gaps, so a synchronous commit admitted during a rebase
-  park is folded into the reconciliation instead of being torn away by the
-  clear. This replaces the earlier design where `push` acquired the pull-
-  reconciliation mutex, which violated the synchronous-commit invariant
-  (LS.SYS.STORE-R09) by suspending the commit path (see `.decisions/`, #1465). Deterministic
-  `rebaseBarriers` hooks at 3 labeled points let tests inject a concurrent
-  push/shutdown into this window (the F1 no-loss oracle).
-- **Shutdown drain:** orderly shutdown closes new `push()` admission, stops
-  pull processing while holding the state-ownership permit (which still
-  serializes shutdown↔rebase — only `push` was taken off that permit), ends the
-  push queue, and awaits its sole worker. Success therefore means all admitted
-  events reached the leader; an unresolved rejection or fatal push fails the
-  drain. Failed shutdown interrupts the pull and push workers. The Store runs
-  this cleanup detached under a **hard bound**: the caller stops waiting after
-  1s, and the detached drain is itself force-closed after
-  `SHUTDOWN_DRAIN_HARD_TIMEOUT_MS` so an unresponsive leader cannot leak the
-  lifetime scope (LS.SYS.SYNC.PROC-R03, LS.SYS.STORE-R07).
-- **Observability** (`:98-99, 358-361`): sync-state updates surface via a
-  separate queue explicitly not relied on for correctness; a devtools
-  latch can pause upstream application (`:152-153`).
+### Owner, outbox, runner
+
+- **Owner** — `owned(body)` (`:158-192`), the only code that writes `model`.
+  Exclusion relies on the body being synchronous; `PreventSchedulerYield`
+  suppresses Effect's automatic yields (`:189`). A queued microtask detects a
+  body that suspends anyway (for example an asynchronous materializer); the
+  session then fails with a named defect (`failIfSuspended`, `:196-205`). A
+  nested `owned` call from inside a body dies as reentrant (`:168-170`).
+- **`SessionMessage`** — 11 tags entered through `dispatch` (`:194`,
+  `:850-861`): `Started`, `PullReceived`, `PullFinished`, `PushCancelled`,
+  `PushSucceeded`, `PushRejected`, `PushFailed`, `Failed`,
+  `ShutdownRequested`, `DrainStarted`, `Stopped`; `transition` routes each to
+  its workflow (`:109-148`). `commit` and a pull step also enter the owner but
+  return results to their caller.
+- **Job** — work for the runner (`RunnerJob`, `:862-874`): `Push`,
+  `Reconcile`, `BeginShutdown`, `FinishShutdown`, `NotifyFailure`. The runner
+  takes jobs one at a time from an unbounded queue (`:90`, `runJobs`,
+  `:762-768`) and reports each outcome back as a message.
+- **Notification** — a `syncState` update, pull completion, or shutdown result.
+- **Outbox** — where the owner holds jobs and notifications (`addToOutbox`,
+  `:207-211`). It is delivered after the owner is released and dropped if the
+  body fails (`:176-186`). Completing a `Deferred` or offering to a `Queue`
+  resumes the waiting fiber inline, in the caller's stack; delivering
+  mid-change would let woken code observe half-finished state or re-enter the
+  owner.
+- **Savepoint** — a SQLite `SAVEPOINT` on the session's state database
+  (`SqliteDbHelper.withSavepoint`). The journal and state head are tables in
+  that same database, so one savepoint covers rows, journal, and head; journal
+  records open no savepoint of their own.
+
+The model (`:928-933`):
+
+```text
+lifecycle: starting ─► running { reconciliation? } ─► shutdown-requested { exit, reconciliation? } ─► stopping ─► stopped
+           (any live state) ─► failed { cause, shutdownExit? } ─► stopped
+push:      idle { queued } ─► in-flight { operationId, batch, queued }
+           in-flight ─► idle (succeeded) | awaiting-reconciliation (rejected) | cancelling (rebase step)
+           cancelling ─► idle (PushCancelled);  awaiting-reconciliation ─► idle (recovered by a pull)
+```
+
+At boot the in-memory sync state starts from the leader head the adapter
+reports, with no pending events (`:95-101`); the runner and pull fiber are then
+forked (`:806-816`). Nothing else writes the session database after boot. In
+development, every owner release checks that the push queue is the unpushed
+suffix of pending (`checkModelInvariants`, `:471-493`).
+
+### Commit
+
+`Store.commit` runs `processor.commit` (`:826-828`) synchronously via
+`Effect.runSyncWith` (`store.ts:886`, `:927`). Inside the owner,
+`commitLocalEvents` (`:215-252`) checks admission (lifecycle `running`, else a
+defect), encodes events and assigns sequence numbers from the local head
+(`:511-538`), merges them as `local-push`, and materializes the batch and sets the state
+head to its last event in one savepoint (`:236-239`). Only after the savepoint is released does it assign the
+in-memory sync state and append the new events to `push.queued` — unless the
+push is `awaiting-reconciliation`, whose queue the next pull rebuilds
+(`:240-248`). It then reserves a `Push` job if propagation is eligible
+(`reserveNextPush`, `:369-386`). After release the outbox is delivered, and
+Store refreshes the written tables (`store.ts:888-907`). No browser task runs
+before `store.commit` returns; subscriber callbacks and resumed fibers may
+commit again, entering the same path as a new commit.
+
+### Pull: stepped reconciliation
+
+The pull fiber (`:770-788`) streams from the leader at the current upstream
+head (behind the devtools pull latch when enabled) and restarts the stream when
+it ends. `PullReceived` (`acceptPull`, `:254-282`) validates the whole payload
+by merging it, registers a reconciliation id, and queues a `Reconcile` job; the
+stream waits for that job before it delivers the next item. A pull arriving
+after admission closed completes without being applied (`:258-261`).
+
+The runner applies the payload in steps of `PULL_CHUNK_SIZE` = 32 events
+(`:936-937`). A step that does not start by confirming the oldest pending
+event rebases and replays every pending event, so it takes at least as many
+incoming events as there are pending events; this keeps a pull's replay work
+proportional to its size (`stepSize`, `:653-667`). An explicit leader
+rebase's first step extends far enough to reach the old upstream head
+(`minimumEnd`, `:268-273`). Each step
+(`reconcile`, `:669-705`; `applyPullStep`, `:284-310`) runs in the owner:
+
+1. Merge the incoming prefix against the **live** pending events, never against
+   a plan from before the last yield.
+2. In one savepoint, roll back the journal, materialize incoming events,
+   replay pending events, and set the state head (`applyPullToSqlite`,
+   `:559-624`).
+3. Assign the in-memory sync state; a rebase also resets the push to
+   `idle { queued: pending }`, invalidating the old operation. Release the
+   owner and deliver the outbox.
+
+The runner then refreshes the written tables — all user tables after a
+rollback (`:592-597`) — and yields. A local commit can land between steps.
+Only the last step discards the journal up to the payload's global head
+(`:612`). `PullFinished` (`finishPull`, `:312-327`) clears the
+reconciliation; if a step rebased or a rejected batch is now recovered (judged
+against current state, not a snapshot from pull start), it rebuilds the push
+queue from current pending. It then reserves the next push. No replacement
+push starts while a reconciliation is active (`:371`).
+
+### Cancellation
+
+If a step needs a rebase while a leader push is in flight, the owner sets
+`push: cancelling` and returns `cancel-push` without touching SQLite or sync
+state (`:290-296`). The runner interrupts the push fiber outside the owner,
+sends `PushCancelled`, and retries the same prefix from live state
+(`:690-696`, `:329-334`). Commits during that wait apply against the previous
+coherent state. A late success or rejection from the cancelled push is
+ignored; a fatal failure still fails the session (`:341-349`).
+
+### Push results
+
+The owner records `in-flight { operationId }` before the `Push` job becomes
+visible to the runner (`:378-385`). The runner starts at most one leader push
+and skips a job that became obsolete while queued (`startLeaderPush`,
+`:707-731`). `PushSucceeded`, `PushRejected`, and `PushFailed` carry the id
+(`completePush`, `:336-367`). A rejection moves the push to
+`awaiting-reconciliation` unless current pending events already show the batch
+was recovered; later commits accumulate in pending without crossing the
+boundary until a pull confirms or rebases the rejected prefix
+(LS.SYS.SYNC.PROC-R04). `PushFailed` (a non-interrupt leader failure) fails the
+session.
+
+### Materializer hash check
+
+In development, materializers' results are hashed on both sides. The session
+records its hash for each pending event it materializes — on commit
+(`materializeEvents`, `:540-557`) and when replaying pending events during a
+pull step (`:608`) — in `pendingMaterializerHashes` (`:103-107`, `:497-500`).
+The leader publishes the hashes from its persist receipts in
+`PullItem.materializerHashes` (decoded as `[]` when absent). When an advance
+confirms a pending event, the session compares its recorded hash with the
+leader's and fails with `MaterializerHashMismatchError` on divergence
+(`:574-586`). This catches a side-effecting or non-deterministic materializer
+even though confirmed events are not re-materialized. Rolled-back events drop
+their recorded hashes (`:587-590`). Incoming events are materialized with the
+leader's hash, and the session materializer compares it with its own
+(`store.ts:265-278`).
+
+### Failure and shutdown
+
+- Pull, reconciliation, and handler failures arrive as `Failed`
+  (`reportFailure`, `:629-632`), which sets `lifecycle: failed` and queues
+  `NotifyFailure`; the runner then stops pull and push and shuts down the Store
+  (`:438-457`, `:751-756`). If even `Failed` cannot be recorded, the processor
+  logs both causes and shuts down the Store directly (`:634-650`).
+- **Orderly shutdown** (`shutdown(exit)`, `:820-825`) closes admission
+  immediately (`shutdown-requested`, `:388-417`). The `BeginShutdown` job runs
+  after any accepted `Reconcile` job, stops the pull fiber, and sends
+  `DrainStarted` (`:742-745`). For a successful exit the processor enters
+  `stopping` and drains the rebuilt pending suffix in batches until the queue
+  is empty (`:419-436`, `:373-376`); an unresolved rejection or a fatal leader
+  failure fails the drain instead of claiming durability (`:362-364`,
+  `:442-445`; LS.SYS.SYNC.PROC-R03). A shutdown requested with a failure exit,
+  or a failed session, never drains. `FinishShutdown` stops pull and push and
+  completes the shutdown result (`:746-750`).
+- The Store runs this cleanup detached under a **hard bound**: the caller stops
+  waiting after 1s, and the detached drain is itself force-closed after
+  `SHUTDOWN_DRAIN_HARD_TIMEOUT_MS` (`create-store.ts:53`, `:392-413`,
+  `:574-585`) so an unresponsive leader cannot leak the lifetime scope
+  (LS.SYS.STORE-R07). A successful close of the scope the Store was created in
+  triggers the same drain.
+
+### Observability and test hooks
+
+`syncState.changes` streams a queue the owner offers to on every state change;
+it is for debugging and observability only (`:91`, `:829-832`). With
+`confirmUnsavedChanges`, a `beforeunload` handler warns while pending events
+exist (`:790-804`). Deterministic `rebaseBarriers` pause the runner (never the
+owner) at two labeled points around push cancellation and the end of a rebasing
+pull (`:628`, `:692`, `:703`).
+
+## Invariants
+
+| Property                                                                          | Status                                                         |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| One owner changes each processor's model                                          | guaranteed (leader mailbox; session synchronous owner)         |
+| Late completions cannot advance newer work                                        | guaranteed by operation, retry, pull and reconciliation ids    |
+| Leader publication and acknowledgement follow a successful persist receipt        | guaranteed                                                     |
+| Local leader pushes are validated against committed plus admitted history         | guaranteed                                                     |
+| Upstream pagination takes precedence over new local durable work                  | guaranteed                                                     |
+| A session commit is applied before `store.commit` returns                         | guaranteed                                                     |
+| Session rows, journal, head and in-memory sync state agree at every owner release | guaranteed for synchronous materializers and SQLite services   |
+| Code woken by a session transition sees only completed state                      | guaranteed (outbox delivered after release)                    |
+| Session messages are processed in FIFO order                                      | **not required**; ordering comes from the owner and identities |
+| A session pull payload is applied atomically                                      | **no**; complete prefixes may be visible                       |
+| Store refreshes a commit's tables before code it resumes runs                     | **no**; resumed code can refresh or commit first               |
+| A leader acknowledgement means backend acceptance                                 | **no**; it means durable, published, and scheduled             |
+| State DB and eventlog DB are crash-atomic together                                | **no** (LS.SYS.STATE-DQ2)                                      |
+| Hard frame-time bound during reconciliation                                       | **no**; a step bounds event count, not time                    |
+
+The session's agreement between SQLite and in-memory state can break only when
+the session is already failing (a failed rollback or a suspended owner body).
+The types do not enforce it;
+`tests/package-common/src/client-session/ClientSessionReconciliation.test.ts`
+checks it.
 
 ## Backpressure and Known Gaps
 
-- All processor queues are unbounded; there is no producer backpressure.
-  Anti-thrash relies on interrupt/clear on rebase and queue-clear on
-  rejection.
-- `cachedPayloads` in the leader's session pull path can grow without
-  bound (TODO, `LeaderSyncProcessor.ts:912-913`; issue #1423).
-- Per-event `materializerHashLeader` beyond the first item of a pull chunk
-  is unknown (TODO, `:555-556`, issue #503).
-- Metrics for retry/queue health are an acknowledged TODO (`:599`).
+- The leader mailbox, `localQueue`, `upstreamQueue`, and the session job queue
+  are unbounded; there is no producer backpressure. Provider pull pages are the
+  exception: at most 16 wait to become durable.
+- Every rebasing reconciliation step replays the full pending suffix, so large
+  rebases produce long tasks (about 2 s of catch-up and ~68 ms frame gaps in
+  the RFC's largest browser workload). Sizing those steps by the pending count
+  bounds how often a pull replays the suffix, but one step still replays all of
+  it. A leader rebase's first step must also reach the old upstream head, so it
+  replays the leader's whole pending tail in one task (about 70 ms per rebase
+  over 1,000 pending events with a React list subscribed).
+- Every upstream page interrupts and rebuilds an in-flight backend push, even
+  when the page does not touch the in-flight batch.
+- With `livePull: false`, nothing starts a new pull after `ServerAheadError`,
+  so `awaiting-pull` can persist until the next boot.
+- Suspension in the session owner is detected at runtime, not by types.
+- With `onError: 'ignore'` (the leader layer's default), a leader sync failure
+  stops the processor without notifying the shutdown channel.
+- `cachedPullItems` in the leader's session pull path can grow without bound
+  (`:1243-1244`; issue #1423).
+- Metrics for retry/queue health are not emitted (LS.SYS.OBS-DQ2).

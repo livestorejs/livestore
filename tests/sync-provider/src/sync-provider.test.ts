@@ -1,6 +1,13 @@
 import { expect } from 'vitest'
 
-import { BackendIdMismatchError, StateHead, SyncBackend } from '@livestore/common'
+import {
+  BackendIdMismatchError,
+  EventlogSqliteDb,
+  MaterializationJournal,
+  StateHead,
+  StateSqliteDb,
+  SyncBackend,
+} from '@livestore/common'
 import {
   LeaderThreadCtx,
   makeLeaderThreadLayer,
@@ -230,12 +237,18 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
                       }),
                   }),
               },
-              dbState,
-              dbEventlog,
               devtoolsOptions: { enabled: false },
               shutdownChannel: yield* WebChannel.noopChannel<typeof Shutdown.All.Type, typeof Shutdown.All.Type>(),
             }).pipe(
-              Layer.provide(StateHead.layer({ dbState })),
+              Layer.provide(
+                Layer.mergeAll(
+                  StateSqliteDb.layer(dbState),
+                  EventlogSqliteDb.layer(dbEventlog),
+                  Layer.mergeAll(StateHead.layer, MaterializationJournal.layer).pipe(
+                    Layer.provide(Layer.mergeAll(StateSqliteDb.layer(dbState), EventlogSqliteDb.layer(dbEventlog))),
+                  ),
+                ),
+              ),
               Layer.provide(FetchHttpClient.layer),
               Layer.provide(PlatformNode.NodeFileSystem.layer),
             ),
@@ -295,7 +308,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
           expect.soft(Result.isSuccess(caughtUp)).toBe(true)
           if (Result.isSuccess(caughtUp) === true) expect.soft(catchUpMs).toBeLessThanOrEqual(2_000)
           expect
-            .soft(leader.dbState.select<{ id: string }>(tables.todos.asSql().query).map((row) => row.id))
+            .soft(dbState.select<{ id: string }>(tables.todos.asSql().query).map((row) => row.id))
             .toEqual(['after-reconnect'])
         }).pipe(
           Effect.provide(PlatformNode.NodeFileSystem.layer),

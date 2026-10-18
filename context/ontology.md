@@ -34,6 +34,9 @@
 - **Materializer** — A pure function of an event and current state, producing
   state changes; runs identically on every client. _Avoid:_ projector, event
   handler.
+- **Materialization journal** — The per-event record of how materialization
+  changed state (a SQLite session changeset, or none), kept until the event is
+  confirmed so rebase can roll state back. _Avoid:_ session changeset table.
 - **State** — Data derived from the eventlog via materializers and queryable
   by the app. "Read model" is the event-sourcing literature term for the same
   thing; State is canonical in LiveStore.
@@ -59,6 +62,31 @@
   events for a `storeId`.
 - **Sync processor** — The component reconciling local pending events with
   upstream events; one runs session-side and one leader-side.
+- **Owner (sync processor)** — The only code allowed to change a sync
+  processor's model: the leader's mailbox loop, or the session's synchronous
+  `owned` body. _Avoid:_ lock holder.
+- **`LeaderMessage`** — A tagged input to the leader sync processor's mailbox
+  (local push, backend page, push/pull result, retry, shutdown), handled one at
+  a time. _Avoid:_ unqualified "message" (collides with wire-protocol and
+  devtools messages).
+- **`SessionMessage`** — A tagged input that changes the session sync
+  processor's model without returning a result to its sender. _Avoid:_
+  unqualified "message".
+- **Runner (sync processor)** — The session sync processor's asynchronous
+  side: it does all waiting (leader push, cancellation, refresh, yield,
+  shutdown) and reports outcomes back to the owner as `SessionMessage`s.
+- **Job (sync processor)** — A unit of work the session owner hands to the
+  runner (`Push`, `Reconcile`, `BeginShutdown`, `FinishShutdown`,
+  `NotifyFailure`).
+- **Outbox (sync processor)** — Where the session owner holds jobs and
+  notifications during a transition; delivered after the owner is released,
+  dropped if the transition fails.
+- **`LeaderPersistence`** — The leader's durable seam: rollback,
+  materialization, eventlog writes, journal maintenance, and heads, committed
+  as coordinated state and eventlog transactions.
+- **Persist receipt** — What a successful `LeaderPersistence` call returns:
+  the persisted events, their materializer hashes, and the resulting heads.
+  The leader publishes and acknowledges only what a receipt reports.
 - **Rebase** — Re-parenting local pending events onto newly pulled upstream
   events, incrementing their rebase generation.
 - **Live query** — A reactive query over state (`queryDb`, `computed`,
@@ -68,8 +96,8 @@
 - **Query instance** — A live, reference-counted node in the reactivity
   graph, created from a query definition.
 - **Result cache** — The bounded SQL-result cache keyed by statement and
-  bind values, invalidated per written table; distinct from query-instance
-  dedup.
+  bind values, invalidated per written table and cleared on rollback;
+  distinct from query-instance dedup.
 - **Reactivity graph** — The incremental computation graph that propagates
   state changes to live queries.
 - **Store registry** — The `storeId`-keyed manager of store lifecycles:
@@ -100,7 +128,8 @@
 - **Control operation** — A devtools message that mutates engine state
   (reset, import, event injection) rather than inspecting it.
 - **Changeset (SQLite session)** — A SQLite session-extension changeset
-  recorded per materialization, used to roll back state during rebase.
+  captured per materialization; the payload of a materialization journal
+  record, inverted to roll back state during rebase.
 - **Changeset (release)** — A pnpm changeset file describing a package-level
   change, folded into release notes.
 - **BDFL** — Benevolent Dictator For Life: the project creator holds final
@@ -114,7 +143,7 @@ The **event** is the spine: every other concept produces events, orders
 them, derives from them, or observes the result.
 
 | Relation to the spine | Terms |
-| --- | --- |
+| --------------------- | ----------------------------------------------------------------------------- |
 | Produce | Store (commit), Client session |
 | Order | Eventlog, Event sequence number, Sync backend, Rebase, Facts _(experimental)_ |
 | Derive | Materializer, State, Client document |
@@ -134,9 +163,13 @@ in their name:
   Sync backend, Sync processor share the leitwort. Rebase, Rebase
   generation, Upstream head, and Local head are its operation/position
   vocabulary (no leitwort — they name acts and places, not sync parts).
-- **State family** — anchor **State**; Materializer, Changeset (SQLite
-  session), Schema hash, and Storage format version are its derivation and
-  versioning vocabulary (mechanism names, no shared leitwort).
+  Owner, Runner, Job, Outbox, `LeaderMessage`, `SessionMessage`,
+  `LeaderPersistence`, and Persist receipt are Sync processor's internal
+  vocabulary; generic nouns carry the "(sync processor)" qualifier, and code
+  names stay qualified rather than shortened to "message".
+- **State family** — anchor **State**; Materializer, Materialization
+  journal, Changeset (SQLite session), Schema hash, and Storage format version
+  are its derivation and versioning vocabulary (mechanism names, no shared leitwort).
 - **Store family** (leitwort "store") — anchor **Store**; followers storeId,
   Store registry. Live query, Query definition, Query instance, Result
   cache, and Reactivity graph are its observation vocabulary.

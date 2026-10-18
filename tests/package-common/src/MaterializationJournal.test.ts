@@ -1,15 +1,6 @@
 import { expect } from 'vitest'
 
-import {
-  MATERIALIZATION_JOURNAL_META_TABLE,
-  MaterializationJournal,
-  migrateDb,
-  prepareBindValues,
-  SqliteError,
-  sql,
-  type MaterializationJournalMetaRow,
-  type SqliteDb,
-} from '@livestore/common'
+import { MaterializationJournal, migrateDb, SqliteError, StateSqliteDb, type SqliteDb } from '@livestore/common'
 import { EventSequenceNumber } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
@@ -17,7 +8,7 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
-import { schema } from './leader-thread/fixture.ts'
+import { getJournalChangeset, schema } from './leader-thread/fixture.ts'
 
 const setup = Effect.gen(function* () {
   const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
@@ -26,10 +17,9 @@ const setup = Effect.gen(function* () {
   yield* migrateDb({ db: dbState, schema })
   dbState.execute('CREATE TABLE journal_test (id INTEGER PRIMARY KEY, value TEXT NOT NULL)')
 
-  return {
-    dbState,
-    journal: MaterializationJournal.make({ dbState }),
-  }
+  const journal = yield* MaterializationJournal.make.pipe(Effect.provideService(StateSqliteDb.StateSqliteDb, dbState))
+
+  return { dbState, journal }
 })
 
 Vitest.describe.concurrent('MaterializationJournal', () => {
@@ -40,18 +30,18 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       const key = EventSequenceNumber.Client.Composite.make({ global: 1, client: 2, rebaseGeneration: 3 })
       yield* journal.record({
         key,
-        changeset: { _tag: 'changeset', data: Uint8Array.from([1, 2, 3]) },
+        changeset: Uint8Array.from([1, 2, 3]),
       })
 
       const replacementChangeset = Uint8Array.from([4, 5, 6])
       yield* journal.record({
         key,
-        changeset: { _tag: 'changeset', data: replacementChangeset },
+        changeset: replacementChangeset,
       })
 
       expect(getRecord(dbState, key)).toEqual({
         key,
-        changeset: { _tag: 'changeset', data: replacementChangeset },
+        changeset: replacementChangeset,
       })
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
@@ -61,17 +51,17 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       const { dbState, journal } = yield* setup
 
       const key = EventSequenceNumber.Client.Composite.make({ global: 1, client: 2, rebaseGeneration: 3 })
-      yield* journal.record({ key, changeset: { _tag: 'no-op' } })
+      yield* journal.record({ key, changeset: null })
 
       const sameSequenceKey = EventSequenceNumber.Client.Composite.make({
         global: 1,
         client: 2,
         rebaseGeneration: 4,
       })
-      yield* journal.record({ key: sameSequenceKey, changeset: { _tag: 'no-op' } })
+      yield* journal.record({ key: sameSequenceKey, changeset: null })
 
       const laterKey = EventSequenceNumber.Client.Composite.make({ global: 1, client: 3, rebaseGeneration: 0 })
-      yield* journal.record({ key: laterKey, changeset: { _tag: 'no-op' } })
+      yield* journal.record({ key: laterKey, changeset: null })
 
       yield* journal.discardUpTo(key)
 
@@ -79,7 +69,7 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       expect(getRecord(dbState, sameSequenceKey)).toBeUndefined()
       expect(getRecord(dbState, laterKey)).toEqual({
         key: laterKey,
-        changeset: { _tag: 'no-op' },
+        changeset: null,
       })
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
@@ -94,7 +84,7 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       })
       yield* journal.record({
         key: insertKey,
-        changeset: { _tag: 'changeset', data: insertChangeset },
+        changeset: insertChangeset,
       })
 
       const updateKey = EventSequenceNumber.Client.Composite.make({ global: 2, client: 0, rebaseGeneration: 0 })
@@ -103,11 +93,11 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       })
       yield* journal.record({
         key: updateKey,
-        changeset: { _tag: 'changeset', data: updateChangeset },
+        changeset: updateChangeset,
       })
 
       const noOpKey = EventSequenceNumber.Client.Composite.make({ global: 3, client: 0, rebaseGeneration: 0 })
-      yield* journal.record({ key: noOpKey, changeset: { _tag: 'no-op' } })
+      yield* journal.record({ key: noOpKey, changeset: null })
 
       yield* journal.rollback([insertKey, noOpKey, updateKey])
 
@@ -115,6 +105,35 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       expect(getRecord(dbState, insertKey)).toBeUndefined()
       expect(getRecord(dbState, updateKey)).toBeUndefined()
       expect(getRecord(dbState, noOpKey)).toBeUndefined()
+    }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
+  )
+
+  // Rollback reads and deletes records in chunks of 100 keys; 250 sequential updates span three chunks, including a
+  // padded partial one, and only reverse order restores the original state.
+  Vitest.live('rolls back more records than fit in one statement', (test) =>
+    Effect.gen(function* () {
+      const { dbState, journal } = yield* setup
+
+      const keys = Array.from({ length: 250 }, (_, index) =>
+        EventSequenceNumber.Client.Composite.make({ global: index + 1, client: 0, rebaseGeneration: 0 }),
+      )
+      for (const [index, key] of keys.entries()) {
+        const changeset = captureChangeset(dbState, () => {
+          if (index === 0) dbState.execute("INSERT INTO journal_test (id, value) VALUES (1, 'v0')")
+          else dbState.execute(`UPDATE journal_test SET value = 'v${index}' WHERE id = 1`)
+        })
+        yield* journal.record({ key, changeset })
+      }
+
+      const missingKey = EventSequenceNumber.Client.Composite.make({ global: 999, client: 0, rebaseGeneration: 0 })
+      const error = yield* journal.rollback([...keys, missingKey]).pipe(Effect.flip)
+      expect(error.method).toEqual('rollback')
+      expect(dbState.select('SELECT id, value FROM journal_test')).toEqual([{ id: 1, value: 'v249' }])
+
+      yield* journal.rollback(keys.toReversed())
+
+      expect(dbState.select('SELECT id, value FROM journal_test')).toEqual([])
+      expect(keys.map((key) => getRecord(dbState, key))).toEqual(keys.map(() => undefined))
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 
@@ -128,7 +147,7 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       })
       yield* journal.record({
         key: recordedKey,
-        changeset: { _tag: 'changeset', data: changeset },
+        changeset,
       })
 
       const missingKey = EventSequenceNumber.Client.Composite.make({ global: 1, client: 0, rebaseGeneration: 0 })
@@ -142,7 +161,7 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       expect(dbState.select('SELECT id, value FROM journal_test')).toEqual([{ id: 1, value: 'kept' }])
       expect(getRecord(dbState, recordedKey)).toEqual({
         key: recordedKey,
-        changeset: { _tag: 'changeset', data: changeset },
+        changeset,
       })
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
@@ -157,14 +176,14 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       })
       yield* journal.record({
         key: validKey,
-        changeset: { _tag: 'changeset', data: validChangeset },
+        changeset: validChangeset,
       })
 
       const invalidKey = EventSequenceNumber.Client.Composite.make({ global: 1, client: 0, rebaseGeneration: 0 })
       const invalidChangeset = Uint8Array.from([1, 2, 3])
       yield* journal.record({
         key: invalidKey,
-        changeset: { _tag: 'changeset', data: invalidChangeset },
+        changeset: invalidChangeset,
       })
 
       const error = yield* journal.rollback([validKey, invalidKey]).pipe(Effect.flip)
@@ -175,11 +194,11 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       expect(dbState.select('SELECT id, value FROM journal_test')).toEqual([{ id: 1, value: 'kept' }])
       expect(getRecord(dbState, validKey)).toEqual({
         key: validKey,
-        changeset: { _tag: 'changeset', data: validChangeset },
+        changeset: validChangeset,
       })
       expect(getRecord(dbState, invalidKey)).toEqual({
         key: invalidKey,
-        changeset: { _tag: 'changeset', data: invalidChangeset },
+        changeset: invalidChangeset,
       })
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
@@ -189,29 +208,8 @@ const getRecord = (
   dbState: SqliteDb,
   key: EventSequenceNumber.Client.Composite,
 ): MaterializationJournal.MaterializationRecord | undefined => {
-  const statement = sql`SELECT * FROM ${MATERIALIZATION_JOURNAL_META_TABLE}
-    WHERE seqNumGlobal = $global
-      AND seqNumClient = $client
-      AND seqNumRebaseGeneration = $rebaseGeneration
-    LIMIT 1`
-  const row = dbState.select<MaterializationJournalMetaRow>(
-    statement,
-    prepareBindValues(
-      {
-        global: key.global,
-        client: key.client,
-        rebaseGeneration: key.rebaseGeneration,
-      },
-      statement,
-    ),
-  )[0]
-
-  if (row === undefined) return undefined
-
-  return {
-    key,
-    changeset: row.changeset === null ? { _tag: 'no-op' } : { _tag: 'changeset', data: row.changeset },
-  }
+  const changeset = getJournalChangeset(dbState, key)
+  return changeset === undefined ? undefined : { key, changeset }
 }
 
 const captureChangeset = (dbState: SqliteDb, mutation: () => void): Uint8Array<ArrayBuffer> => {
@@ -220,7 +218,7 @@ const captureChangeset = (dbState: SqliteDb, mutation: () => void): Uint8Array<A
   try {
     mutation()
     const changeset = session.changeset()
-    if (changeset === undefined) {
+    if (changeset === null) {
       throw new Error('Expected mutation to produce a SQLite changeset')
     }
     return changeset
