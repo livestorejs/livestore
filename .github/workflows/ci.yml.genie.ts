@@ -431,7 +431,18 @@ export default githubWorkflow({
           name: 'Build examples',
           run: runDevenvTasksBefore('examples:build:src'),
         },
-        { name: 'Test examples', run: runDevenvTasksBefore('examples:test') },
+        { id: 'test-examples', name: 'Test examples', run: runDevenvTasksBefore('examples:test') },
+        {
+          name: 'Upload failed example test results',
+          if: "${{ failure() && steps.test-examples.outcome == 'failure' }}",
+          uses: 'actions/upload-artifact@v4',
+          with: {
+            name: 'example-test-failure-results',
+            path: 'examples/**/test-results/',
+            'if-no-files-found': 'warn',
+            'retention-days': 7,
+          },
+        },
         {
           id: 'deploy-examples',
           name: 'Deploy examples to Cloudflare',
