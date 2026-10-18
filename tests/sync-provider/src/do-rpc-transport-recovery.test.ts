@@ -1,10 +1,13 @@
 import { expect } from 'vitest'
 
 import {
+  EventlogSqliteDb,
   makeMockSyncBackend,
+  MaterializationJournal,
   type MockSyncBackend,
   ServerAheadError,
   StateHead,
+  StateSqliteDb,
   SyncBackend,
   type SyncOptions,
   UnknownError,
@@ -89,7 +92,7 @@ Vitest.describe('DO-RPC transport recovery', { timeout: 30_000 }, () => {
 
         expect(requestedCursors).toEqual([undefined, eventA.seqNum])
         expect(appliedHeads.filter((head) => head > 0)).toEqual([eventA.seqNum, eventB.seqNum])
-        expect(leader.dbState.select(tables.todos.orderBy('id', 'asc'))).toEqual([
+        expect((yield* StateSqliteDb.StateSqliteDb).select(tables.todos.orderBy('id', 'asc'))).toEqual([
           { id: 'a', text: 'A', completed: false },
           { id: 'b', text: 'B', completed: false },
         ])
@@ -111,10 +114,8 @@ Vitest.describe('DO-RPC transport recovery', { timeout: 30_000 }, () => {
 
         // Same parent as the remote event, so the backend rejects this push until the leader pulls and rebases.
         yield* leader.syncProcessor.push([
-          new LiveStoreEvent.Client.EncodedWithMeta(
-            LiveStoreEvent.Global.toClientEncoded(
-              localClient.todoCreated.next({ id: 'local', text: 'local', completed: false }),
-            ),
+          LiveStoreEvent.Global.toClientEncoded(
+            localClient.todoCreated.next({ id: 'local', text: 'local', completed: false }),
           ),
         ])
 
@@ -225,6 +226,10 @@ const leaderLayer = (backend: SyncOptions['backend']) =>
     const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
     const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
     const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
+    const sqliteDbLayer = Layer.mergeAll(StateSqliteDb.layer(dbState), EventlogSqliteDb.layer(dbEventlog))
+    const stateServicesLayer = Layer.mergeAll(StateHead.layer, MaterializationJournal.layer).pipe(
+      Layer.provide(sqliteDbLayer),
+    )
 
     return makeLeaderThreadLayer({
       schema,
@@ -234,9 +239,10 @@ const leaderLayer = (backend: SyncOptions['backend']) =>
       syncPayloadSchema: undefined,
       makeSqliteDb,
       syncOptions: { backend, livePull: false },
-      dbState,
-      dbEventlog,
       devtoolsOptions: { enabled: false },
       shutdownChannel: yield* WebChannel.noopChannel<any, any>(),
-    }).pipe(Layer.provide(StateHead.layer({ dbState })), Layer.provide(FetchHttpClient.layer))
+    }).pipe(
+      Layer.provide(Layer.mergeAll(sqliteDbLayer, stateServicesLayer, FetchHttpClient.layer)),
+      Layer.provideMerge(sqliteDbLayer),
+    )
   }).pipe(Layer.unwrap, Layer.provideMerge(PlatformNode.NodeFileSystem.layer))

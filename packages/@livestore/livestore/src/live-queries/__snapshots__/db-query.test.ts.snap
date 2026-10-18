@@ -9,9 +9,6 @@ exports[`otel > QueryBuilder subscription - async iterator 1`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -24,23 +21,28 @@ exports[`otel > QueryBuilder subscription - async iterator 1`] = `
       },
     },
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "client-session-sync-processor:boot",
       "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
         {
           "_name": "client-session-sync-processor:pull",
           "attributes": {
             "effect.fiber.interrupted": true,
           },
         },
-        {
-          "_name": "@livestore/common:LeaderSyncProcessor:push",
-          "attributes": {
-            "batch": "undefined",
-            "batchSize": 1,
-            "effect.fiber.interrupted": true,
-          },
-        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -110,13 +112,20 @@ exports[`otel > QueryBuilder subscription - async iterator 2`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encode-events",
-      },
-      {
-        "_name": "client-session-sync-processor:materialize-events",
+        "_name": "client-session-sync-processor:commit",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
         "children": [
           {
-            "_name": "client-session-sync-processor:materialize-event",
+            "_name": "client-session-sync-processor:encode-events",
+          },
+          {
+            "_name": "client-session-sync-processor:materialize-events",
             "children": [
               {
                 "_name": "livestore.in-memory-db:execute",
@@ -127,12 +136,7 @@ exports[`otel > QueryBuilder subscription - async iterator 2`] = `
               {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
-                  "bindValueKeys": [
-                    "$id",
-                    "$seqNumGlobal",
-                    "$seqNumClient",
-                    "$seqNumRebaseGeneration",
-                  ],
+                  "bindValueKeys": "$id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration",
                   "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                   "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
@@ -140,16 +144,6 @@ exports[`otel > QueryBuilder subscription - async iterator 2`] = `
             ],
           },
         ],
-      },
-      {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "todo.created": 1
-}",
-          "mergeResultTag": "advance",
-        },
       },
     ],
   },
@@ -165,9 +159,6 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -180,23 +171,28 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1
       },
     },
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "client-session-sync-processor:boot",
       "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
         {
           "_name": "client-session-sync-processor:pull",
           "attributes": {
             "effect.fiber.interrupted": true,
           },
         },
-        {
-          "_name": "@livestore/common:LeaderSyncProcessor:push",
-          "attributes": {
-            "batch": "undefined",
-            "batchSize": 1,
-            "effect.fiber.interrupted": true,
-          },
-        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -266,13 +262,20 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 2
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encode-events",
-      },
-      {
-        "_name": "client-session-sync-processor:materialize-events",
+        "_name": "client-session-sync-processor:commit",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
         "children": [
           {
-            "_name": "client-session-sync-processor:materialize-event",
+            "_name": "client-session-sync-processor:encode-events",
+          },
+          {
+            "_name": "client-session-sync-processor:materialize-events",
             "children": [
               {
                 "_name": "livestore.in-memory-db:execute",
@@ -283,12 +286,7 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 2
               {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
-                  "bindValueKeys": [
-                    "$id",
-                    "$seqNumGlobal",
-                    "$seqNumClient",
-                    "$seqNumRebaseGeneration",
-                  ],
+                  "bindValueKeys": "$id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration",
                   "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                   "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
@@ -296,16 +294,6 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 2
             ],
           },
         ],
-      },
-      {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "todo.created": 1
-}",
-          "mergeResultTag": "advance",
-        },
       },
     ],
   },
@@ -321,9 +309,6 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -336,23 +321,28 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
       },
     },
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "client-session-sync-processor:boot",
       "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
         {
           "_name": "client-session-sync-processor:pull",
           "attributes": {
             "effect.fiber.interrupted": true,
           },
         },
-        {
-          "_name": "@livestore/common:LeaderSyncProcessor:push",
-          "attributes": {
-            "batch": "undefined",
-            "batchSize": 1,
-            "effect.fiber.interrupted": true,
-          },
-        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -422,13 +412,20 @@ exports[`otel > QueryBuilder subscription - basic functionality 2`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encode-events",
-      },
-      {
-        "_name": "client-session-sync-processor:materialize-events",
+        "_name": "client-session-sync-processor:commit",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
         "children": [
           {
-            "_name": "client-session-sync-processor:materialize-event",
+            "_name": "client-session-sync-processor:encode-events",
+          },
+          {
+            "_name": "client-session-sync-processor:materialize-events",
             "children": [
               {
                 "_name": "livestore.in-memory-db:execute",
@@ -439,12 +436,7 @@ exports[`otel > QueryBuilder subscription - basic functionality 2`] = `
               {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
-                  "bindValueKeys": [
-                    "$id",
-                    "$seqNumGlobal",
-                    "$seqNumClient",
-                    "$seqNumRebaseGeneration",
-                  ],
+                  "bindValueKeys": "$id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration",
                   "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                   "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
@@ -452,16 +444,6 @@ exports[`otel > QueryBuilder subscription - basic functionality 2`] = `
             ],
           },
         ],
-      },
-      {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "todo.created": 1
-}",
-          "mergeResultTag": "advance",
-        },
       },
     ],
   },
@@ -477,9 +459,6 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -492,23 +471,28 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
       },
     },
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "client-session-sync-processor:boot",
       "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
         {
           "_name": "client-session-sync-processor:pull",
           "attributes": {
             "effect.fiber.interrupted": true,
           },
         },
-        {
-          "_name": "@livestore/common:LeaderSyncProcessor:push",
-          "attributes": {
-            "batch": "undefined",
-            "batchSize": 1,
-            "effect.fiber.interrupted": true,
-          },
-        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -578,13 +562,20 @@ exports[`otel > QueryBuilder subscription - direct table subscription 2`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encode-events",
-      },
-      {
-        "_name": "client-session-sync-processor:materialize-events",
+        "_name": "client-session-sync-processor:commit",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
         "children": [
           {
-            "_name": "client-session-sync-processor:materialize-event",
+            "_name": "client-session-sync-processor:encode-events",
+          },
+          {
+            "_name": "client-session-sync-processor:materialize-events",
             "children": [
               {
                 "_name": "livestore.in-memory-db:execute",
@@ -595,12 +586,7 @@ exports[`otel > QueryBuilder subscription - direct table subscription 2`] = `
               {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
-                  "bindValueKeys": [
-                    "$id",
-                    "$seqNumGlobal",
-                    "$seqNumClient",
-                    "$seqNumRebaseGeneration",
-                  ],
+                  "bindValueKeys": "$id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration",
                   "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                   "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
@@ -608,16 +594,6 @@ exports[`otel > QueryBuilder subscription - direct table subscription 2`] = `
             ],
           },
         ],
-      },
-      {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "todo.created": 1
-}",
-          "mergeResultTag": "advance",
-        },
       },
     ],
   },
@@ -633,9 +609,6 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -648,23 +621,28 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
       },
     },
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "client-session-sync-processor:boot",
       "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
         {
           "_name": "client-session-sync-processor:pull",
           "attributes": {
             "effect.fiber.interrupted": true,
           },
         },
-        {
-          "_name": "@livestore/common:LeaderSyncProcessor:push",
-          "attributes": {
-            "batch": "undefined",
-            "batchSize": 1,
-            "effect.fiber.interrupted": true,
-          },
-        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -734,13 +712,20 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 2`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encode-events",
-      },
-      {
-        "_name": "client-session-sync-processor:materialize-events",
+        "_name": "client-session-sync-processor:commit",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
         "children": [
           {
-            "_name": "client-session-sync-processor:materialize-event",
+            "_name": "client-session-sync-processor:encode-events",
+          },
+          {
+            "_name": "client-session-sync-processor:materialize-events",
             "children": [
               {
                 "_name": "livestore.in-memory-db:execute",
@@ -751,12 +736,7 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 2`] = `
               {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
-                  "bindValueKeys": [
-                    "$id",
-                    "$seqNumGlobal",
-                    "$seqNumClient",
-                    "$seqNumRebaseGeneration",
-                  ],
+                  "bindValueKeys": "$id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration",
                   "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                   "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
@@ -764,16 +744,6 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 2`] = `
             ],
           },
         ],
-      },
-      {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "todo.created": 1
-}",
-          "mergeResultTag": "advance",
-        },
       },
     ],
   },
@@ -789,9 +759,6 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -804,8 +771,18 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
       },
     },
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "client-session-sync-processor:boot",
       "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
         {
           "_name": "client-session-sync-processor:pull",
           "attributes": {
@@ -817,10 +794,12 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "effect.fiber.interrupted": true,
           },
         },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -916,13 +895,20 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encode-events",
-      },
-      {
-        "_name": "client-session-sync-processor:materialize-events",
+        "_name": "client-session-sync-processor:commit",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
         "children": [
           {
-            "_name": "client-session-sync-processor:materialize-event",
+            "_name": "client-session-sync-processor:encode-events",
+          },
+          {
+            "_name": "client-session-sync-processor:materialize-events",
             "children": [
               {
                 "_name": "livestore.in-memory-db:execute",
@@ -933,12 +919,7 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
               {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
-                  "bindValueKeys": [
-                    "$id",
-                    "$seqNumGlobal",
-                    "$seqNumClient",
-                    "$seqNumRebaseGeneration",
-                  ],
+                  "bindValueKeys": "$id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration",
                   "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                   "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
@@ -946,16 +927,6 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
             ],
           },
         ],
-      },
-      {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "todo.created": 1
-}",
-          "mergeResultTag": "advance",
-        },
       },
     ],
   },
@@ -969,13 +940,20 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encode-events",
-      },
-      {
-        "_name": "client-session-sync-processor:materialize-events",
+        "_name": "client-session-sync-processor:commit",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
         "children": [
           {
-            "_name": "client-session-sync-processor:materialize-event",
+            "_name": "client-session-sync-processor:encode-events",
+          },
+          {
+            "_name": "client-session-sync-processor:materialize-events",
             "children": [
               {
                 "_name": "livestore.in-memory-db:execute",
@@ -986,12 +964,7 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
               {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
-                  "bindValueKeys": [
-                    "$id",
-                    "$seqNumGlobal",
-                    "$seqNumClient",
-                    "$seqNumRebaseGeneration",
-                  ],
+                  "bindValueKeys": "$id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration",
                   "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                   "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
@@ -999,16 +972,6 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
             ],
           },
         ],
-      },
-      {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "todo.created": 1
-}",
-          "mergeResultTag": "advance",
-        },
       },
     ],
   },
@@ -1024,9 +987,6 @@ exports[`otel > otel 3`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -1039,23 +999,28 @@ exports[`otel > otel 3`] = `
       },
     },
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "client-session-sync-processor:boot",
       "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
         {
           "_name": "client-session-sync-processor:pull",
           "attributes": {
             "effect.fiber.interrupted": true,
           },
         },
-        {
-          "_name": "@livestore/common:LeaderSyncProcessor:push",
-          "attributes": {
-            "batch": "undefined",
-            "batchSize": 1,
-            "effect.fiber.interrupted": true,
-          },
-        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -1115,13 +1080,20 @@ exports[`otel > otel 4`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encode-events",
-      },
-      {
-        "_name": "client-session-sync-processor:materialize-events",
+        "_name": "client-session-sync-processor:commit",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
         "children": [
           {
-            "_name": "client-session-sync-processor:materialize-event",
+            "_name": "client-session-sync-processor:encode-events",
+          },
+          {
+            "_name": "client-session-sync-processor:materialize-events",
             "children": [
               {
                 "_name": "livestore.in-memory-db:execute",
@@ -1132,12 +1104,7 @@ exports[`otel > otel 4`] = `
               {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
-                  "bindValueKeys": [
-                    "$id",
-                    "$seqNumGlobal",
-                    "$seqNumClient",
-                    "$seqNumRebaseGeneration",
-                  ],
+                  "bindValueKeys": "$id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration",
                   "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                   "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
@@ -1145,16 +1112,6 @@ exports[`otel > otel 4`] = `
             ],
           },
         ],
-      },
-      {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "todo.created": 1
-}",
-          "mergeResultTag": "advance",
-        },
       },
     ],
   },
@@ -1342,9 +1299,6 @@ exports[`otel > with thunks 7`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -1357,23 +1311,28 @@ exports[`otel > with thunks 7`] = `
       },
     },
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "client-session-sync-processor:boot",
       "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
         {
           "_name": "client-session-sync-processor:pull",
           "attributes": {
             "effect.fiber.interrupted": true,
           },
         },
-        {
-          "_name": "@livestore/common:LeaderSyncProcessor:push",
-          "attributes": {
-            "batch": "undefined",
-            "batchSize": 1,
-            "effect.fiber.interrupted": true,
-          },
-        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -1439,13 +1398,20 @@ exports[`otel > with thunks 8`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encode-events",
-      },
-      {
-        "_name": "client-session-sync-processor:materialize-events",
+        "_name": "client-session-sync-processor:commit",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
         "children": [
           {
-            "_name": "client-session-sync-processor:materialize-event",
+            "_name": "client-session-sync-processor:encode-events",
+          },
+          {
+            "_name": "client-session-sync-processor:materialize-events",
             "children": [
               {
                 "_name": "livestore.in-memory-db:execute",
@@ -1456,12 +1422,7 @@ exports[`otel > with thunks 8`] = `
               {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
-                  "bindValueKeys": [
-                    "$id",
-                    "$seqNumGlobal",
-                    "$seqNumClient",
-                    "$seqNumRebaseGeneration",
-                  ],
+                  "bindValueKeys": "$id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration",
                   "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                   "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
@@ -1469,16 +1430,6 @@ exports[`otel > with thunks 8`] = `
             ],
           },
         ],
-      },
-      {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "todo.created": 1
-}",
-          "mergeResultTag": "advance",
-        },
       },
     ],
   },
@@ -1494,9 +1445,6 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -1509,23 +1457,28 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       },
     },
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "client-session-sync-processor:boot",
       "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
         {
           "_name": "client-session-sync-processor:pull",
           "attributes": {
             "effect.fiber.interrupted": true,
           },
         },
-        {
-          "_name": "@livestore/common:LeaderSyncProcessor:push",
-          "attributes": {
-            "batch": "undefined",
-            "batchSize": 1,
-            "effect.fiber.interrupted": true,
-          },
-        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -1591,13 +1544,20 @@ exports[`otel > with thunks with query builder and without labels 4`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encode-events",
-      },
-      {
-        "_name": "client-session-sync-processor:materialize-events",
+        "_name": "client-session-sync-processor:commit",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
         "children": [
           {
-            "_name": "client-session-sync-processor:materialize-event",
+            "_name": "client-session-sync-processor:encode-events",
+          },
+          {
+            "_name": "client-session-sync-processor:materialize-events",
             "children": [
               {
                 "_name": "livestore.in-memory-db:execute",
@@ -1608,12 +1568,7 @@ exports[`otel > with thunks with query builder and without labels 4`] = `
               {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
-                  "bindValueKeys": [
-                    "$id",
-                    "$seqNumGlobal",
-                    "$seqNumClient",
-                    "$seqNumRebaseGeneration",
-                  ],
+                  "bindValueKeys": "$id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration",
                   "span.label": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                   "sql": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
                 },
@@ -1621,16 +1576,6 @@ exports[`otel > with thunks with query builder and without labels 4`] = `
             ],
           },
         ],
-      },
-      {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "todo.created": 1
-}",
-          "mergeResultTag": "advance",
-        },
       },
     ],
   },
