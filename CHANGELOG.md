@@ -8,6 +8,9 @@
 
 ## Unreleased
 
+See the [development documentation](https://docs.livestore.dev) for current
+features. Try the development build with `npm install @livestore/livestore@dev`.
+
 ### Changed
 
 - **State storage:** Rebases roll back state through a materialization journal table instead of SQLite changesets carried in event metadata. Because the state system tables changed, existing state databases are rebuilt from the eventlog once after upgrading ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
@@ -21,6 +24,11 @@
 
 For maintainers and contributors:
 
+- **Release tooling:** Treat npm's previously-staged version conflicts as
+  pending publication, verify public visibility for core and DevTools packages,
+  and fail with bounded, logged recovery instructions when approval or registry
+  intervention is needed
+  ([npm/cli#9889](https://github.com/npm/cli/issues/9889)).
 - **SQLite services:** Leader and client-session code reach SQLite through the `StateSqliteDb`, `EventlogSqliteDb`, `StateHead` and `MaterializationJournal` Effect services ([#1658](https://github.com/livestorejs/livestore/pull/1658)). Thanks [@IGassmann](https://github.com/IGassmann).
 - **Events:** `LiveStoreEvent.Client.EncodedWithMeta` is removed and events are plain values. Sync metadata travels beside events, and leader materializer hashes travel in `PullItem.materializerHashes`. Custom adapters that wrapped pushed events must pass them through unchanged ([#1660](https://github.com/livestorejs/livestore/pull/1660)).
 - **Leader persistence:** A `LeaderPersistence` service makes each leader transition durable as a whole (rollback, materialization, journal, state and backend heads, eventlog inserts) and returns a receipt that the processor publishes ([#1661](https://github.com/livestorejs/livestore/pull/1661)).
