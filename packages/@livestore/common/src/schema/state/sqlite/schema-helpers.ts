@@ -13,20 +13,20 @@ export const getDefaultValuesEncoded = <TTableDef extends TableDefBase>(
     ReadonlyRecord.filter((col, key) => {
       if (fallbackValues?.[key] !== undefined) return true
       if (key === 'id') return false
-      return col!.default._tag === 'None' || !SqliteDsl.isSqlDefaultValue(col!.default.value)
+      return col.default._tag === 'None' || !SqliteDsl.isSqlDefaultValue(col.default.value)
     }),
     ReadonlyRecord.map((column, columnName) => {
       if (fallbackValues?.[columnName] !== undefined) return fallbackValues[columnName]
-      if (column!.default._tag === 'None') {
-        return column!.nullable === true
+      if (column.default._tag === 'None') {
+        return column.nullable === true
           ? null
           : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
       }
 
-      const defaultValue = column!.default.value
+      const defaultValue = column.default.value
       const resolvedDefault = SqliteDsl.resolveColumnDefault(defaultValue)
 
-      return Schema.encodeSync(column!.schema)(resolvedDefault)
+      return Schema.encodeSync(column.schema)(resolvedDefault)
     }),
   )
 
@@ -39,19 +39,19 @@ export const getDefaultValuesDecoded = <TTableDef extends TableDefBase>(
     ReadonlyRecord.filter((col, key) => {
       if (fallbackValues?.[key] !== undefined) return true
       if (key === 'id') return false
-      return col!.default._tag === 'None' || !SqliteDsl.isSqlDefaultValue(col!.default.value)
+      return col.default._tag === 'None' || !SqliteDsl.isSqlDefaultValue(col.default.value)
     }),
     ReadonlyRecord.map((column, columnName) => {
       if (fallbackValues?.[columnName] !== undefined) return fallbackValues[columnName]
-      if (column!.default._tag === 'None') {
-        return column!.nullable === true
+      if (column.default._tag === 'None') {
+        return column.nullable === true
           ? null
           : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
       }
 
-      const defaultValue = column!.default.value
+      const defaultValue = column.default.value
       const resolvedDefault = SqliteDsl.resolveColumnDefault(defaultValue)
 
-      return Schema.decodeSync(Schema.toType(column!.schema))(resolvedDefault)
+      return Schema.decodeSync(Schema.toType(column.schema))(resolvedDefault)
     }),
   )

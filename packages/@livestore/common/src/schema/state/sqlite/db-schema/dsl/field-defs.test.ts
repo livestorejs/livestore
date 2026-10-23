@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import { Schema } from '@livestore/utils/effect'
 
+import { getColumnDefForSchema } from '../../column-def.ts'
 import * as F from './field-defs.ts'
 
 describe('FieldDefs', () => {
@@ -41,10 +42,11 @@ describe('FieldDefs', () => {
   })
 })
 
-const columnDefSnapshot = (columnDef: F.ColumnDefinition.Any) => ({
-  ...columnDef,
-  schema: schemaSnapshot(columnDef.schema),
-})
+// column helpers return field schemas; snapshot the SQLite column derived from them
+const columnDefSnapshot = (field: Schema.Top) => {
+  const columnDef = getColumnDefForSchema(field)
+  return { ...columnDef, schema: schemaSnapshot(columnDef.schema) }
+}
 
 // Effect schemas expose a large inspectable object graph. Snapshot only the
 // schema shape this DSL cares about.

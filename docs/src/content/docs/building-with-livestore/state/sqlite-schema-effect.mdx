@@ -97,7 +97,7 @@ Effect Schema types are automatically mapped to SQLite column types:
 | `Schema.DateFromMillis` | `integer` (epoch milliseconds) | `Date` |
 | `Schema.BigInt` | `text` | `bigint` |
 | Complex types (Struct, Array, etc.) | `text` (JSON encoded) | Decoded type |
-| `Schema.optional(T)` | Nullable column | `T \| undefined` |
+| `Schema.optional(T)` | Nullable column | `T \| null` |
 | `Schema.NullOr(T)` | Nullable column | `T \| null` |
 
 A field that transforms between an encoded and a decoded type (a codec such as `Schema.FiniteFromString`) is stored in its encoded form and decoded back to its type when read.
@@ -121,8 +121,7 @@ A field that transforms between an encoded and a decoded type (a codec such as `
 ### Schema Design
 
 - Always use `withPrimaryKey` for primary key columns - never combine it with nullable types
-- Use `Schema.optional()` for truly optional fields that can be undefined
-- Use `Schema.NullOr()` for fields that can explicitly be set to null
+- Use `Schema.NullOr()` for fields that can be null; SQLite stores the absent value as `NULL`, so a `Schema.optional()` field is read back as `T | null` too
 - Leverage schema annotations like `title` or `identifier` to avoid repeating table names
 - Group related schemas in the same module for better organization
 
