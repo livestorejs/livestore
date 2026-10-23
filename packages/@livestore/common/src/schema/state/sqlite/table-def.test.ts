@@ -2,6 +2,7 @@ import { TestSchema } from 'effect/testing'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
 import {
+  type Brand,
   Effect,
   Option,
   Result,
@@ -472,6 +473,266 @@ describe('table function overloads', () => {
     expectTypeOf<{ id: string }>().not.toExtend<Parameters<typeof events.insert>[0]>()
     expectTypeOf(events.insert).toBeCallableWith({ _tag: 'Event', id: '1' })
     expect(() => events.insert({ _tag: 'Event', id: '1' }).asSql()).not.toThrow()
+  })
+
+  it('classifies every supported field shape the same way at the type level and at runtime', () => {
+    const Point = Schema.Struct({ x: Schema.Finite })
+    const shapeFields = {
+      id: State.SQLite.text({ primaryKey: true }),
+      text: Schema.String,
+      int: Schema.Int,
+      nullOrText: Schema.NullOr(Schema.String),
+      undefinedOrText: Schema.UndefinedOr(Schema.String),
+      optionalText: Schema.optional(Schema.String),
+      optionalKeyText: Schema.optionalKey(Schema.String),
+      optionalKeyNullOrText: Schema.optionalKey(Schema.NullOr(Schema.String)),
+      bool: Schema.Boolean,
+      nullOrBool: Schema.NullOr(Schema.Boolean),
+      boolLiteral: Schema.Literal(true),
+      date: Schema.Date,
+      dateFromString: Schema.DateFromString,
+      dateFromMillis: Schema.DateFromMillis,
+      nullOrDate: Schema.NullOr(Schema.Date),
+      stringFromNullOrDate: Schema.NullOr(Schema.Date).pipe(
+        Schema.decodeTo(
+          Schema.String,
+          SchemaTransformation.transform({
+            decode: (date) => (date === null ? 'none' : date.toISOString()),
+            encode: (value) => (value === 'none' ? null : new Date(value)),
+          }),
+        ),
+      ),
+      literals: Schema.Literals(['a', 'b']),
+      numberLiterals: Schema.Literals([1, 2]),
+      stringOrNumber: Schema.Union([Schema.String, Schema.Finite]),
+      struct: Point,
+      nullOrStruct: Schema.NullOr(Point),
+      json: State.SQLite.json(),
+      nullableJson: State.SQLite.json({ nullable: true }),
+      typedJson: State.SQLite.json({ schema: Point }),
+      unknown: Schema.Unknown,
+      nullOrUnknown: Schema.NullOr(Schema.Unknown),
+      blob: Schema.Uint8Array,
+      finiteFromString: Schema.FiniteFromString,
+      branded: Schema.String.pipe(Schema.brand('Id')),
+      null: Schema.Null,
+      defaulted: State.SQLite.text({ default: 'x' }),
+      nullableDefaulted: State.SQLite.integer({ nullable: true, default: null }),
+    }
+    const shapes = State.SQLite.table({ name: 'shapes', columns: shapeFields })
+    // the classification types take the input fields; `rowSchema.fields` are the derived column codecs
+    type Fields = typeof shapeFields
+    type Row = typeof shapes.Type
+    type Encoded = typeof shapes.Encoded
+    const { columns } = shapes.sqliteDef
+    const nullable = Object.fromEntries(Object.entries(columns).map(([name, column]) => [name, column.nullable]))
+    const columnTypes = Object.fromEntries(Object.entries(columns).map(([name, column]) => [name, column.columnType]))
+
+    // nullability: the type-level `IsNullable` agrees with `sqliteDef.columns[K].nullable`
+    expect(nullable).toEqual({
+      id: false,
+      text: false,
+      int: false,
+      nullOrText: true,
+      undefinedOrText: true,
+      optionalText: true,
+      optionalKeyText: true,
+      optionalKeyNullOrText: true,
+      bool: false,
+      nullOrBool: true,
+      boolLiteral: false,
+      date: false,
+      dateFromString: false,
+      dateFromMillis: false,
+      nullOrDate: true,
+      stringFromNullOrDate: true,
+      literals: false,
+      numberLiterals: false,
+      stringOrNumber: false,
+      struct: false,
+      nullOrStruct: true,
+      json: false,
+      nullableJson: true,
+      typedJson: false,
+      unknown: false,
+      nullOrUnknown: true,
+      blob: false,
+      finiteFromString: false,
+      branded: false,
+      null: true,
+      defaulted: false,
+      nullableDefaulted: true,
+    })
+    type Nullable = { [K in keyof Fields]: State.SQLite.FromFields.IsNullable<Fields[K]> }
+    expectTypeOf<Nullable>().toEqualTypeOf<{
+      id: false
+      text: false
+      int: false
+      nullOrText: true
+      undefinedOrText: true
+      optionalText: true
+      optionalKeyText: true
+      optionalKeyNullOrText: true
+      bool: false
+      nullOrBool: true
+      boolLiteral: false
+      date: false
+      dateFromString: false
+      dateFromMillis: false
+      nullOrDate: true
+      stringFromNullOrDate: true
+      literals: false
+      numberLiterals: false
+      stringOrNumber: false
+      struct: false
+      nullOrStruct: true
+      json: false
+      nullableJson: true
+      typedJson: false
+      unknown: false
+      nullOrUnknown: true
+      blob: false
+      finiteFromString: false
+      branded: false
+      null: true
+      defaulted: false
+      nullableDefaulted: true
+    }>()
+
+    // storage: the type-level `Encoded` agrees with the column type and with what the codec writes
+    expect(columnTypes).toEqual({
+      id: 'text',
+      text: 'text',
+      int: 'integer',
+      nullOrText: 'text',
+      undefinedOrText: 'text',
+      optionalText: 'text',
+      optionalKeyText: 'text',
+      optionalKeyNullOrText: 'text',
+      bool: 'integer',
+      nullOrBool: 'integer',
+      boolLiteral: 'integer',
+      date: 'text',
+      dateFromString: 'text',
+      dateFromMillis: 'integer',
+      nullOrDate: 'text',
+      stringFromNullOrDate: 'text',
+      literals: 'text',
+      numberLiterals: 'integer',
+      stringOrNumber: 'text',
+      struct: 'text',
+      nullOrStruct: 'text',
+      json: 'text',
+      nullableJson: 'text',
+      typedJson: 'text',
+      unknown: 'text',
+      nullOrUnknown: 'text',
+      blob: 'blob',
+      finiteFromString: 'text',
+      branded: 'text',
+      null: 'text',
+      defaulted: 'text',
+      nullableDefaulted: 'integer',
+    })
+    const encode = <K extends keyof typeof columns>(column: K, value: Row[K]): Encoded[K] =>
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- the assertion under test is that the codec's output has the type-level `Encoded` type
+      Schema.encodeUnknownSync(columns[column].schema)(value) as Encoded[K]
+    const date = new Date('2026-01-02T03:04:05.678Z')
+    expect(encode('bool', true)).toBe(1)
+    expect(encode('nullOrBool', null)).toBeNull()
+    expect(encode('boolLiteral', true)).toBe(1)
+    expect(encode('date', date)).toBe(date.toISOString())
+    expect(encode('nullOrDate', null)).toBeNull()
+    expect(encode('dateFromMillis', date)).toBe(date.getTime())
+    expect(encode('stringFromNullOrDate', 'none')).toBeNull()
+    expect(encode('stringFromNullOrDate', date.toISOString())).toBe(date.toISOString())
+    expect(encode('stringOrNumber', 'abc')).toBe('"abc"')
+    expect(encode('struct', { x: 1 })).toBe('{"x":1}')
+    expect(encode('nullOrStruct', null)).toBeNull()
+    expect(encode('nullOrUnknown', { a: 1 })).toBe('{"a":1}')
+    expect(encode('optionalKeyText', null)).toBeNull()
+    expect(encode('finiteFromString', 42)).toBe('42')
+    expectTypeOf<Encoded['stringOrNumber']>().toEqualTypeOf<string>()
+    expectTypeOf<Encoded['bool']>().toEqualTypeOf<0 | 1>()
+    expectTypeOf<Encoded['nullOrBool']>().toEqualTypeOf<0 | 1 | null>()
+    expectTypeOf<Encoded['boolLiteral']>().toEqualTypeOf<0 | 1>()
+    expectTypeOf<Encoded['date']>().toEqualTypeOf<string>()
+    expectTypeOf<Encoded['nullOrDate']>().toEqualTypeOf<string | null>()
+    expectTypeOf<Encoded['dateFromMillis']>().toEqualTypeOf<number>()
+    expectTypeOf<Encoded['stringFromNullOrDate']>().toEqualTypeOf<string | null>()
+    expectTypeOf<Row['stringFromNullOrDate']>().toEqualTypeOf<string>()
+    expectTypeOf<Encoded['struct']>().toEqualTypeOf<string>()
+    expectTypeOf<Encoded['nullOrStruct']>().toEqualTypeOf<string | null>()
+    expectTypeOf<Encoded['nullOrUnknown']>().toEqualTypeOf<string | null>()
+    expectTypeOf<Encoded['optionalKeyText']>().toEqualTypeOf<string | null>()
+    expectTypeOf<Encoded['blob']>().toEqualTypeOf<Uint8Array>()
+    expectTypeOf<Row['stringOrNumber']>().toEqualTypeOf<string | number>()
+    expectTypeOf<Row['optionalKeyNullOrText']>().toEqualTypeOf<string | null>()
+    expectTypeOf<Row['nullOrUnknown']>().toEqualTypeOf<unknown>()
+    expectTypeOf<Row['branded']>().toEqualTypeOf<string & Brand.Brand<'Id'>>()
+    expectTypeOf<Row['null']>().toEqualTypeOf<null>()
+
+    // insert: nullable and defaulted columns are omittable, everything else is required
+    expectTypeOf(shapes.insert).toBeCallableWith({
+      id: '1',
+      text: 't',
+      int: 1,
+      bool: true,
+      boolLiteral: true,
+      date,
+      dateFromString: date,
+      dateFromMillis: date,
+      literals: 'a',
+      numberLiterals: 1,
+      stringOrNumber: 1,
+      struct: { x: 1 },
+      json: {},
+      typedJson: { x: 1 },
+      unknown: 1,
+      blob: new Uint8Array(),
+      finiteFromString: 1,
+      branded: 'b' as string & Brand.Brand<'Id'>,
+    })
+    expectTypeOf<{ id: string }>().not.toExtend<Parameters<typeof shapes.insert>[0]>()
+    type Omittable = State.SQLite.FromFields.OmittableInsertColumnNames<Fields>
+    expectTypeOf<Omittable>().toEqualTypeOf<
+      | 'nullOrText'
+      | 'undefinedOrText'
+      | 'optionalText'
+      | 'optionalKeyText'
+      | 'optionalKeyNullOrText'
+      | 'nullOrBool'
+      | 'nullOrDate'
+      | 'stringFromNullOrDate'
+      | 'nullOrStruct'
+      | 'nullableJson'
+      | 'nullOrUnknown'
+      | 'null'
+      | 'defaulted'
+      | 'nullableDefaulted'
+    >()
+    const runtimeOmittable = Object.entries(columns)
+      .filter(([, column]) => column.nullable === true || column.default._tag === 'Some')
+      .map(([name]) => name)
+      .sort()
+    expect(runtimeOmittable).toEqual(
+      [
+        'nullOrText',
+        'undefinedOrText',
+        'optionalText',
+        'optionalKeyText',
+        'optionalKeyNullOrText',
+        'nullOrBool',
+        'nullOrDate',
+        'stringFromNullOrDate',
+        'nullOrStruct',
+        'nullableJson',
+        'nullOrUnknown',
+        'null',
+        'defaulted',
+        'nullableDefaulted',
+      ].sort(),
+    )
   })
 
   it('keeps nullable fields of non-struct schemas omittable on insert', () => {
