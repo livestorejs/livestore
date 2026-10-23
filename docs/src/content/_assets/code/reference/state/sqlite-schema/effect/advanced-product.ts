@@ -17,7 +17,7 @@ const ProductSchema = Schema.Struct({
     }),
   ),
   isActive: Schema.Boolean.pipe(State.SQLite.withDefault(true)),
-  createdAt: Schema.Date.pipe(State.SQLite.withDefault('CURRENT_TIMESTAMP')),
+  createdAt: Schema.Date.pipe(State.SQLite.withDefault({ sql: 'CURRENT_TIMESTAMP' })),
 }).annotate({ title: 'products' })
 
 export const productTable = State.SQLite.table({ schema: ProductSchema })
