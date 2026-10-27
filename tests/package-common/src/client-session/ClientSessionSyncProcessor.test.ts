@@ -591,7 +591,11 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       type MakeLeaderThreadArg = Parameters<MakeLeaderThread>[0]
 
       class LeaderThreadCacheKey {
-        constructor(readonly makeSqliteDb: MakeLeaderThreadArg) {}
+        readonly makeSqliteDb: MakeLeaderThreadArg
+
+        constructor(makeSqliteDb: MakeLeaderThreadArg) {
+          this.makeSqliteDb = makeSqliteDb
+        }
 
         [Equal.symbol](that: Equal.Equal): boolean {
           return that instanceof LeaderThreadCacheKey

@@ -13,7 +13,6 @@ import {
   otelSetupStep,
   repoPnpmOnlyBuiltDependencies,
   runDevenvTasksBefore,
-  savePnpmStateStep,
   workflowReportCollectorStep,
   workflowReportCommentBodyStep,
   workflowReportPublisherStep,
@@ -83,11 +82,7 @@ const namespaceRunnerConfig = {
   'runs-on': namespaceRunner(GITHUB_RUN_ID),
 }
 
-const withNixDiagnosticsOnFailure = (steps: unknown[]) => [
-  ...steps,
-  savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
-  nixDiagnosticsArtifactStep(),
-]
+const withNixDiagnosticsOnFailure = (steps: unknown[]) => [...steps, nixDiagnosticsArtifactStep()]
 
 /** Standard CI job configuration (namespace runner + bash shell) */
 const standardCIJob = (config: { env?: Record<string, string>; if?: string; steps: unknown[]; priority?: 3 | 6 }) => ({
@@ -183,7 +178,7 @@ export default githubWorkflow({
         },
       ],
     }),
-    [prReviewsResolvedJobId]: prReviewsResolvedJob(),
+    [prReviewsResolvedJobId]: prReviewsResolvedJob({ runsOn: namespaceRunner(GITHUB_RUN_ID) }),
     'minimal-dev': {
       if: "github.event_name == 'pull_request'",
       'runs-on': 'ubuntu-latest',
@@ -200,6 +195,7 @@ export default githubWorkflow({
       ],
     },
     ...prSnapshotPackJob({
+      runsOn: namespaceRunner(GITHUB_RUN_ID),
       topologyPath: releaseTopologyPath,
       setupStepsAfterCheckout: livestoreSetupStepsAfterCheckout,
       packTask: 'release:snapshot:pack:git-sha',
@@ -260,7 +256,6 @@ export default githubWorkflow({
           run: runDevenvTasksBefore('test:integration:sync-provider:matrix'),
           env: { OTEL_STATE_DIR: '', TEST_SYNC_PROVIDER: '${{ matrix.provider }}' },
         },
-        savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
         nixDiagnosticsArtifactStep(),
       ],
     },
@@ -300,7 +295,6 @@ export default githubWorkflow({
           },
           run: runDevenvTasksBefore('test:integration:playwright:upload-trace'),
         },
-        savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
         nixDiagnosticsArtifactStep(),
       ],
     },
@@ -327,7 +321,6 @@ export default githubWorkflow({
             OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp',
           },
         },
-        savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
         nixDiagnosticsArtifactStep(),
       ],
     },
@@ -349,7 +342,6 @@ export default githubWorkflow({
             OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp',
           },
         },
-        savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
         nixDiagnosticsArtifactStep(),
       ],
     },

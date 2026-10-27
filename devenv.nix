@@ -327,10 +327,6 @@ in
     (taskModules.flake-lock-duplicates {
       lockfiles = [ "packages/@livestore/wa-sqlite/flake.lock" ];
     })
-    (taskModules.ts {
-      tsconfigFile = "tsconfig.dev.json";
-      tsBinPkg = effectTsgo;
-    })
     (taskModules.check {
       hasTests = false;
       # `hasNixCheck` gates the nix-cli build tasks (nix:check:quick / nix:flake:check), which
@@ -404,6 +400,17 @@ in
     ./nix/devenv-modules/tasks/local/mono-wrappers.nix
     ./nix/devenv-modules/tasks/local/github-rulesets.nix
     ./nix/devenv-modules/tasks/local/quarantine.nix
+    # LiveStore owns its TypeScript solution; effect-utils no longer exports TS tasks.
+    {
+      tasks = lib.genAttrs [ "ts:check" "ts:build" ] (_: {
+        description = "Type check and build the LiveStore TypeScript solution";
+        exec = "${effectTsgo}/bin/tsgo --build tsconfig.dev.json";
+        after = [
+          "genie:run"
+          "pnpm:install"
+        ];
+      });
+    }
   ];
 
   # Non-`.genie.ts` generator inputs (source-of-truth modules that the `.genie.ts`

@@ -7,17 +7,13 @@ import {
   githubWorkflow,
   livestoreDefaultRefPolicyJob,
   livestoreSetupSteps,
+  namespaceRunner,
   otelSetupStep,
   runDevenvTasksBefore,
-  savePnpmStateStep,
   nixDiagnosticsArtifactStep,
 } from '../../genie/repo.ts'
 
-const withNixDiagnosticsOnFailure = (steps: unknown[]) => [
-  ...steps,
-  savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
-  nixDiagnosticsArtifactStep(),
-]
+const withNixDiagnosticsOnFailure = (steps: unknown[]) => [...steps, nixDiagnosticsArtifactStep()]
 
 const devtoolsCertificationArtifactsStep = {
   uses: 'actions/upload-artifact@v4',
@@ -52,6 +48,7 @@ const releasePlanPaths = [
 ]
 
 const prSnapshot = prSnapshotReleaseJobs({
+  runsOn: namespaceRunner('${{ github.run_id }}'),
   topologyPath: releaseTopologyPath,
   attestationPredicateType: prSnapshotAttestationPredicateType,
 })

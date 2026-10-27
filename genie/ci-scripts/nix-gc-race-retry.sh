@@ -121,6 +121,11 @@ run_nix_gc_race_retry() {
     # fetchurl gives up after its own curl retries with this exact wording; an origin 5xx
     # (GitHub release assets) is a transient network failure, not a build defect.
     printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot download [^[:space:]]+ from any mirror' && saw_fetch_signature=true || true
+    # Nix can resume an already complete body at EOF after an HTTP/2 drop; the server
+    # correctly returns 416. No nix.conf setting fixes this resume-at-EOF bug.
+    printf '%s' "$flattened" | grep -Eq "error:[[:space:]]*unable to download '[^']+': HTTP error 416([^0-9]|$)" && saw_fetch_signature=true || true
+    # Cachix can return a transient conflict for narinfo GETs; Nix treats 409 as permanent.
+    printf '%s' "$flattened" | grep -Eq "error:[[:space:]]*unable to download 'https?://[^']+\\.narinfo': HTTP error 409([^0-9]|$)" && saw_fetch_signature=true || true
     printf '%s' "$flattened" | grep -Eq "error:[[:space:]]*cannot connect to socket at '/nix/var/nix/daemon-socket/socket'" && saw_daemon_socket_failure=true || true
     rm -f "$log"
 
