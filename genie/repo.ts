@@ -267,6 +267,7 @@ import {
   defaultActionlintConfig as defaultActionlintConfigBase,
   dispatchAlignmentStep,
   installNixStep,
+  namespaceRunner as effectUtilsNamespaceRunner,
   applyMegarepoLockStep,
   checkoutStep,
   defaultRefPolicyCheckJob,
@@ -318,7 +319,12 @@ export const defaultActionlintConfig = {
 
 /** LiveStore delivery is priority 3; optional background work is priority 6. */
 export const namespaceRunner = (runId: string, priority: 3 | 6 = 3) => {
-  return [`namespace-profile-linux-x86-64;job.priority=${priority};github.run-id=${runId}`] as const
+  return effectUtilsNamespaceRunner({
+    profile: 'namespace-profile-linux-x86-64',
+    runId,
+    priority,
+    privileged: 'trusted',
+  })
 }
 
 const shellSingleQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
@@ -391,6 +397,9 @@ export const livestoreSetupSteps = [checkoutStep(), ...livestoreSetupStepsAfterC
 export const livestoreDefaultRefPolicyJob = defaultRefPolicyCheckJob({
   runsOn: namespaceRunner('${{ github.run_id }}'),
   firstPartyOwners: ['overengineeringstudio'],
+  defaultRefs: {
+    'overengineeringstudio/effect-utils': 'd883d18e3ad7609602db0ec8687c14a77625b905',
+  },
   normalizeGitBranchRefs: true,
   verifyReachable: true,
 })

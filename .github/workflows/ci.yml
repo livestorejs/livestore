@@ -26,7 +26,10 @@ env:
 
 jobs:
   source-policy:
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     permissions:
       contents: read
     defaults:
@@ -56,7 +59,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           FIRST_PARTY_OWNERS_JSON: '["overengineeringstudio"]'
           DEFAULT_REF: main
-          DEFAULT_REFS_JSON: '{}'
+          DEFAULT_REFS_JSON: '{"overengineeringstudio/effect-utils":"d883d18e3ad7609602db0ec8687c14a77625b905"}'
           DEFAULT_REF_POLICIES_JSON: '{"overengineeringstudio/effect-utils":{"defaultRef":"published","acceptedRefs":["published","main"]}}'
           VERIFY_REACHABLE: '1'
           NORMALIZE_GIT_BRANCH_REFS: '1'
@@ -425,7 +428,10 @@ jobs:
           NODE
         shell: bash
   publish-nix-cache:
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=6;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=6",
+      ]
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     defaults:
       run:
@@ -583,7 +589,10 @@ jobs:
           retention-days: 14
   pr-reviews-resolved:
     if: ${{ github.event_name != 'schedule' }}
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     timeout-minutes: 5
     permissions:
       pull-requests: read
@@ -647,7 +656,10 @@ jobs:
         run: 'docker build --tag livestore-minimal-dev:ci .'
   pack-pr-snapshot:
     if: github.event_name == 'pull_request'
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     permissions:
       contents: read
     env:
@@ -802,7 +814,10 @@ jobs:
           if-no-files-found: error
           retention-days: 7
   lint:
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     defaults:
       run:
         shell: bash
@@ -936,7 +951,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   changeset-check:
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     if: github.event_name == 'pull_request'
     defaults:
       run:
@@ -1079,7 +1097,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   type-check:
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     defaults:
       run:
         shell: bash
@@ -1213,7 +1234,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   test-unit:
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     defaults:
       run:
         shell: bash
@@ -1357,7 +1381,10 @@ jobs:
           - cf-ws-do
           - cf-do-rpc-d1
           - cf-do-rpc-do
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     defaults:
       run:
         shell: bash
@@ -1507,7 +1534,10 @@ jobs:
     strategy:
       matrix:
         suite: [misc, todomvc, devtools]
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     defaults:
       run:
         shell: bash
@@ -1667,7 +1697,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   perf-test:
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=6;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=6",
+      ]
     defaults:
       run:
         shell: bash
@@ -1816,7 +1849,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   wa-sqlite-test:
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     defaults:
       run:
         shell: bash
@@ -1970,7 +2006,10 @@ jobs:
   report-pr-preview:
     if: ${{ github.event_name == 'pull_request' && !cancelled() }}
     needs: [build-deploy-docs, build-and-deploy-examples-src]
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=6;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=6",
+      ]
     permissions:
       contents: read
       pull-requests: write
@@ -2161,7 +2200,10 @@ jobs:
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run workflow-report:publish --show-output' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false ${PIPELINE_RUN_PREFIX:+$PIPELINE_RUN_PREFIX }"${DEVENV_BIN:?DEVENV_BIN not set}" tasks run workflow-report:publish --show-output'
   build-and-deploy-examples-src:
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     defaults:
       run:
         shell: bash
@@ -2335,7 +2377,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   build-deploy-docs:
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     defaults:
       run:
         shell: bash

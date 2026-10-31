@@ -70,7 +70,10 @@ env:
 
 jobs:
   source-policy:
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     permissions:
       contents: read
     defaults:
@@ -100,7 +103,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           FIRST_PARTY_OWNERS_JSON: '["overengineeringstudio"]'
           DEFAULT_REF: main
-          DEFAULT_REFS_JSON: '{}'
+          DEFAULT_REFS_JSON: '{"overengineeringstudio/effect-utils":"d883d18e3ad7609602db0ec8687c14a77625b905"}'
           DEFAULT_REF_POLICIES_JSON: '{"overengineeringstudio/effect-utils":{"defaultRef":"published","acceptedRefs":["published","main"]}}'
           VERIFY_REACHABLE: '1'
           NORMALIZE_GIT_BRANCH_REFS: '1'
@@ -471,7 +474,10 @@ jobs:
     if: github.event_name != 'schedule' && github.event_name != 'workflow_run'
   dispatch-authorized-pr-snapshots:
     if: github.event_name == 'schedule'
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     permissions:
       actions: write
       contents: read
@@ -592,7 +598,10 @@ jobs:
           fi
   validate-pr-snapshot:
     if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'promote-pr-snapshot')
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     permissions:
       actions: read
       contents: read
@@ -727,7 +736,10 @@ jobs:
           retention-days: 1
   attest-pr-snapshot:
     needs: [validate-pr-snapshot]
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     permissions:
       actions: read
       attestations: write
@@ -778,7 +790,10 @@ jobs:
           retention-days: 1
   authorize-pr-snapshot:
     needs: [validate-pr-snapshot]
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     permissions:
       contents: read
       pull-requests: read
@@ -830,7 +845,10 @@ jobs:
   publish-pr-snapshot:
     if: needs.authorize-pr-snapshot.outputs.authorized == 'true'
     needs: [validate-pr-snapshot, attest-pr-snapshot, authorize-pr-snapshot]
-    runs-on: ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=${{ github.run_id }}']
+    runs-on:
+      [
+        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
+      ]
     concurrency:
       group: 'pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}'
       cancel-in-progress: false

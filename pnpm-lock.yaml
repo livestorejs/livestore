@@ -5441,6 +5441,7 @@ packages:
   '@opentelemetry/sdk-trace-base@2.2.0':
     resolution: {integrity: sha512-xWQgL0Bmctsalg6PaXExmzdedSp3gyKV8mQBwK/j9VGdCDu2fmXIb2gAehBKbkXCpJ4HPkgv3QfoJWRT4dHWbw==}
     engines: {node: ^18.19.0 || >=20.6.0}
+    deprecated: Use @opentelemetry/sdk-trace package
     peerDependencies:
       '@opentelemetry/api': '>=1.3.0 <1.10.0'
 
@@ -5454,6 +5455,7 @@ packages:
   '@opentelemetry/sdk-trace-node@2.2.0':
     resolution: {integrity: sha512-+OaRja3f0IqGG2kptVeYsrZQK9nKRSpfFrKtRBq4uh6nIB8bTBgaGvYQrQoRrQWQMA5dK5yLhDMDc0dvYvCOIQ==}
     engines: {node: ^18.19.0 || >=20.6.0}
+    deprecated: Use @opentelemetry/sdk-trace package
     peerDependencies:
       '@opentelemetry/api': '>=1.0.0 <1.10.0'
 
@@ -17341,7 +17343,7 @@ snapshots:
       '@livestore/common': 0.4.0(19c24e298eabfbd5da84401b1b2a16e0)
       '@livestore/devtools-web-common': 0.4.0(19c24e298eabfbd5da84401b1b2a16e0)
       '@livestore/sqlite-wasm': 0.4.0(19c24e298eabfbd5da84401b1b2a16e0)
-      '@livestore/utils': 0.4.0(19c24e298eabfbd5da84401b1b2a16e0)
+      '@livestore/utils': 0.4.0-dev.25(19c24e298eabfbd5da84401b1b2a16e0)
       '@livestore/webmesh': 0.4.0(19c24e298eabfbd5da84401b1b2a16e0)
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
@@ -17363,7 +17365,7 @@ snapshots:
       '@livestore/common': 0.4.0(684163e887e72f92ec18ef8fcb52b2bf)
       '@livestore/devtools-web-common': 0.4.0(684163e887e72f92ec18ef8fcb52b2bf)
       '@livestore/sqlite-wasm': 0.4.0(684163e887e72f92ec18ef8fcb52b2bf)
-      '@livestore/utils': 0.4.0(684163e887e72f92ec18ef8fcb52b2bf)
+      '@livestore/utils': 0.4.0-dev.25(684163e887e72f92ec18ef8fcb52b2bf)
       '@livestore/webmesh': 0.4.0(684163e887e72f92ec18ef8fcb52b2bf)
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
@@ -17390,7 +17392,7 @@ snapshots:
       '@livestore/common': 0.4.0(c9454a423e803399b0b8d8a416303925)
       '@livestore/devtools-web-common': 0.4.0(c9454a423e803399b0b8d8a416303925)
       '@livestore/sqlite-wasm': 0.4.0(c9454a423e803399b0b8d8a416303925)
-      '@livestore/utils': 0.4.0(c9454a423e803399b0b8d8a416303925)
+      '@livestore/utils': 0.4.0-dev.25(c9454a423e803399b0b8d8a416303925)
       '@livestore/webmesh': 0.4.0(c9454a423e803399b0b8d8a416303925)
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
@@ -23648,7 +23650,7 @@ snapshots:
 
   dotenv-expand@11.0.7:
     dependencies:
-      dotenv: 16.6.1
+      dotenv: 16.4.7
 
   dotenv@16.4.7: {}
 

@@ -24,6 +24,9 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 For maintainers and contributors:
 
+- **CI tooling:** Pin effect-utils to `d883d18e` and use its trusted Namespace
+  runner policy so Nix installation can create sandbox namespaces without
+  granting privileged containers to fork pull requests ([#1691](https://github.com/livestorejs/livestore/pull/1691)).
 - **Release tooling:** Treat npm's previously-staged version conflicts as
   pending publication, verify public visibility for core and DevTools packages,
   and fail with bounded, logged recovery instructions when approval or registry
