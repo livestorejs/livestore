@@ -589,10 +589,7 @@ jobs:
           retention-days: 14
   pr-reviews-resolved:
     if: ${{ github.event_name != 'schedule' }}
-    runs-on:
-      [
-        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
-      ]
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       pull-requests: read
@@ -656,10 +653,7 @@ jobs:
         run: 'docker build --tag livestore-minimal-dev:ci .'
   pack-pr-snapshot:
     if: github.event_name == 'pull_request'
-    runs-on:
-      [
-        "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3",
-      ]
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     env:

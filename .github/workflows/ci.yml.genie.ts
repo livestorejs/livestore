@@ -178,7 +178,10 @@ export default githubWorkflow({
         },
       ],
     }),
-    [prReviewsResolvedJobId]: prReviewsResolvedJob({ runsOn: namespaceRunner(GITHUB_RUN_ID) }),
+    [prReviewsResolvedJobId]: prReviewsResolvedJob({
+      // Q415: hosted under the Q423 exception until 2026-12-31; moves to a fleet profile on admission.
+      runsOn: 'ubuntu-latest',
+    }),
     'minimal-dev': {
       if: "github.event_name == 'pull_request'",
       'runs-on': 'ubuntu-latest',
@@ -195,7 +198,8 @@ export default githubWorkflow({
       ],
     },
     ...prSnapshotPackJob({
-      runsOn: namespaceRunner(GITHUB_RUN_ID),
+      // Q415: hosted under the Q423 exception until 2026-12-31; moves to a fleet profile on admission.
+      runsOn: 'ubuntu-24.04',
       topologyPath: releaseTopologyPath,
       setupStepsAfterCheckout: livestoreSetupStepsAfterCheckout,
       packTask: 'release:snapshot:pack:git-sha',
