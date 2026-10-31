@@ -147,8 +147,8 @@
       },
       "original": {
         "owner": "overengineeringstudio",
+        "ref": "published-effect-4.0",
         "repo": "effect-utils",
-        "rev": "d883d18e3ad7609602db0ec8687c14a77625b905",
         "type": "github"
       }
     }

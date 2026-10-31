@@ -393,12 +393,12 @@ export const livestoreSetupStepsAfterCheckout = [
  */
 export const livestoreSetupSteps = [checkoutStep(), ...livestoreSetupStepsAfterCheckout] as const
 
-/** Dedicated source-policy job so policy failures do not hide test/lint results. */
+/** Source-policy job; effect-utils uses the frozen Effect 4 branch (effect-utils#2226). */
 export const livestoreDefaultRefPolicyJob = defaultRefPolicyCheckJob({
   runsOn: namespaceRunner('${{ github.run_id }}'),
   firstPartyOwners: ['overengineeringstudio'],
   defaultRefs: {
-    'overengineeringstudio/effect-utils': 'd883d18e3ad7609602db0ec8687c14a77625b905',
+    'overengineeringstudio/effect-utils': 'published-effect-4.0',
   },
   normalizeGitBranchRefs: true,
   verifyReachable: true,
