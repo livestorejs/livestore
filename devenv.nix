@@ -387,8 +387,8 @@ in
       // {
         tasks = lint.tasks // {
           "lint:check:lockfile" = lint.tasks."lint:check:lockfile" // {
-            # Temporary until the Effect 4.1.0 migration takes lint-oxc's pnpmPkg fix.
-            # Upstream nix/devenv-modules/tasks/shared/lint-oxc.nix:82-89 omits pnpmPkg.
+            # Temporary until the Effect 4.1.0 migration takes effect-utils#2228 (3b661131).
+            # Frozen nix/devenv-modules/tasks/shared/lint-oxc.nix:82-89 omits pnpmPkg.
             # Keep the guard first while exposing its pinned native to storage discovery.
             exec = ''
               export PATH="$PATH:${pnpmPkg}/bin"

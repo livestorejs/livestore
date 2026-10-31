@@ -24,6 +24,7 @@ const workflows = Object.fromEntries(
 const deliveryJobs = [
   'source-policy',
   'pack-pr-snapshot',
+  'pr-reviews-resolved',
   'lint',
   'changeset-check',
   'type-check',
@@ -39,6 +40,13 @@ const expectedPriorities = new Map<string, 3 | 6>([
   ...deliveryJobs.map((job) => [`ci.yml/${job}`, 3] as const),
   ...backgroundJobs.map((job) => [`ci.yml/${job}`, 6] as const),
   ...['release.yml', 'deploy-prod.yml', 'devtools-artifact.yml'].map((file) => [`${file}/source-policy`, 3] as const),
+  ...[
+    'dispatch-authorized-pr-snapshots',
+    'validate-pr-snapshot',
+    'attest-pr-snapshot',
+    'authorize-pr-snapshot',
+    'publish-pr-snapshot',
+  ].map((job) => [`release.yml/${job}`, 3] as const),
 ])
 const runnerLabel = (priority: 3 | 6) =>
   "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=" +
@@ -73,9 +81,9 @@ const priorityErrors = (input: typeof workflows) => {
 }
 
 describe('Namespace generated workflow priorities', () => {
-  it('classifies all 14 delivery and three background jobs while preserving run affinity', () => {
+  it('classifies all 20 delivery and three background jobs while preserving run affinity', () => {
     expect(priorityErrors(workflows)).toEqual([])
-    expect([...expectedPriorities.values()].filter((priority) => priority === 3)).toHaveLength(14)
+    expect([...expectedPriorities.values()].filter((priority) => priority === 3)).toHaveLength(20)
     expect([...expectedPriorities.values()].filter((priority) => priority === 6)).toHaveLength(3)
   })
 
