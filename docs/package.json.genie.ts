@@ -39,6 +39,8 @@ const runtimeDeps = catalog.compose({
         'react',
         'react-dom',
         'tailwindcss',
+        // Mermaid's browser client must match the Nix-provided Playwright browsers.
+        'playwright',
       ),
       ...livestoreContribPackageVersions,
       ...catalog.pick('@livestore/devtools-vite'),

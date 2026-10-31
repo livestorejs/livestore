@@ -346,37 +346,58 @@ in
     # nixfmt formatting and deadnix dead-code checks over this repo's tracked `.nix` files.
     # Gated through `extraChecks` above rather than run standalone.
     (taskModules.lint-nix { })
-    (taskModules.lint-oxc {
-      lintPaths = [
-        "packages"
-        "tests"
-        "scripts"
-        "docs"
-        ".github"
-      ];
-      geniePatterns = [
-        ".github/workflows/*.genie.ts"
-        ".oxfmtrc.json.genie.ts"
-        ".oxlintrc.json.genie.ts"
-        "scripts/*.genie.ts"
-        "docs/*.genie.ts"
-        "docs/src/**/*.genie.ts"
-        "tests/**/*.genie.ts"
-        "packages/@livestore/*/*.genie.ts"
-        "packages/@local/*/*.genie.ts"
-        "packages/@local/*/**/*.genie.ts"
-      ];
-      genieCoverageDirs = [
-        "packages"
-        "tests"
-        "docs"
-        "scripts"
-      ];
-      # Keep wa-sqlite unmanaged by Genie for now.
-      # Effect-utils now supports exclusions for the coverage check.
-      genieCoverageExcludes = [ "packages/@livestore/wa-sqlite/" ];
-      tsconfig = "tsconfig.dev.json";
-    })
+    (
+      { config, ... }:
+      let
+        lint =
+          (taskModules.lint-oxc {
+            lintPaths = [
+              "packages"
+              "tests"
+              "scripts"
+              "docs"
+              ".github"
+            ];
+            geniePatterns = [
+              ".github/workflows/*.genie.ts"
+              ".oxfmtrc.json.genie.ts"
+              ".oxlintrc.json.genie.ts"
+              "scripts/*.genie.ts"
+              "docs/*.genie.ts"
+              "docs/src/**/*.genie.ts"
+              "tests/**/*.genie.ts"
+              "packages/@livestore/*/*.genie.ts"
+              "packages/@local/*/*.genie.ts"
+              "packages/@local/*/**/*.genie.ts"
+            ];
+            genieCoverageDirs = [
+              "packages"
+              "tests"
+              "docs"
+              "scripts"
+            ];
+            # Keep wa-sqlite unmanaged by Genie for now.
+            # Effect-utils now supports exclusions for the coverage check.
+            genieCoverageExcludes = [ "packages/@livestore/wa-sqlite/" ];
+            tsconfig = "tsconfig.dev.json";
+          })
+            { inherit lib pkgs config; };
+      in
+      lint
+      // {
+        tasks = lint.tasks // {
+          "lint:check:lockfile" = lint.tasks."lint:check:lockfile" // {
+            # Temporary until the Effect 4.1.0 migration takes lint-oxc's pnpmPkg fix.
+            # Upstream nix/devenv-modules/tasks/shared/lint-oxc.nix:82-89 omits pnpmPkg.
+            # Keep the guard first while exposing its pinned native to storage discovery.
+            exec = ''
+              export PATH="$PATH:${pnpmPkg}/bin"
+            ''
+            + lint.tasks."lint:check:lockfile".exec;
+          };
+        };
+      }
+    )
     (taskModules.pnpm {
       packages = pnpmPackages;
       inherit pnpmPkg;

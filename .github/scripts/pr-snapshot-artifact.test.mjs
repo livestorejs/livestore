@@ -390,10 +390,9 @@ test('generated promotion workflow is anchored to trusted main', async () => {
 
   const ciWorkflow = await readFile(new URL('../workflows/ci.yml', import.meta.url), 'utf8')
   assert.match(ciWorkflow, /pack-pr-snapshot:\n    if: github\.event_name == 'pull_request'/)
-  assert.doesNotMatch(
-    ciWorkflow,
-    /pack-pr-snapshot:[\s\S]*?head\.repo\.full_name == github\.repository/,
-  )
+  const packSnapshotJob = ciWorkflow.match(/^ {2}pack-pr-snapshot:\n(?:(?!^ {2}[\w-]+:)[\s\S])*/m)
+  assert.ok(packSnapshotJob, 'Missing pack-pr-snapshot job')
+  assert.doesNotMatch(packSnapshotJob[0], /head\.repo\.full_name == github\.repository/)
   assert.doesNotMatch(ciWorkflow, /pull_request_target:/)
   assert.match(
     ciWorkflow,
