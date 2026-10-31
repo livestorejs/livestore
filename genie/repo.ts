@@ -329,12 +329,13 @@ export const namespaceRunner = (runId: string, priority: 3 | 6 = 3) => {
 
 const shellSingleQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
 
+// Commit-tree setup reuses prepared cached subtrees read-only instead of re-authoring them.
 const setupMegarepoRun = (run: string) =>
   run.replace(
     'nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all',
     [
       'nix run --no-write-lock-file',
-      '"github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all',
+      '"github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --worktree-mode commit --commit-all-members --lock-sync off',
     ].join(' '),
   )
 

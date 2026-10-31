@@ -1105,7 +1105,7 @@ jobs:
             printf '\''MEGAREPO_STORE=%s\n'\'' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
           fi
 
-          nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all'
+          nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --worktree-mode commit --commit-all-members --lock-sync off'
         shell: bash
       - name: Save megarepo store
         if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}
@@ -1312,7 +1312,7 @@ jobs:
             printf '\''MEGAREPO_STORE=%s\n'\'' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
           fi
 
-          nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all'
+          nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --worktree-mode commit --commit-all-members --lock-sync off'
         shell: bash
       - name: Save megarepo store
         if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}
@@ -1524,7 +1524,7 @@ jobs:
             printf '\''MEGAREPO_STORE=%s\n'\'' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
           fi
 
-          nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all'
+          nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --worktree-mode commit --commit-all-members --lock-sync off'
         shell: bash
       - name: Save megarepo store
         if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}
@@ -1708,7 +1708,7 @@ jobs:
             printf '\''MEGAREPO_STORE=%s\n'\'' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
           fi
 
-          nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all'
+          nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --worktree-mode commit --commit-all-members --lock-sync off'
         shell: bash
       - name: Save megarepo store
         if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}
