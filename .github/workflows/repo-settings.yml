@@ -6,15 +6,16 @@ name: Repo settings
 on:
   push:
     branches: [main]
-    paths: [.github/repo-settings.json]
+    paths:
+      [.github/repo-settings.json, .github/workflows/repo-settings.yml, .github/workflows/repo-settings.yml.genie.ts]
   pull_request:
     paths:
-      [
-        .github/repo-settings.json,
-        .github/repo-settings.json.genie.ts,
-        genie/ci.ts,
-        .github/reconcile-app-manifest.json,
-      ]
+      - .github/repo-settings.json
+      - .github/repo-settings.json.genie.ts
+      - .github/workflows/repo-settings.yml
+      - .github/workflows/repo-settings.yml.genie.ts
+      - genie/ci.ts
+      - .github/reconcile-app-manifest.json
   schedule:
     - cron: 17 6 * * *
   workflow_dispatch: {}
@@ -157,6 +158,21 @@ jobs:
           app-id: '4312996'
           private-key: ${{ secrets.LIVESTORE_RULESET_APP_KEY }}
           permission-administration: write
+      - name: Reconcile fork PR contributor approval
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          FORK_PR_APPROVAL_POLICY: all_external_contributors
+        run: |
+          endpoint="repos/$GH_REPO/actions/permissions/fork-pr-contributor-approval"
+          before=$(gh api --method GET "$endpoint" --jq .approval_policy)
+          printf "Fork PR approval before: %s\n" "$before"
+          if [[ "$before" != "$FORK_PR_APPROVAL_POLICY" ]]; then
+            gh api --method PUT "$endpoint" -f approval_policy="$FORK_PR_APPROVAL_POLICY"
+          fi
+          after=$(gh api --method GET "$endpoint" --jq .approval_policy)
+          printf "Fork PR approval after: %s\n" "$after"
+          [[ "$after" == "$FORK_PR_APPROVAL_POLICY" ]]
       - name: Apply ruleset
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
@@ -306,6 +322,14 @@ jobs:
           app-id: '4312996'
           private-key: ${{ secrets.LIVESTORE_RULESET_APP_KEY }}
           permission-administration: read
+      - name: Plan fork PR contributor approval
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          FORK_PR_APPROVAL_POLICY: all_external_contributors
+        run: |
+          current=$(gh api --method GET "repos/$GH_REPO/actions/permissions/fork-pr-contributor-approval" --jq .approval_policy)
+          printf "Fork PR approval current: %s\nFork PR approval intended: %s\n" "$current" "$FORK_PR_APPROVAL_POLICY"
       - name: Plan ruleset
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'

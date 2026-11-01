@@ -18,6 +18,9 @@ import {
 // App ID of the org-owned `livestore-ruleset-reconciler` GitHub App (see context/repo-ruleset-sync).
 const RECONCILE_APP_ID = '4312996'
 
+// One-off bridge until the Alchemy GitHub stack owns this setting.
+const FORK_PR_APPROVAL_POLICY = 'all_external_contributors'
+
 /**
  * Mints a GitHub App installation token scoped to least privilege. Without an
  * explicit `permission-*` input the token inherits all of the App's permissions
@@ -42,12 +45,18 @@ export default githubWorkflow({
   on: {
     push: {
       branches: ['main'],
-      paths: ['.github/repo-settings.json'],
+      paths: [
+        '.github/repo-settings.json',
+        '.github/workflows/repo-settings.yml',
+        '.github/workflows/repo-settings.yml.genie.ts',
+      ],
     },
     pull_request: {
       paths: [
         '.github/repo-settings.json',
         '.github/repo-settings.json.genie.ts',
+        '.github/workflows/repo-settings.yml',
+        '.github/workflows/repo-settings.yml.genie.ts',
         'genie/ci.ts',
         '.github/reconcile-app-manifest.json',
       ],
@@ -78,6 +87,25 @@ export default githubWorkflow({
         ...livestoreSetupSteps,
         appTokenStep('write'),
         {
+          name: 'Reconcile fork PR contributor approval',
+          env: {
+            GH_TOKEN: '${{ steps.app-token.outputs.token }}',
+            GH_REPO: '${{ github.repository }}',
+            FORK_PR_APPROVAL_POLICY,
+          },
+          run: [
+            'endpoint="repos/$GH_REPO/actions/permissions/fork-pr-contributor-approval"',
+            'before=$(gh api --method GET "$endpoint" --jq .approval_policy)',
+            'printf "Fork PR approval before: %s\\n" "$before"',
+            'if [[ "$before" != "$FORK_PR_APPROVAL_POLICY" ]]; then',
+            '  gh api --method PUT "$endpoint" -f approval_policy="$FORK_PR_APPROVAL_POLICY"',
+            'fi',
+            'after=$(gh api --method GET "$endpoint" --jq .approval_policy)',
+            'printf "Fork PR approval after: %s\\n" "$after"',
+            '[[ "$after" == "$FORK_PR_APPROVAL_POLICY" ]]',
+          ].join('\n'),
+        },
+        {
           name: 'Apply ruleset',
           run: runDevenvTasksBefore('github:rulesets:sync'),
           env: { GH_TOKEN: '${{ steps.app-token.outputs.token }}' },
@@ -105,6 +133,18 @@ export default githubWorkflow({
       steps: [
         ...livestoreSetupSteps,
         appTokenStep('read'),
+        {
+          name: 'Plan fork PR contributor approval',
+          env: {
+            GH_TOKEN: '${{ steps.app-token.outputs.token }}',
+            GH_REPO: '${{ github.repository }}',
+            FORK_PR_APPROVAL_POLICY,
+          },
+          run: [
+            'current=$(gh api --method GET "repos/$GH_REPO/actions/permissions/fork-pr-contributor-approval" --jq .approval_policy)',
+            'printf "Fork PR approval current: %s\\nFork PR approval intended: %s\\n" "$current" "$FORK_PR_APPROVAL_POLICY"',
+          ].join('\n'),
+        },
         {
           name: 'Plan ruleset',
           run: runDevenvTasksBefore('github:rulesets:plan'),
