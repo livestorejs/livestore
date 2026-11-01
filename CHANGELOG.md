@@ -13,6 +13,16 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 ### Changed
 
+- **SQLite state schema:** Effect Schema is now the foundation of table
+  definitions. `State.SQLite.text()` & co. return field schemas,
+  `table({ columns })` is `Schema.Struct(columns)` with a name, `TableDef` is
+  parameterised by the field map (much shorter hovers), column defaults are
+  tracked at the type level so `insert()` can omit them for schema-based
+  tables. An insert that omits a column with a thunk default
+  (`integer({ default: () => 0 })`, `withDefault(() => 0)`) now binds the
+  thunk's value instead of failing the `NOT NULL` constraint, since a thunk has
+  no DDL representation
+  ([#382](https://github.com/livestorejs/livestore/issues/382)).
 - **State storage:** Rebases roll back state through a materialization journal table instead of SQLite changesets carried in event metadata. Because the state system tables changed, existing state databases are rebuilt from the eventlog once after upgrading ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
 - **Query cache:** Cached query results are discarded when a journal or savepoint rollback changes the session database, so reads after a rebase no longer return rolled-back rows ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
 - **Store lifecycle:** Closing the scope a store was created in (for example when a store registry disposes an unused store) now sends events committed in the session to the leader before closing, like `store.shutdown()`. Previously such events could be dropped if the leader had not acknowledged them yet. Disposal can now wait up to one second ([#1437](https://github.com/livestorejs/livestore/issues/1437), [#1659](https://github.com/livestorejs/livestore/pull/1659)).
@@ -176,6 +186,22 @@ For maintainers and contributors:
 
 ### Breaking Changes
 
+- **SQLite state schema:** `State.SQLite.text()` & co. no longer return
+  `ColumnDefinition` records (use `State.SQLite.getColumnDefForSchema(field)`
+  to derive one), `TableDef`'s generic parameters are now
+  `<Name, Fields, Options>`, `State.SQLite.withDefault` is typed against the
+  field's type (pass `{ sql: 'CURRENT_TIMESTAMP' }` for SQL expressions, and
+  `null` only on a nullable field), an optional field is typed `T | null` in
+  the row type instead of `T | undefined`, and a column helper with both
+  `primaryKey: true` and `nullable: true` now throws at definition time, as
+  `withPrimaryKey` on a nullable schema already did. The column-map types
+  that described the old foundation are removed from `State.SQLite`:
+  `SchemaToColumns`, `TableDefInput`, `SqliteTableDefForInput`,
+  `SqliteTableDefForSchemaInput`, `ToColumns`, `PrettifyFlat`,
+  `DefaultSqliteTableDefConstrained`, `FromTable`, `FromColumns` and
+  `isColumnDefinition`; `WithDefaults` no longer takes a type parameter. Use
+  `TableDef<Name, Fields>` and `FromFields` instead
+  ([#382](https://github.com/livestorejs/livestore/issues/382)).
 - **Effect 4 / LiveStore 0.5:** Upgrade application dependencies and schema APIs
   from Effect 3 to stable Effect 4. Follow the
   [0.4 to 0.5 upgrade guide](https://docs.livestore.dev/misc/upgrading-0.4-to-0.5/)
