@@ -1011,18 +1011,35 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'create-release-pr'
     runs-on: ubuntu-latest
     permissions:
-      actions: write
-      contents: write
+      contents: read
       id-token: write
-      pull-requests: write
     defaults:
       run:
         shell: bash
     steps:
+      - name: Require release App configuration
+        env:
+          LIVESTORE_RELEASE_APP_ID: ${{ vars.LIVESTORE_RELEASE_APP_ID }}
+        run: |
+          if [ -z "$LIVESTORE_RELEASE_APP_ID" ]; then
+            echo "::error::Set the LIVESTORE_RELEASE_APP_ID repository variable and configure the livestore-release App installation and LIVESTORE_RELEASE_APP_PRIVATE_KEY secret."
+            exit 1
+          fi
+      - id: release-app-token
+        name: Mint release App token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.LIVESTORE_RELEASE_APP_ID }}
+          private-key: ${{ secrets.LIVESTORE_RELEASE_APP_PRIVATE_KEY }}
+          owner: livestorejs
+          repositories: livestore
+          permission-contents: write
+          permission-pull-requests: write
       - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: main
+          token: ${{ steps.release-app-token.outputs.token }}
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         env:
@@ -1148,7 +1165,7 @@ jobs:
           bash "$__genie_ci_retry_script" 'devenv tasks run release:notes:extract' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false ${PIPELINE_RUN_PREFIX:+$PIPELINE_RUN_PREFIX }"${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:notes:extract'
       - name: Open release plan PR
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.release-app-token.outputs.token }}
           LIVESTORE_NPM_TAG: ${{ inputs.npm_tag }}
         run: |
           set -euo pipefail
@@ -1204,11 +1221,6 @@ jobs:
               --title "Prepare LiveStore $LIVESTORE_RELEASE_VERSION release" \
               --body "$body"
           fi
-
-          gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$branch"
-          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$branch" \
-            -f mode=validate-release-plan \
-            -f npm_tag="$LIVESTORE_NPM_TAG"
 
           # Stable (npm_tag=latest) release PRs are gated by a human reviewer. For
           # prerelease channels (dev, next, etc.) the release PR is fully automated, so

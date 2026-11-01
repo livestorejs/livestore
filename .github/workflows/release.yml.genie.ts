@@ -119,18 +119,40 @@ export default githubWorkflow({
       if: "github.event_name == 'workflow_dispatch' && inputs.mode == 'create-release-pr'",
       'runs-on': 'ubuntu-latest',
       permissions: {
-        actions: 'write',
-        contents: 'write',
+        contents: 'read',
         'id-token': 'write',
-        'pull-requests': 'write',
       },
       defaults: bashShellDefaults,
       steps: [
+        {
+          name: 'Require release App configuration',
+          env: {
+            LIVESTORE_RELEASE_APP_ID: '${{ vars.LIVESTORE_RELEASE_APP_ID }}',
+          },
+          run: `if [ -z "$LIVESTORE_RELEASE_APP_ID" ]; then
+  echo "::error::Set the LIVESTORE_RELEASE_APP_ID repository variable and configure the livestore-release App installation and LIVESTORE_RELEASE_APP_PRIVATE_KEY secret."
+  exit 1
+fi`,
+        },
+        {
+          id: 'release-app-token',
+          name: 'Mint release App token',
+          uses: 'actions/create-github-app-token@v2',
+          with: {
+            'app-id': '${{ vars.LIVESTORE_RELEASE_APP_ID }}',
+            'private-key': '${{ secrets.LIVESTORE_RELEASE_APP_PRIVATE_KEY }}',
+            owner: 'livestorejs',
+            repositories: 'livestore',
+            'permission-contents': 'write',
+            'permission-pull-requests': 'write',
+          },
+        },
         {
           name: 'Checkout',
           uses: 'actions/checkout@v4',
           with: {
             ref: 'main',
+            token: '${{ steps.release-app-token.outputs.token }}',
           },
         },
         ...livestoreSetupSteps.slice(1),
@@ -154,7 +176,7 @@ export default githubWorkflow({
         {
           name: 'Open release plan PR',
           env: {
-            GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
+            GH_TOKEN: '${{ steps.release-app-token.outputs.token }}',
             LIVESTORE_NPM_TAG: '${{ inputs.npm_tag }}',
           },
           run: `set -euo pipefail
@@ -210,11 +232,6 @@ else
     --title "Prepare LiveStore $LIVESTORE_RELEASE_VERSION release" \\
     --body "$body"
 fi
-
-gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$branch"
-gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$branch" \\
-  -f mode=validate-release-plan \\
-  -f npm_tag="$LIVESTORE_NPM_TAG"
 
 # Stable (npm_tag=latest) release PRs are gated by a human reviewer. For
 # prerelease channels (dev, next, etc.) the release PR is fully automated, so
