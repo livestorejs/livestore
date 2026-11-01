@@ -132,6 +132,11 @@ Core has no npm dependency on `@overeng/*`. A `repos/effect-utils/...` entry in
 a fresh clone installs and tests without materialization while regeneration
 still needs it.
 
+Core defines `ts:check` and `ts:build` locally in `devenv.nix`. Both run the
+pinned `effect-tsgo` compiler over `tsconfig.dev.json` after dependency
+installation and Genie generation; effect-utils supplies the compiler, not
+the repository's TypeScript task graph (LS.DEL.COMP-R18).
+
 ## Tooling Composition
 
 Contrib's generated files are composed from the same helper stack as core,
@@ -165,12 +170,14 @@ Contrib CI composes setup atoms with contrib-specific identifiers
 ```ts
 installNixStep(...)
 applyMegarepoLockStep(...)
-restorePnpmStateStep({ keyPrefix: 'livestore-contrib-pnpm-state-v1' })
+pnpmStateSetupStep
 cachixStep({ name: 'livestore-contrib', ... })
 ```
 
 It does not reuse `livestoreSetupSteps` wholesale because that composite
-carries core-specific cache names and pnpm state keys.
+carries core-specific cache names. pnpm state is job-local, and dependency
+preparation always runs `pnpm:install`; Actions-cache pnpm state is not restored
+or saved.
 
 ### CI Run Supersession
 

@@ -206,5 +206,11 @@ A scheduled verification job retains delivery priority; its trigger alone does
 not make it background work. GitHub-hosted runners do not consume Namespace
 capacity and retain their existing routing.
 
+The helper delegates runner labels to effect-utils with `privileged: 'trusted'`.
+Linux jobs from trusted events and same-repository pull requests request
+`container.privileged=true` so Nix's strict sandbox can create kernel namespaces.
+Fork pull requests do not receive privileged containers. Nix sandboxing remains
+enabled with fallback disabled.
+
 This policy leaves runner shapes, caches, access controls, required checks,
 triggers, cancellation, test frequency and account limits unchanged.

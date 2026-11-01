@@ -39,6 +39,9 @@ const expectedPriorities = new Map<string, 3 | 6>([
   ...backgroundJobs.map((job) => [`ci.yml/${job}`, 6] as const),
   ...['release.yml', 'deploy-prod.yml', 'devtools-artifact.yml'].map((file) => [`${file}/source-policy`, 3] as const),
 ])
+const runnerLabel = (priority: 3 | 6) =>
+  "namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=" +
+  priority
 
 const priorityErrors = (input: typeof workflows) => {
   const errors: string[] = []
@@ -52,16 +55,13 @@ const priorityErrors = (input: typeof workflows) => {
       const key = `${filename}/${id}`
       seen.add(key)
       const expected = expectedPriorities.get(key)
-      if (
-        expected === undefined ||
-        labels[0] !== `namespace-profile-linux-x86-64;job.priority=${expected};github.run-id=\${{ github.run_id }}`
-      ) {
+      if (expected === undefined || labels[0] !== runnerLabel(expected)) {
         errors.push(`${key}: missing, incorrect or unclassified priority`)
       }
       if (
         labels.length !== 1 ||
         typeof labels[0] !== 'string' ||
-        labels[0].endsWith(';github.run-id=${{ github.run_id }}') === false
+        labels[0].includes(';github.run-id=${{ github.run_id }}') === false
       ) {
         errors.push(`${key}: run affinity changed`)
       }
@@ -109,13 +109,17 @@ describe('Namespace generated workflow priorities', () => {
   })
 
   it.each([
-    ['wrong priority', ['namespace-profile-linux-x86-64;job.priority=6;github.run-id=${{ github.run_id }}']],
-    ['missing priority', ['namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}']],
+    ['wrong priority', [runnerLabel(6)]],
+    ['missing priority', [runnerLabel(3).replace(';job.priority=3', '')]],
     [
       'split profile features',
       ['namespace-profile-linux-x86-64;job.priority=3', 'namespace-features:github.run-id=${{ github.run_id }}'],
     ],
-    ['changed affinity', ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=other-run']],
+    ['changed affinity', [runnerLabel(3).replace('github.run-id=${{ github.run_id }}', 'github.run-id=other-run')]],
+    [
+      'unconditional privilege',
+      [runnerLabel(3).replace(/\$\{\{ \(github\.event_name.*? \}\}/, ';container.privileged=true')],
+    ],
   ])('rejects %s in emitted delivery labels', (_, labels) => {
     const input = structuredClone(workflows)
     const sourcePolicy = input['ci.yml']!['source-policy']

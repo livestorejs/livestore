@@ -22,16 +22,11 @@ import {
   nixDiagnosticsArtifactStep,
   otelSetupStep,
   runDevenvTasksBefore,
-  savePnpmStateStep,
 } from '../../genie/repo.ts'
 
 const TARGET_CHOICES = ['docs', 'examples', 'search', 'all'] as const
 
-const withNixDiagnosticsOnFailure = (steps: unknown[]) => [
-  ...steps,
-  savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
-  nixDiagnosticsArtifactStep(),
-]
+const withNixDiagnosticsOnFailure = (steps: unknown[]) => [...steps, nixDiagnosticsArtifactStep()]
 
 /**
  * Upload the per-phase logs under `tmp/ci-docs-prod/` so post-mortem of a

@@ -88,6 +88,7 @@
     "expo-application": "7.0.7",
     "expo-sqlite": "16.0.8",
     "github-slugger": "2.0.0",
+    "playwright": "1.64.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "rehype-mermaid": "3.0.0",
@@ -108,7 +109,7 @@
     "unist-util-visit": "5.0.0"
   },
   "devDependencies": {
-    "@playwright/test": "1.63.0",
+    "@playwright/test": "1.64.1",
     "@types/hast": "3.0.4",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.7",

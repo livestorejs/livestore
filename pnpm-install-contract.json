@@ -46,7 +46,7 @@
     },
     "packageManager": {
       "name": "pnpm",
-      "version": "12.4.1"
+      "version": "12.15.0"
     }
   },
   "dependencyMaterializationProfile": {
@@ -90,11 +90,6 @@
     "ignoreScripts": true,
     "minimumReleaseAgeExclude": [
       "@types/node",
-      "effect",
-      "@effect/platform-node",
-      "@effect/vitest",
-      "@effect/opentelemetry",
-      "@effect/atom-react",
       "effect@4.0.3",
       "@effect/ai-openai@4.0.3",
       "@effect/opentelemetry@4.0.3",
@@ -118,7 +113,6 @@
     },
     "peerDependencyRules": {
       "allowedVersions": {
-        "eslint": ">=10.0.0",
         "typescript": ">=6.0.0",
         "unplugin": ">=3.0.0",
         "vitest": ">=4.0.0"
@@ -153,7 +147,7 @@
   },
   "packageManager": {
     "name": "pnpm",
-    "version": "12.4.1"
+    "version": "12.15.0"
   },
   "schemaVersion": 2,
   "storeContract": {
