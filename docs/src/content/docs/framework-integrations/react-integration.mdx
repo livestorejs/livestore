@@ -187,9 +187,12 @@ function SyncIndicator() {
   const store = useStore(storeOptions)
   const status = store.useSyncStatus()
   
-  return <span>{status.isSynced ? '✓ Synced' : `Syncing (${status.pendingCount} pending)...`}</span>
+  return <span>{status.isBackendSynced ? '✓ Backend confirmed' : 'Awaiting confirmation...'}</span>
 }
 ```
+
+This hook exposes latest-observed delivery convergence, not sync-worker health
+or a guarantee of future progress.
 
 For the `SyncStatus` type and non-React APIs (`syncStatus()`, `subscribeSyncStatus()`, `syncStatusStream()`), see the [Store documentation](/building-with-livestore/store#sync-status).
 
