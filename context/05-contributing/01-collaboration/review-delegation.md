@@ -1,6 +1,6 @@
 # Review delegation
 
-A delegation rule has `paths`, optional `kinds`, and an `owner` (`agent` or `johannes`); rules are ordered, first match wins, and the final `**` rule is the default. A PR may merge on an independent agent GO only when every changed file matches an agent rule without `kinds`; all other PRs require Johannes's approval.
+A delegation rule has `paths`, optional `kinds`, and an `owner` (`agent` or `johannes`); rules are ordered, first match wins, and the final `**` rule is the default. An independent agent's GO replaces Johannes's code review only when every changed file matches an agent rule without `kinds`; all other PRs require Johannes's code review. Merge still follows the repository's integration path and any merge authorization Johannes grants.
 
 Delegated changes must add no complexity: no new abstraction, dependency, module boundary, or public surface. When classification or complexity is uncertain, escalate to Johannes.
 

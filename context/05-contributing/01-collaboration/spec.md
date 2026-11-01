@@ -58,8 +58,10 @@ contributing requirements they realize.
 ## Review and Merge
 
 The repo-owned [review-delegation profile](./review-delegation.md) defines which
-changes may merge on an independent agent GO and which require Johannes's
-approval. CODEOWNERS projects the path rules into GitHub's required code-owner
-review gate; kind-restricted rules remain code-owned. External PRs are reviewed
+changes allow an independent agent's GO to replace Johannes's code review and
+which require his code review. Merge still follows the repository's integration
+path and any merge authorization Johannes grants. CODEOWNERS projects the path
+rules into GitHub's required code-owner review gate; kind-restricted rules remain
+code-owned. External PRs are reviewed
 by a maintainer before merge. Contributor-side authoring tools remain the
 contributor's concern; repo-level agent conventions live in `AGENTS.md`.
