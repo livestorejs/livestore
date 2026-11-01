@@ -21,7 +21,9 @@ rules:
       - packages/@livestore/wa-sqlite/CHANGELOG.md
     kinds: [changelog, release-patch]
     owner: agent
-  - paths: ['**/*.test.ts', '**/*.test.tsx', '**/__tests__/**']
+  - paths: ['**/*.test.ts', '**/*.test.tsx', '**/*.test.js', '**/__tests__/**']
+    owner: agent
+  - paths: ['packages/@local/*/package.json', 'packages/@local/*/package.json.genie.ts']
     owner: agent
   - paths: [packages/**]
     kinds: [type-only, bugfix-with-test, deprecation]
@@ -39,6 +41,8 @@ rules:
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - package.json
+      - package.json.genie.ts
+      - pnpm-workspace.yaml.genie.ts
     owner: agent
   - paths: ['**']
     owner: johannes

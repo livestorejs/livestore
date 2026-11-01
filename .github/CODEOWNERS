@@ -13,9 +13,14 @@
 /pnpm-lock.yaml
 /pnpm-workspace.yaml
 /package.json
+/package.json.genie.ts
+/pnpm-workspace.yaml.genie.ts
 /packages/ @schickling
+/packages/@local/*/package.json
+/packages/@local/*/package.json.genie.ts
 **/*.test.ts
 **/*.test.tsx
+**/*.test.js
 **/__tests__/
 /release/ @schickling
 /.github/workflows/release.yml @schickling
