@@ -1,7 +1,27 @@
-# Release-sensitive repository policy and release automation.
-/.github/ @schickling
+# Projection of context/05-contributing/01-collaboration/review-delegation.md.
+# Reverse profile order: last match wins; ownerless entries clear the default.
+* @schickling
+/.github/
+/nix/
+/devenv.*
+/genie/
+/scripts/
+/docs/
+/examples/
+/tests/
+/contributor-docs/
+/pnpm-lock.yaml
+/pnpm-workspace.yaml
+/package.json
+/packages/ @schickling
+**/*.test.ts
+**/*.test.tsx
+**/__tests__/
 /release/ @schickling
+/.github/workflows/release.yml @schickling
 /scripts/src/commands/changesets.ts @schickling
-/scripts/src/commands/devtools-artifact.ts @schickling
 /scripts/src/commands/release.ts @schickling
-
+/scripts/src/commands/devtools-artifact.ts @schickling
+/.changeset/*.md @schickling
+/CHANGELOG.md @schickling
+/packages/@livestore/wa-sqlite/CHANGELOG.md @schickling
