@@ -10,7 +10,7 @@ export const pluginHighlights = () =>
       performSyntaxAnalysis: ({ codeBlock, styleVariants }) => {
         const lang = codeBlock.language
         // Highlights throws for unsupported languages; Expressive Code keeps these as plain text.
-        if (!isSupportedLanguage(lang)) return
+        if (isSupportedLanguage(lang) === false) return
         const { tokens, fg } = codeToTokens(codeBlock.code, { lang, theme: githubDark })
         const lines = codeBlock.getLines()
         for (let styleVariantIndex = 0; styleVariantIndex < styleVariants.length; styleVariantIndex++) {
