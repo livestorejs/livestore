@@ -14,10 +14,16 @@ export default githubRuleset({
     },
   },
   rules: [
-    prReviewsPullRequestRule({
-      dismissStaleReviewsOnPush: false,
-      requireCodeOwnerReview: true,
-    }),
+    {
+      type: 'pull_request',
+      parameters: {
+        ...prReviewsPullRequestRule({
+          dismissStaleReviewsOnPush: false,
+          requireCodeOwnerReview: true,
+        }).parameters,
+        require_extra_approval_for_unattributed_changes: true,
+      },
+    },
     {
       type: 'required_status_checks',
       parameters: {
