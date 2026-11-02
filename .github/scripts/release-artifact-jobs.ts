@@ -36,29 +36,17 @@ while IFS=$'\\t' read -r name version filename integrity tag; do
     echo "$spec already published with matching integrity and tag; skipping"
     continue
   fi
-  if npm publish "$ARTIFACT_DIR/$filename" --ignore-scripts --provenance --access public --tag "$tag" --registry https://registry.npmjs.org >"$RUNNER_TEMP/npm-publish-log" 2>&1; then
-    cat "$RUNNER_TEMP/npm-publish-log"
-  else
+  if ! npm publish "$ARTIFACT_DIR/$filename" --ignore-scripts --provenance --access public --tag "$tag" --registry https://registry.npmjs.org >"$RUNNER_TEMP/npm-publish-log" 2>&1; then
     cat "$RUNNER_TEMP/npm-publish-log" >&2
-    if ! { grep -Eiq '(E409|409 Conflict)' "$RUNNER_TEMP/npm-publish-log" && grep -iq 'cannot publish over previously staged version' "$RUNNER_TEMP/npm-publish-log"; }; then
-      existing="$(registry_integrity "$spec")"
-      test "$existing" = "$integrity" || exit 1
-    fi
+    echo "$spec publish failed; staging may require human approval. See context/03-delivery/02-release/release-workflows-runbook.md#npm-visibility-and-staged-publish-recovery. Rerun this failed job with its original artifact." >&2
+    exit 1
   fi
-  echo "Verifying $spec public registry visibility (60 retries, 5 seconds apart)."
-  for attempt in $(seq 0 60); do
-    existing="$(registry_integrity "$spec")"
-    if [ -n "$existing" ]; then
-      test "$existing" = "$integrity" || { echo "$spec is public with DIFFERENT integrity" >&2; exit 1; }
-      break
-    fi
-    if [ "$attempt" = 60 ]; then
-      echo "$spec is still not publicly visible after 60 retries at 5-second intervals. npm may have accepted a staged publish; staging does not auto-promote. A maintainer must run npm stage list $name --json, match version $version, review with npm stage view <stage-id>, and approve with npm stage approve <stage-id> (interactive 2FA), or use the Staged Packages tab on npmjs.com. Then rerun this release. If no stage exists, check npm registry status and the publish logs. For unattended direct publishing, check the trusted publisher allows npm publish, not only npm stage publish." >&2
-      exit 1
-    fi
-    echo "$spec is not public yet (check $((attempt + 1))/61); waiting for registry visibility or staged approval."
-    sleep 5
-  done
+  cat "$RUNNER_TEMP/npm-publish-log"
+  existing="$(registry_integrity "$spec")"
+  test "$existing" = "$integrity" || {
+    echo "$spec is not public with matching integrity. See context/03-delivery/02-release/release-workflows-runbook.md#npm-visibility-and-staged-publish-recovery." >&2
+    exit 1
+  }
   current="$(npm view "$name" "dist-tags.$tag" --json --registry https://registry.npmjs.org)"
   test "$(jq -r . <<< "$current")" = "$version" || { echo "$spec has a stale $tag dist-tag" >&2; exit 1; }
 done < "$RUNNER_TEMP/publish-plan.tsv"`
@@ -82,6 +70,12 @@ export const releaseArtifactJobs = ({
     uses: 'actions/download-artifact@v4',
     with: { name: `npm-release-${suffix}`, path: '${{ runner.temp }}/release-artifact' },
   }
+  // Emit the same selection in both jobs; validation executes it independently at the source SHA.
+  const selectExpectedMetadata = stable
+    ? `version="$(jq -er '.version' release/release-plan.json)"
+npm_tag="$(jq -er '.npmTag' release/release-plan.json)"`
+    : `version="0.0.0-snapshot-$SOURCE_SHA"
+npm_tag=snapshot`
   return {
     [prepare]: {
       if: condition,
@@ -96,13 +90,7 @@ export const releaseArtifactJobs = ({
           env: { SOURCE_SHA: releaseHeadSha },
           run: `set -euo pipefail
 test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
-${
-  stable
-    ? `version="$(jq -er '.version' release/release-plan.json)"
-npm_tag="$(jq -er '.npmTag' release/release-plan.json)"`
-    : `version="0.0.0-snapshot-$SOURCE_SHA"
-npm_tag=snapshot`
-}
+${selectExpectedMetadata}
 echo "LIVESTORE_RELEASE_VERSION=$version" >> "$GITHUB_ENV"
 echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
 echo "RELEASE_ARTIFACT_DIR=$RUNNER_TEMP/release-artifact" >> "$GITHUB_ENV"`,
@@ -189,14 +177,8 @@ node .github/scripts/release-artifact.mjs create --artifact-dir "$RELEASE_ARTIFA
           id: 'validate',
           env: { SOURCE_SHA: releaseHeadSha },
           run: `set -euo pipefail
-${
-  stable
-    ? `VERSION="$(jq -er '.version' release/release-plan.json)"
-NPM_TAG="$(jq -er '.npmTag' release/release-plan.json)"`
-    : `VERSION="0.0.0-snapshot-$SOURCE_SHA"
-NPM_TAG=snapshot`
-}
-node .github/scripts/release-artifact.mjs validate --artifact-dir "$RUNNER_TEMP/release-artifact" --source-sha "$SOURCE_SHA" --version "$VERSION" --npm-tag "$NPM_TAG" --topology ${releaseTopologyPath}
+${selectExpectedMetadata}
+node .github/scripts/release-artifact.mjs validate --artifact-dir "$RUNNER_TEMP/release-artifact" --source-sha "$SOURCE_SHA" --version "$version" --npm-tag "$npm_tag" --topology ${releaseTopologyPath}
 echo "manifest_sha512=$(openssl dgst -sha512 -binary "$RUNNER_TEMP/release-artifact/manifest.json" | openssl base64 -A)" >> "$GITHUB_OUTPUT"`,
         },
       ],

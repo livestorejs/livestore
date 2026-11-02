@@ -76,9 +76,10 @@ DevTools tag follows its existing `publishTagForVersion` policy. The directory
 may also contain the Chrome ZIP and `release-notes.md` for finalization.
 
 Validation runs separately without secrets or OIDC authority. It checks the
-manifest, source identity, expected package cohort, archive paths, package names
-and versions, tags, and digests without extracting archives or executing package
-code. Publication consumes the validated tarballs
+manifest, source identity, expected package cohort, package names and versions,
+tags, digests, and publishConfig policy. System `tar` lists entries and reads only
+the single `package/package.json` member to stdout, without filesystem extraction
+or package-code execution. Publication consumes the validated tarballs
 without repository checkout, dependency installation, building, `mono`, or
 package lifecycle scripts. The npm-credentialed boundary contains only shell
 orchestration and `npm publish --ignore-scripts --provenance`; it rechecks byte

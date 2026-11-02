@@ -207,16 +207,15 @@ the version. Treat that specific conflict as pending visibility, not as a
 successful release or a reason to change the release version. Other publish
 errors are not evidence of staging.
 
-Both publishers make an initial public visibility check followed by up to 60
-retries at five-second intervals, logging each missing-package attempt. This is
-a bounded wait of roughly five minutes plus registry request time, not an
-unbounded approval wait. Already-visible versions are skipped only when both
-their integrity and requested dist-tag match the prepared artifact.
-If any required version is still missing when the attempts are exhausted,
-verification fails and reports the missing package/version and approval
-instructions. Do not mark the release green or advance production promotion
-while verification is failing. Missing visibility alone does not prove that
-a maintainer-approvable stage exists.
+The isolated publishers fail closed if npm publish fails or the public integrity
+or dist-tag does not match immediately afterward. Their short diagnostic points
+to this section; there is no credentialed staging-recovery state machine.
+Already-visible versions are skipped only when both their integrity and requested
+dist-tag match the prepared artifact. Do not mark the release green or advance
+production promotion while verification is failing. Missing visibility alone
+does not prove that a maintainer-approvable stage exists. A staged version does
+not auto-promote: inspect and approve it using the commands below, or ask the npm
+administrator to allow direct publishing in the trusted-publisher configuration.
 
 #### Find and approve the exact staged version
 

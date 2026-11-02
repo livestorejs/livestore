@@ -1,10 +1,10 @@
 // Secretless release boundary: inspect packed bytes without extracting files or running package code.
+import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { lstat, readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
-import { gunzipSync } from 'node:zlib'
 
 const devtoolsName = '@livestore/devtools-vite'
 const namePattern = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/
@@ -15,7 +15,6 @@ const versionPattern = new RegExp(
 const filenamePattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.tgz$/
 const tagPattern = /^[a-zA-Z][a-zA-Z0-9_-]*$/
 const maxTarballBytes = 100 * 1024 * 1024
-const maxUncompressedBytes = 512 * 1024 * 1024
 const fail = (message) => {
   throw new Error(message)
 }
@@ -97,90 +96,19 @@ export const validateManifest = (manifest, expected) => {
   return manifest
 }
 
-const octal = (bytes) => {
-  const text = bytes.toString('ascii').replaceAll('\0', '').trim()
-  if (!/^[0-7]+$/.test(text)) fail('Invalid tar numeric field')
-  const value = Number.parseInt(text, 8)
-  if (!Number.isSafeInteger(value)) fail('Unsafe tar numeric field')
-  return value
-}
-const tarString = (bytes) => bytes.toString('utf8').split('\0')[0]
-const safeEntryPath = (name) => {
-  const segments = name.replace(/\/$/, '').split('/')
-  if (
-    segments[0] !== 'package' ||
-    segments.some((segment) => segment === '' || segment === '..' || segment === '.') ||
-    /[\\\x00-\x1f\x7f]/.test(name)
-  )
-    fail(`Unsafe tar entry path: ${JSON.stringify(name)}`)
-}
-const parsePax = (body) => {
-  const fields = {}
-  for (let offset = 0; offset < body.length;) {
-    const space = body.indexOf(32, offset)
-    const lengthText = body.subarray(offset, space).toString('ascii')
-    if (space < offset || !/^[1-9][0-9]*$/.test(lengthText)) fail('Invalid pax record')
-    const length = Number(lengthText)
-    const end = offset + length
-    if (!Number.isSafeInteger(length) || end > body.length || end <= space + 1 || body[end - 1] !== 10)
-      fail('Invalid pax length')
-    const record = body.subarray(space + 1, end - 1).toString('utf8')
-    const equals = record.indexOf('=')
-    if (equals <= 0) fail('Invalid pax field')
-    const key = record.slice(0, equals)
-    // Size overrides and link metadata can change interpretation between tar readers.
-    if (!['path', 'mtime', 'atime', 'ctime', 'uid', 'gid', 'uname', 'gname'].includes(key)) {
-      fail(`Unsupported pax field: ${key}`)
-    }
-    if (Object.hasOwn(fields, key)) fail(`Duplicate pax field: ${key}`)
-    fields[key] = record.slice(equals + 1)
-    offset = end
-  }
-  return fields
-}
-
 export const parsePackedPackage = (bytes) => {
   if (bytes.length > maxTarballBytes) fail('Tarball exceeds size limit')
-  const archive = gunzipSync(bytes, { maxOutputLength: maxUncompressedBytes })
-  let packed
-  let pax = {}
-  let entries = 0
-  let terminated = false
-  for (let offset = 0; offset + 512 <= archive.length;) {
-    const header = archive.subarray(offset, offset + 512)
-    if (header.every((byte) => byte === 0)) {
-      if (archive.subarray(offset).some((byte) => byte !== 0)) fail('Data after tar terminator')
-      terminated = true
-      break
-    }
-    if (++entries > 100_000) fail('Too many tar entries')
-    const checksum = header.reduce((sum, byte, index) => sum + (index >= 148 && index < 156 ? 32 : byte), 0)
-    if (octal(header.subarray(148, 156)) !== checksum) fail('Tar checksum mismatch')
-    const name = tarString(header.subarray(0, 100))
-    const prefix = tarString(header.subarray(345, 500))
-    const size = octal(header.subarray(124, 136))
-    const type = header[156] === 0 ? '0' : String.fromCharCode(header[156])
-    const start = offset + 512
-    const next = start + Math.ceil(size / 512) * 512
-    if (next > archive.length) fail('Truncated tar entry')
-    const body = archive.subarray(start, start + size)
-    if (type === 'x') {
-      if (Object.keys(pax).length !== 0) fail('Consecutive pax headers')
-      pax = parsePax(body)
-    } else {
-      const entryPath = pax.path ?? (prefix === '' ? name : `${prefix}/${name}`)
-      safeEntryPath(entryPath)
-      if (type !== '0' && type !== '5') fail(`Unsupported tar entry type (no links): ${type}`)
-      if (type === '5' && size !== 0) fail('Nonempty tar directory')
-      if (entryPath === 'package/package.json') {
-        if (type !== '0' || packed !== undefined) fail('Expected exactly one regular package/package.json')
-        packed = JSON.parse(body.toString('utf8'))
-      }
-      pax = {}
-    }
-    offset = next
-  }
-  if (!terminated || Object.keys(pax).length !== 0) fail('Incomplete tar archive')
+  // tar reads stdin and writes only the selected member to stdout; no files are extracted.
+  const entries = execFileSync('tar', ['-tzf', '-'], { input: bytes, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 })
+  if (entries.split('\n').filter((entry) => entry === 'package/package.json').length !== 1)
+    fail('Expected exactly one package/package.json')
+  const packed = JSON.parse(
+    execFileSync('tar', ['-xOzf', '-', 'package/package.json'], {
+      input: bytes,
+      encoding: 'utf8',
+      maxBuffer: 1024 * 1024,
+    }),
+  )
   if (packed === undefined || packed === null || typeof packed !== 'object' || Array.isArray(packed))
     fail('Missing package/package.json')
   if (!matches(namePattern, packed.name)) fail('Invalid packed package name')
@@ -193,7 +121,6 @@ export const parsePackedPackage = (bytes) => {
 }
 
 export const createManifest = ({ tarballs, ...expected }) => {
-  validateExpected(expected)
   const manifest = {
     schemaVersion: 1,
     sourceSha: expected.sourceSha,
@@ -233,15 +160,6 @@ export const validateArtifact = ({ manifest, tarballs, ...expected }) => {
   return manifest
 }
 
-export const publishPlan = (manifest, expected) => {
-  validateManifest(manifest, expected)
-  return (
-    manifest.packages
-      .map((pkg) => [pkg.name, pkg.version, pkg.filename, pkg.integrity, pkg.tag].join('\t'))
-      .join('\n') + '\n'
-  )
-}
-
 const readRegular = async (filename) => {
   const stat = await lstat(filename)
   if (!stat.isFile() || stat.isSymbolicLink()) fail(`Expected regular file, no symlinks: ${filename}`)
@@ -279,7 +197,6 @@ export const run = async (args) => {
     npmTag: values['npm-tag'],
     packageNames: expectedPackageNames(JSON.parse((await readRegular(values.topology)).toString('utf8'))),
   }
-  validateExpected(expected)
   const tarballs = []
   for (const filename of (await readdir(artifactDir)).sort()) {
     const fullPath = path.join(artifactDir, filename)
@@ -287,12 +204,7 @@ export const run = async (args) => {
     if (!fileStat.isFile() || fileStat.isSymbolicLink()) fail(`Artifact contains non-regular file: ${filename}`)
     if (
       !filename.endsWith('.tgz') &&
-      ![
-        'manifest.json',
-        'publish-plan.tsv',
-        'release-notes.md',
-        `livestore-devtools-chrome-${expected.version}.zip`,
-      ].includes(filename)
+      !['manifest.json', 'release-notes.md', `livestore-devtools-chrome-${expected.version}.zip`].includes(filename)
     )
       fail(`Unexpected artifact file: ${filename}`)
     if (filename.endsWith('.tgz')) {
@@ -307,7 +219,6 @@ export const run = async (args) => {
   } else {
     const manifest = JSON.parse((await readRegular(path.join(artifactDir, 'manifest.json'))).toString('utf8'))
     validateArtifact({ ...expected, manifest, tarballs })
-    await writeFile(path.join(artifactDir, 'publish-plan.tsv'), publishPlan(manifest, expected), { flag: 'w' })
   }
 }
 

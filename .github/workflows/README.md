@@ -107,9 +107,9 @@ gh api repos/livestorejs/livestore/environments/npm-publish/deployment-branch-po
 The result must contain exactly one rule, `{name: main, type: branch}`.
 Delete any other rule, including tag rules, before the first publish.
 
-The snapshot job separately restricts the source CI run to this repository's
-`main`, because a `workflow_run` job uses the default-branch ref regardless of
-the source run's branch.
+Only the main-snapshot job condition restricts its source CI run to this
+repository's `main`. The workflow-wide `workflow_run` trigger remains broader
+for PR snapshots, and uses the default-branch ref regardless of the source branch.
 
 The npm trusted-publisher environment field is [optional](https://docs.npmjs.com/trusted-publishers/#for-github-actions).
 When it is unset, adding a GitHub environment does not require changing npm's

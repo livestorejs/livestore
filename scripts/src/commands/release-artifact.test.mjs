@@ -6,14 +6,13 @@ import {
   createManifest,
   expectedPackageNames,
   parsePackedPackage,
-  publishPlan,
   publishTagForVersion,
   sha512,
   validateArtifact,
   validateManifest,
 } from '../../../.github/scripts/release-artifact.mjs'
 
-// Build real tar bytes in memory: no filesystem, npm, extraction, or subprocesses.
+// Build tar fixtures in memory; the inspector delegates listing/member reads to system tar.
 const tarEntry = (name, body, type = '0') => {
   const header = Buffer.alloc(512)
   header.write(name, 0, 100)
@@ -68,16 +67,11 @@ describe('release artifact manifest', () => {
     }
   })
 
-  it('creates and validates packed bytes and produces the exact five-column shell plan', () => {
+  it('creates and validates packed bytes against the exact package cohort', () => {
     const { manifest, tarballs } = fixture()
     expect(validateArtifact({ ...expected, manifest, tarballs })).toEqual(manifest)
     expect(manifest.schemaVersion).toBe(1)
     expect(manifest.packages.map((pkg) => pkg.name)).toEqual([...expected.packageNames].sort())
-    expect(publishPlan(manifest, expected)).toBe(
-      manifest.packages
-        .map((pkg) => `${pkg.name}\t${pkg.version}\t${pkg.filename}\t${pkg.integrity}\t${pkg.tag}\n`)
-        .join(''),
-    )
   })
 
   it.each(['../escape', '@scope/../escape', '@Scope/name', '-flag', 'name\tvalue', 'name\n', 'name\u0085'])(
@@ -226,49 +220,9 @@ describe('packed package inspection', () => {
     }
   })
 
-  it.each(['package/../escape', '/absolute', 'outside/file', 'package//file', 'package/./file', 'package\\file'])(
-    'rejects unsafe archive entry %j',
-    (name) => {
-      expect(() =>
-        parsePackedPackage(tarball('@livestore/livestore', '0.5.0', [tarEntry(name, Buffer.from('x'))])),
-      ).toThrow(/path/)
-    },
-  )
-
-  it.each(['1', '2'])('rejects archive hardlinks and symlinks (%s)', (type) => {
-    expect(() =>
-      parsePackedPackage(tarball('@livestore/livestore', '0.5.0', [tarEntry('package/link', Buffer.alloc(0), type)])),
-    ).toThrow(/no links/)
-  })
-
-  it('rejects duplicate package manifests, invalid tar checksums, and missing manifests', () => {
+  it('rejects duplicate or missing package manifests', () => {
     const duplicate = tarEntry('package/package.json', Buffer.from('{}'))
     expect(() => parsePackedPackage(tarball('@livestore/livestore', '0.5.0', [duplicate]))).toThrow(/exactly one/)
-    const badHeader = tarEntry('package/file', Buffer.from('x'))
-    badHeader[0] = 0
-    expect(() => parsePackedPackage(gzipSync(Buffer.concat([badHeader, Buffer.alloc(1024)])))).toThrow(/checksum/)
-    expect(() => parsePackedPackage(gzipSync(Buffer.alloc(1024)))).toThrow(/Missing/)
-  })
-
-  it('honors safe pax paths and rejects traversal and interpretation overrides', () => {
-    for (const [key, value, valid] of [
-      ['path', `package/${'long'.repeat(40)}`, true],
-      ['path', 'package/../escape', false],
-      ['size', '0', false],
-      ['linkpath', '/outside', false],
-      ['GNU.sparse.name', 'package/package.json', false],
-    ]) {
-      const record = `${key}=${value}\n`
-      let length = Buffer.byteLength(record) + 2
-      while (length !== Buffer.byteLength(record) + String(length).length + 1) {
-        length = Buffer.byteLength(record) + String(length).length + 1
-      }
-      const bytes = tarball('@livestore/livestore', '0.5.0', [
-        tarEntry('PaxHeader/file', Buffer.from(`${length} ${record}`), 'x'),
-        tarEntry('package/file', Buffer.from('content')),
-      ])
-      if (valid) expect(parsePackedPackage(bytes)).toEqual({ name: '@livestore/livestore', version: '0.5.0' })
-      else expect(() => parsePackedPackage(bytes)).toThrow()
-    }
+    expect(() => parsePackedPackage(gzipSync(Buffer.alloc(1024)))).toThrow(/exactly one/)
   })
 })
