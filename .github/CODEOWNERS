@@ -39,3 +39,4 @@
 /.github/workflows/ @schickling
 /.github/scripts/ @schickling
 /.github/actions/ @schickling
+/.github/**/*.genie.ts @schickling
