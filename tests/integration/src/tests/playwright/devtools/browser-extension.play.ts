@@ -125,7 +125,10 @@ const getLiveStoreDevtoolsFrame = (devtools: PW.Page, label: string) =>
     return await test.step(`${label}:getLiveStoreDevtoolsFrame`, async () => {
       await devtools.getByRole('button', { name: 'Customize and control DevTools' }).first().click()
       // TODO sometimes (fairly rarely) gets stuck in this step
-      await devtools.getByTitle('Undock into separate window').describe(`${label}:Undock into separate window`).click()
+      await devtools
+        .getByRole('button', { name: 'Undock into separate window' })
+        .describe(`${label}:Undock into separate window`)
+        .click()
 
       const liveStoreDevtoolsPromise = new Promise<PW.Frame>((resolve) => {
         devtools.on('framenavigated', (frame) => {
