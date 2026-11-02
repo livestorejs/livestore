@@ -26,6 +26,14 @@ export type QuarantineEntry = {
   readonly expires: string
 }
 
-export const quarantineLedger = {} as const satisfies Record<string, QuarantineEntry>
+export const quarantineLedger = {
+  'devtools-suite': {
+    target: 'tests/integration:devtools',
+    reason:
+      'Every test in the suite fails (0/15). All browser-extension tests die at "No devtools page found"; the rest time out on locators. Pre-existing — the suite was silently suppressed from 2025-05-10 until #1404.',
+    issue: 'https://github.com/livestorejs/livestore/issues/1489',
+    expires: '2026-11-30',
+  },
+} as const satisfies Record<string, QuarantineEntry>
 
 export type QuarantineKey = keyof typeof quarantineLedger
