@@ -70,6 +70,21 @@ tokens for package publish jobs. Each published `@livestore/*` package must
 trust `livestorejs/livestore` with workflow filename `release.yml` in npm
 package settings.
 
+The stable (`publish-release`) and main-snapshot (`publish-snapshot-version`)
+jobs use the `npm-publish` GitHub environment; PR-snapshot publishing does not.
+Before the first publish, an administrator must configure that environment with
+selected deployment branches restricted to `main`, no deployment tags, and no
+required reviewers. GitHub otherwise auto-creates an unprotected environment
+when a workflow first references it. This workflow has no release-tag trigger.
+The snapshot job separately restricts the source CI run to this repository's
+`main`, because a `workflow_run` job uses the default-branch ref regardless of
+the source run's branch.
+
+The npm trusted-publisher environment field is [optional](https://docs.npmjs.com/trusted-publishers/#for-github-actions).
+When it is unset, adding a GitHub environment does not require changing npm's
+trusted-publisher configuration. Binding npm to `npm-publish` is a separate
+change and must account for the PR-snapshot publisher sharing `release.yml`.
+
 A successful `ci.yml` run for any pull request packs an immutable candidate for
 the exact head as
 `0.0.0-snapshot-pr.<number>.<40-character-head-sha>`.

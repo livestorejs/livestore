@@ -315,6 +315,7 @@ echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"`,
     'publish-release': {
       if: "github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-release')",
       'runs-on': 'ubuntu-24.04',
+      environment: 'npm-publish',
       permissions: {
         contents: 'write',
         'id-token': 'write',
@@ -367,8 +368,10 @@ fi`,
      * workflow_dispatch for operator-controlled recovery.
      */
     'publish-snapshot-version': {
-      if: "(github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-snapshot')",
+      // workflow_run uses the default-branch ref, so the environment policy cannot constrain the source CI run.
+      if: "(github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-snapshot')",
       'runs-on': 'ubuntu-24.04',
+      environment: 'npm-publish',
       permissions: {
         contents: 'write',
         'id-token': 'write',
