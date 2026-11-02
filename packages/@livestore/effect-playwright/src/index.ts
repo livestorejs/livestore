@@ -5,6 +5,8 @@ import * as PW from '@playwright/test'
 import { envTruish } from '@livestore/utils'
 import { Cause, Context, Effect, Layer, Option, Queue, Schema, Stream } from '@livestore/utils/effect'
 
+import { makeExtensionLaunchOptions } from './launch-options.ts'
+
 export class BrowserContext extends Context.Service<
   BrowserContext,
   {
@@ -61,15 +63,10 @@ export const browserContext = ({
       process.env.PW_CHROMIUM_ATTACH_TO_OTHER = '1'
 
       browserContext = yield* Effect.promise(() =>
-        PW.chromium.launchPersistentContext(persistentContextPath, {
-          ...launchOptions,
-          headless: false, // Using `--headless` flag below instead
-          args: [
-            headless === true ? `--headless=new` : '', // Headless mode https://playwright.dev/docs/chrome-extensions#headless-mode
-            `--disable-extensions-except=${extensionPath}`,
-            `--load-extension=${extensionPath}`,
-          ],
-        }),
+        PW.chromium.launchPersistentContext(
+          persistentContextPath,
+          makeExtensionLaunchOptions({ extensionPath, headless, launchOptions }),
+        ),
       )
 
       // TODO bring back once Playwright supports console messages for workers/service workers

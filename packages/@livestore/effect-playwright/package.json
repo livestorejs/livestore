@@ -15,7 +15,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test": "echo 'No tests'"
+    "test": "vitest"
   },
   "dependencies": {
     "@livestore/utils": "workspace:^"
@@ -32,7 +32,8 @@
     "@playwright/test": "1.64.1",
     "@standard-schema/spec": "1.1.0",
     "@types/node": "25.3.3",
-    "effect": "4.0.3"
+    "effect": "4.0.3",
+    "vitest": "4.1.9"
   },
   "peerDependencies": {
     "@playwright/test": "^1.56.0"
