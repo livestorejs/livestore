@@ -24,6 +24,11 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 For maintainers and contributors:
 
+- **Test tooling:** Extension-backed Playwright launches preserve caller-supplied
+  Chromium arguments alongside extension flags, so the DevTools browser tests
+  can open their required DevTools pages. The suite's failures now block CI
+  instead of being quarantined ([#1520](https://github.com/livestorejs/livestore/pull/1520),
+  [#1489](https://github.com/livestorejs/livestore/issues/1489)).
 - **Repository rules:** Declare GitHub's extra approval requirement for unattributed
   changes explicitly so the post-sync ruleset check matches the live policy
   ([failed reconcile](https://github.com/livestorejs/livestore/actions/runs/41331402268)).

@@ -420,17 +420,13 @@ const testIntegrationAllCommand = Cli.Command.make(
   runIntegrationAllTests,
 ).pipe(Cli.Command.withDescription('Run all integration tests'))
 
-/**
- * Wraps the DevTools suite so its declared quarantine is enforced at the invocation, rather
- * than as an `|| echo` in the CI task wrapper that nothing records and devenv discards.
- */
 const devtoolsCommand = Cli.Command.make(
   'devtools',
   { mode: integrationTests.modeOption, localDevtoolsPreview: integrationTests.localDevtoolsPreviewOption },
   (args) =>
     TestPolicy.runTestTarget({
       label: 'tests/integration:devtools',
-      policy: TestPolicy.quarantined('devtools-suite'),
+      policy: TestPolicy.blocking,
       run: integrationTests.runDevtoolsTest(args),
     }),
 )
