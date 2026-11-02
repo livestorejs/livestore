@@ -57,6 +57,40 @@ sequenceDiagram
 Manual contrib release dispatch accepts an explicit version but must use a
 version already published by core (LS.DEL.REL-R05).
 
+## Stable and Main-Snapshot Publish Containment
+
+Stable releases use `prepare-release` → `validate-release` → `publish-release`
+→ `finalize-release`. Main snapshots use `prepare-snapshot-version` →
+`validate-snapshot-version` → `publish-snapshot-version`. The pull-request
+snapshot promotion contract below remains separate and unchanged.
+
+Preparation builds and packs core packages and repacks the selected DevTools
+artifact without npm publish authority. Stable preparation also runs the existing
+release-candidate liveness certification. Core packing uses
+`mono release artifact-pack --version "$VERSION" --npm-tag "$TAG" --out-dir "$OUT"`.
+The prepared `release-artifact` directory contains `manifest.json` and the exact
+tarballs for the release topology plus `@livestore/devtools-vite`. The manifest
+has `schemaVersion: 1`, `sourceSha`, `version`, `npmTag`, and `packages` records
+with `name`, `version`, `filename`, `integrity` (SHA-512 SRI), and `tag`. The
+DevTools tag follows its existing `publishTagForVersion` policy. The directory
+may also contain the Chrome ZIP and `release-notes.md` for finalization.
+
+Validation runs separately without secrets or OIDC authority. It checks the
+manifest, source identity, expected package cohort, archive paths, package names
+and versions, tags, and digests without extracting archives or executing package
+code. Publication consumes the validated tarballs
+without repository checkout, dependency installation, building, `mono`, or
+package lifecycle scripts. The npm-credentialed boundary contains only shell
+orchestration and `npm publish --ignore-scripts --provenance`; it rechecks byte
+integrity and accepts an already-published version only when registry integrity
+matches. Stable finalization handles GitHub Release metadata and Chrome assets
+outside the npm-credentialed job.
+
+This is credential containment, not a proof of benign build output. Hashes bind
+the bytes passed between jobs and detect a changed handoff. A malicious prepare
+or build can still create malicious tarballs with matching hashes. Reviewed
+source, build dependencies, and preparation remain trusted inputs to publication.
+
 ## Stable Production Surface Promotion
 
 Package and DevTools artifact publication runs from `main`. Production docs,
@@ -170,8 +204,7 @@ unavoidable secret — an org Actions secret restricted to the two repos
 (`LIVESTORE_RULESET_APP_KEY`).
 
 **Control flow** — a dedicated `.github/workflows/repo-settings.yml` (sole holder
-of the App secret), with tasks `github:rulesets:{sync,plan,check}` and
-`github:app:check`:
+of the App secret), with tasks `github:rulesets:{sync,plan,check}`:
 
 - **Apply on merge:** on push to `main` touching `.github/repo-settings.json`,
   mint a token, `sync` (apply), then re-run the drift check as a post-apply
@@ -186,14 +219,14 @@ of the App secret), with tasks `github:rulesets:{sync,plan,check}` and
   job in `ci`, drift can no longer affect the `ci` conclusion; live drift is
   reconciled by the merge, not policed before it.
 
-**App-definition drift-check.** Symmetric with the ruleset drift-check: a task
-reads the live App via `GET /app` and diffs `default_permissions` /
-`default_events` against the committed manifest (in the scheduled backstop).
-Because GitHub has no API to update an App's permissions, detected App drift
-surfaces a **manual action required** diagnostic rather than converging.
+**App-definition review.** The committed manifest remains the manual provisioning
+contract. App permission and event changes are reviewed against the live App
+settings UI. The repository CLI no longer accepts the App private key or mints
+App JWTs to check `GET /app`. Only the dedicated token-minting action receives
+the key; ruleset commands receive its scoped installation token instead.
 
 **Ownership.** Per repo-architecture R17, the manifest, workflow, tasks, and
-drift-checks are authored once as shared helpers in `livestore` (core);
+ruleset drift-checks are authored once as shared helpers in `livestore` (core);
 `livestore-contrib` enrolls by installing the same App and adding the generated
 workflow. Each repo owns its own `.github/repo-settings.json`.
 

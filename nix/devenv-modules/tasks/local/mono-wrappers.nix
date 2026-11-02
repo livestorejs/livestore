@@ -565,6 +565,18 @@ in
       after = [ "setup:strict" ];
     };
 
+    "release:artifact:pack" = {
+      description = "Build and pack release packages without publishing credentials";
+      exec = ''
+        set -euo pipefail
+        mono release artifact-pack \
+          --version "''${LIVESTORE_RELEASE_VERSION:?}" \
+          --npm-tag "''${LIVESTORE_NPM_TAG:?}" \
+          --out-dir "''${RELEASE_ARTIFACT_DIR:?}"
+      '';
+      after = [ "setup:strict" ];
+    };
+
     "release:plan" = {
       description = "Write release/release-plan.json for a stable release PR";
       exec = ''

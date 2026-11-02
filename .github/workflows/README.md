@@ -48,17 +48,17 @@ DevTools artifact without checking out, building, or publishing from the
 against the LiveStore release candidate and require a new DevTools artifact only
 when compatibility actually fails or DevTools itself changes.
 
-On push to `main` when `release/release-plan.json` changes, the workflow publishes
-the release group and the matching public DevTools artifact package. For stable
-`latest` releases it then deploys the production docs, production examples, and
-production docs search index. In normal operation this happens when the
-supervised release PR is merged.
+On push to `main` when `release/release-plan.json` changes, the workflow prepares,
+validates, and publishes the release group and matching public DevTools artifact
+package. In normal operation this happens when the supervised release PR is merged.
+The stable job chain is `prepare-release` → `validate-release` →
+`publish-release` → `finalize-release`. Finalization handles GitHub Release
+metadata and the optional DevTools Chrome ZIP separately from npm authority.
 
-Manual dispatch with `mode=publish-release` reruns the publish job for the
-checked-in release plan. Use it only after confirming the current `main` release
-plan is still the intended release; the publisher is idempotent for already
-published packages, but production deploys still reflect the checked-in release
-state.
+Manual dispatch with `mode=publish-release` reruns this chain for the checked-in
+release plan. Use it only after confirming the current `main` release plan is
+still the intended release. Already-published packages must match the prepared
+tarball integrity before a retry treats them as complete.
 
 Manual dispatch with `mode=publish-snapshot`, or a successful `ci.yml` run for a
 push to `main`, publishes the matching npm snapshot and DevTools artifact
@@ -69,6 +69,26 @@ remain available for the heavier validation jobs. Do not configure npm write
 tokens for package publish jobs. Each published `@livestore/*` package must
 trust `livestorejs/livestore` with workflow filename `release.yml` in npm
 package settings.
+
+The main-snapshot chain is `prepare-snapshot-version` →
+`validate-snapshot-version` → `publish-snapshot-version`. Both stable and
+main-snapshot preparation build and pack core packages and repack the selected
+`@livestore/devtools-vite` artifact before npm authority exists. Stable preparation
+also preserves release-candidate liveness certification. They stage a
+`release-artifact` directory containing tarballs and `manifest.json`
+(schema version 1, source SHA, version, npm tag, and package
+name/version/filename/SHA-512 SRI/tag records). Stable preparation can also stage
+the Chrome ZIP and `release-notes.md`.
+
+The separate validation jobs have no secrets or OIDC permission. They validate
+the manifest, expected release topology plus `@livestore/devtools-vite`, package
+contents, and integrity before handing the exact bytes to publishing. The
+credentialed publish jobs do not check out the repository, install dependencies,
+build, run `mono`, or execute package lifecycle scripts. Only shell orchestration
+and `npm publish --ignore-scripts --provenance` perform npm publication, with
+hashes rechecked against the validated handoff. Hashes protect byte identity
+between jobs. They do not prove that a compromised prepare/build produced safe
+code, or remove the trust placed in reviewed source and build dependencies.
 
 The stable (`publish-release`) and main-snapshot (`publish-snapshot-version`)
 jobs use the `npm-publish` GitHub environment; PR-snapshot publishing does not.

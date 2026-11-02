@@ -19,10 +19,11 @@ Each step is performed once by an org owner and recorded.
    workflow's Genie source.
 4. **Install the App** on both repos with the ruleset (Administration)
    permission.
-5. **On any later permission change:** edit `default_permissions` in the App
-   settings UI (no API), which forces installations to re-consent; then update
-   the committed manifest to match so the App drift-check passes.
+5. **On any later permission or event change:** review the live App settings
+   against the committed manifest. Edit permissions in the settings UI (no API),
+   which forces installations to re-consent, and update the manifest to match.
 
-The App-definition drift-check (spec §Ruleset Reconciliation) exists so that
-divergence between steps 1/5 and the committed manifest is *detected* rather than
-silent.
+App-definition review is manual. The repository CLI does not receive the App
+private key or mint JWTs to inspect the App definition. The dedicated
+`actions/create-github-app-token` step receives the key and passes only its scoped
+installation token to the ruleset commands.

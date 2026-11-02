@@ -54,6 +54,9 @@ on:
       - scripts/src/commands/release.ts
       - scripts/src/commands/devtools-artifact.ts
       - scripts/src/commands/changesets.ts
+      - .github/scripts/release-artifact.mjs
+      - scripts/src/commands/release-artifact.test.mjs
+      - .github/scripts/release-artifact-jobs.ts
       - scripts/src/commands/docs.ts
       - scripts/src/shared/netlify.ts
   push:
@@ -1425,21 +1428,18 @@ jobs:
           path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
-  publish-release:
+  prepare-release:
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-release')
     runs-on: ubuntu-24.04
-    environment: npm-publish
     permissions:
-      contents: write
-      id-token: write
-    env:
-      GH_TOKEN: ${{ github.token }}
+      contents: read
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
@@ -1554,36 +1554,21 @@ jobs:
           bash "$__genie_ci_retry_script" 'Resolve devenv' '__genie_ci_retry_script='\''${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'\''
           bash "$__genie_ci_retry_script" '\''resolve devenv (devenv.lock)'\'' '\''cd "${GITHUB_WORKSPACE:-$PWD}" && '\''"'\''"'\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\''"'\''"'\'' '\''"'\''"'\''devenv.lock'\''"'\''"'\'''\'''
         shell: bash
-      - name: Read release plan
-        run: |
-          set -euo pipefail
-          release_version="$(jq -r '.version' release/release-plan.json)"
-          npm_tag="$(jq -r '.npmTag' release/release-plan.json)"
-          : "${release_version:?Missing release version}"
-          : "${npm_tag:?Missing npm tag}"
-          echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
-          echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
-      - name: Assert tokenless npm trusted publishing
-        run: |
-          set -euo pipefail
-          if [ -n "${NODE_AUTH_TOKEN:-}" ] || [ -n "${NPM_TOKEN:-}" ]; then
-            echo "npm publishing must use trusted publishing; token auth is not allowed in this job." >&2
-            exit 1
-          fi
-      - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
+      - name: Select exact release candidate
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
-          echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
-          echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
-          echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
-          # Disable in Vite (otherwise CORS issues)
-          echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
-      - name: Publish stable package release
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          version="$(jq -er '.version' release/release-plan.json)"
+          npm_tag="$(jq -er '.npmTag' release/release-plan.json)"
+          echo "LIVESTORE_RELEASE_VERSION=$version" >> "$GITHUB_ENV"
+          echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
+          echo "RELEASE_ARTIFACT_DIR=$RUNNER_TEMP/release-artifact" >> "$GITHUB_ENV"
+      - name: Build and pack core packages
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'devenv tasks run release:stable:publish' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false ${PIPELINE_RUN_PREFIX:+$PIPELINE_RUN_PREFIX }"${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:stable:publish'
+          bash "$__genie_ci_retry_script" 'devenv tasks run release:artifact:pack' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false ${PIPELINE_RUN_PREFIX:+$PIPELINE_RUN_PREFIX }"${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:artifact:pack'
       - name: Certify DevTools artifact liveness
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
@@ -1591,41 +1576,209 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: 'devtools-certification-playwright-artifacts-${{ github.job }}'
+          name: devtools-certification-release
           path: |
             tests/integration/playwright-report/
             tests/integration/test-results/devtools/
-          retention-days: 30
           if-no-files-found: ignore
-      - name: Publish DevTools artifact release
+      - name: Pack DevTools without publishing
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'devenv tasks run release:devtools-artifact:publish:no-install' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false ${PIPELINE_RUN_PREFIX:+$PIPELINE_RUN_PREFIX }"${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:publish:no-install'
-      - name: Upload Nix diagnostics artifact
-        if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
-        uses: actions/upload-artifact@v4
+          bash "$__genie_ci_retry_script" 'devenv tasks run release:devtools-artifact:pack:no-install' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false ${PIPELINE_RUN_PREFIX:+$PIPELINE_RUN_PREFIX }"${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:pack:no-install'
+        env:
+          LIVESTORE_DEVTOOLS_OUT_DIR: '${{ runner.temp }}/devtools-repack'
+      - name: Stage and describe release artifact
+        env:
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          cp "$RUNNER_TEMP/devtools-repack/livestore-devtools-vite-$LIVESTORE_RELEASE_VERSION.tgz" "$RELEASE_ARTIFACT_DIR/"
+          for file in "$RUNNER_TEMP/devtools-repack"/livestore-devtools-chrome-*.zip; do
+            if [ -f "$file" ]; then cp "$file" "$RELEASE_ARTIFACT_DIR/"; fi
+          done
+          cp release/release-notes.md "$RELEASE_ARTIFACT_DIR/release-notes.md"
+          node .github/scripts/release-artifact.mjs create --artifact-dir "$RELEASE_ARTIFACT_DIR" --source-sha "$SOURCE_SHA" --version "$LIVESTORE_RELEASE_VERSION" --npm-tag "$LIVESTORE_NPM_TAG" --topology scripts/src/generated/release-topology.json
+      - uses: actions/upload-artifact@v4
         with:
-          name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
-          if-no-files-found: ignore
+          name: npm-release-release
+          path: '${{ runner.temp }}/release-artifact/'
+          if-no-files-found: error
           retention-days: 14
-  publish-snapshot-version:
-    if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-snapshot')
+  validate-release:
+    needs: [prepare-release]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      manifest_sha512: ${{ steps.validate.outputs.manifest_sha512 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            .github/scripts
+            scripts/src/generated/release-topology.json
+            release/release-plan.json
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-release-release
+          path: '${{ runner.temp }}/release-artifact'
+      - name: Validate exact packages and packed bytes
+        id: validate
+        env:
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          VERSION="$(jq -er '.version' release/release-plan.json)"
+          NPM_TAG="$(jq -er '.npmTag' release/release-plan.json)"
+          node .github/scripts/release-artifact.mjs validate --artifact-dir "$RUNNER_TEMP/release-artifact" --source-sha "$SOURCE_SHA" --version "$VERSION" --npm-tag "$NPM_TAG" --topology scripts/src/generated/release-topology.json
+          echo "manifest_sha512=$(openssl dgst -sha512 -binary "$RUNNER_TEMP/release-artifact/manifest.json" | openssl base64 -A)" >> "$GITHUB_OUTPUT"
+  publish-release:
+    needs: [prepare-release, validate-release]
     runs-on: ubuntu-24.04
     environment: npm-publish
     permissions:
-      contents: write
+      contents: read
       id-token: write
-    env:
-      GH_TOKEN: ${{ github.token }}
     defaults:
       run:
         shell: bash
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-release-release
+          path: '${{ runner.temp }}/release-artifact'
+      - name: Verify bytes and publish without build code
+        env:
+          ARTIFACT_DIR: '${{ runner.temp }}/release-artifact'
+          MANIFEST_SHA512: ${{ needs['validate-release'].outputs.manifest_sha512 }}
+        run: |
+          set -euo pipefail
+          if [ -n "${NODE_AUTH_TOKEN:-}" ] || [ -n "${NPM_TOKEN:-}" ]; then
+            echo "npm publishing must use trusted publishing; token auth is not allowed in this job." >&2
+            exit 1
+          fi
+          actual="$(openssl dgst -sha512 -binary "$ARTIFACT_DIR/manifest.json" | openssl base64 -A)"
+          test "$actual" = "$MANIFEST_SHA512" || { echo "Validated manifest changed" >&2; exit 1; }
+          jq -r '.packages[] | [.name,.version,.filename,.integrity,.tag] | @tsv' "$ARTIFACT_DIR/manifest.json" > "$RUNNER_TEMP/publish-plan.tsv"
+          while IFS=$'\t' read -r name version filename integrity tag; do
+            test ! -L "$ARTIFACT_DIR/$filename" && test -f "$ARTIFACT_DIR/$filename"
+            actual="sha512-$(openssl dgst -sha512 -binary "$ARTIFACT_DIR/$filename" | openssl base64 -A)"
+            test "$actual" = "$integrity" || { echo "Tarball integrity mismatch: $filename" >&2; exit 1; }
+          done < "$RUNNER_TEMP/publish-plan.tsv"
+          registry_integrity() {
+            local result
+            if result="$(npm view "$1" dist.integrity --json --registry https://registry.npmjs.org 2>"$RUNNER_TEMP/npm-view-error")"; then
+              jq -er 'select(type == "string")' <<< "$result"
+            elif grep -q 'E404' "$RUNNER_TEMP/npm-view-error"; then
+              return 0
+            else
+              cat "$RUNNER_TEMP/npm-view-error" >&2
+              return 1
+            fi
+          }
+          while IFS=$'\t' read -r name version filename integrity tag; do
+            spec="$name@$version"
+            existing="$(registry_integrity "$spec")"
+            if [ -n "$existing" ]; then
+              test "$existing" = "$integrity" || { echo "$spec already exists with DIFFERENT integrity" >&2; exit 1; }
+              current="$(npm view "$name" "dist-tags.$tag" --json --registry https://registry.npmjs.org)"
+              test "$(jq -r . <<< "$current")" = "$version" || { echo "$spec has a stale $tag dist-tag; refusing rerun" >&2; exit 1; }
+              echo "$spec already published with matching integrity and tag; skipping"
+              continue
+            fi
+            if npm publish "$ARTIFACT_DIR/$filename" --ignore-scripts --provenance --access public --tag "$tag" --registry https://registry.npmjs.org >"$RUNNER_TEMP/npm-publish-log" 2>&1; then
+              cat "$RUNNER_TEMP/npm-publish-log"
+            else
+              cat "$RUNNER_TEMP/npm-publish-log" >&2
+              if ! { grep -Eiq '(E409|409 Conflict)' "$RUNNER_TEMP/npm-publish-log" && grep -iq 'cannot publish over previously staged version' "$RUNNER_TEMP/npm-publish-log"; }; then
+                existing="$(registry_integrity "$spec")"
+                test "$existing" = "$integrity" || exit 1
+              fi
+            fi
+            echo "Verifying $spec public registry visibility (60 retries, 5 seconds apart)."
+            for attempt in $(seq 0 60); do
+              existing="$(registry_integrity "$spec")"
+              if [ -n "$existing" ]; then
+                test "$existing" = "$integrity" || { echo "$spec is public with DIFFERENT integrity" >&2; exit 1; }
+                break
+              fi
+              if [ "$attempt" = 60 ]; then
+                echo "$spec is still not publicly visible after 60 retries at 5-second intervals. npm may have accepted a staged publish; staging does not auto-promote. A maintainer must run npm stage list $name --json, match version $version, review with npm stage view <stage-id>, and approve with npm stage approve <stage-id> (interactive 2FA), or use the Staged Packages tab on npmjs.com. Then rerun this release. If no stage exists, check npm registry status and the publish logs. For unattended direct publishing, check the trusted publisher allows npm publish, not only npm stage publish." >&2
+                exit 1
+              fi
+              echo "$spec is not public yet (check $((attempt + 1))/61); waiting for registry visibility or staged approval."
+              sleep 5
+            done
+            current="$(npm view "$name" "dist-tags.$tag" --json --registry https://registry.npmjs.org)"
+            test "$(jq -r . <<< "$current")" = "$version" || { echo "$spec has a stale $tag dist-tag" >&2; exit 1; }
+          done < "$RUNNER_TEMP/publish-plan.tsv"
+  finalize-release:
+    needs: [prepare-release, validate-release, publish-release]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-release-release
+          path: '${{ runner.temp }}/release-artifact'
+      - name: Finalize release at the explicit candidate SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          MANIFEST_SHA512: ${{ needs['validate-release'].outputs.manifest_sha512 }}
+        run: |
+          set -euo pipefail
+          actual="$(openssl dgst -sha512 -binary "$RUNNER_TEMP/release-artifact/manifest.json" | openssl base64 -A)"
+          test "$actual" = "$MANIFEST_SHA512"
+          VERSION="$(jq -er '.version' "$RUNNER_TEMP/release-artifact/manifest.json")"
+          tag="v$VERSION"
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" > "$RUNNER_TEMP/release-ref.json" 2>"$RUNNER_TEMP/release-ref-error"; then
+            test "$(jq -r '.object.type' "$RUNNER_TEMP/release-ref.json")" = commit
+            test "$(jq -r '.object.sha' "$RUNNER_TEMP/release-ref.json")" = "$SOURCE_SHA" || { echo "Release tag points to another SHA" >&2; exit 1; }
+          else
+            grep -q 'HTTP 404' "$RUNNER_TEMP/release-ref-error" || { cat "$RUNNER_TEMP/release-ref-error" >&2; exit 1; }
+            gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag" -f sha="$SOURCE_SHA"
+          fi
+          notes="$RUNNER_TEMP/release-artifact/release-notes.md"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --notes-file "$notes"
+          else
+            args=()
+            if [[ "$VERSION" == *-* ]]; then args+=(--prerelease); fi
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --verify-tag --target "$SOURCE_SHA" --title "$tag" --notes-file "$notes" "${args[@]}"
+          fi
+          for file in "$RUNNER_TEMP/release-artifact"/livestore-devtools-chrome-*.zip; do
+            if [ -f "$file" ]; then gh release upload "$tag" "$file" --repo "$GITHUB_REPOSITORY" --clobber; fi
+          done
+  prepare-snapshot-version:
+    if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-snapshot')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         env:
@@ -1739,38 +1892,168 @@ jobs:
           bash "$__genie_ci_retry_script" 'Resolve devenv' '__genie_ci_retry_script='\''${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'\''
           bash "$__genie_ci_retry_script" '\''resolve devenv (devenv.lock)'\'' '\''cd "${GITHUB_WORKSPACE:-$PWD}" && '\''"'\''"'\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\''"'\''"'\'' '\''"'\''"'\''devenv.lock'\''"'\''"'\'''\'''
         shell: bash
-      - name: Assert tokenless npm trusted publishing
+      - name: Select exact release candidate
+        env:
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           set -euo pipefail
-          if [ -n "${NODE_AUTH_TOKEN:-}" ] || [ -n "${NPM_TOKEN:-}" ]; then
-            echo "npm snapshot publishing must use trusted publishing; token auth is not allowed in this job." >&2
-            exit 1
-          fi
-      - name: Publish snapshot version
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          version="0.0.0-snapshot-$SOURCE_SHA"
+          npm_tag=snapshot
+          echo "LIVESTORE_RELEASE_VERSION=$version" >> "$GITHUB_ENV"
+          echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
+          echo "RELEASE_ARTIFACT_DIR=$RUNNER_TEMP/release-artifact" >> "$GITHUB_ENV"
+      - name: Build and pack core packages
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'devenv tasks run release:snapshot:git-sha' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false ${PIPELINE_RUN_PREFIX:+$PIPELINE_RUN_PREFIX }"${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:snapshot:git-sha'
-        env:
-          GIT_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
-      - name: Publish DevTools artifact snapshot
+          bash "$__genie_ci_retry_script" 'devenv tasks run release:artifact:pack' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false ${PIPELINE_RUN_PREFIX:+$PIPELINE_RUN_PREFIX }"${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:artifact:pack'
+      - name: Pack DevTools without publishing
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'devenv tasks run release:devtools-artifact:publish' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false ${PIPELINE_RUN_PREFIX:+$PIPELINE_RUN_PREFIX }"${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:publish'
+          bash "$__genie_ci_retry_script" 'devenv tasks run release:devtools-artifact:pack:no-install' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false ${PIPELINE_RUN_PREFIX:+$PIPELINE_RUN_PREFIX }"${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:pack:no-install'
         env:
-          LIVESTORE_DEVTOOLS_OUT_DIR: '${{ runner.temp }}/livestore-devtools-snapshot'
-          LIVESTORE_RELEASE_VERSION: '0.0.0-snapshot-${{ github.event.workflow_run.head_sha || github.sha }}'
+          LIVESTORE_DEVTOOLS_OUT_DIR: '${{ runner.temp }}/devtools-repack'
+      - name: Stage and describe release artifact
+        env:
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          cp "$RUNNER_TEMP/devtools-repack/livestore-devtools-vite-$LIVESTORE_RELEASE_VERSION.tgz" "$RELEASE_ARTIFACT_DIR/"
+          for file in "$RUNNER_TEMP/devtools-repack"/livestore-devtools-chrome-*.zip; do
+            if [ -f "$file" ]; then cp "$file" "$RELEASE_ARTIFACT_DIR/"; fi
+          done
+
+          node .github/scripts/release-artifact.mjs create --artifact-dir "$RELEASE_ARTIFACT_DIR" --source-sha "$SOURCE_SHA" --version "$LIVESTORE_RELEASE_VERSION" --npm-tag "$LIVESTORE_NPM_TAG" --topology scripts/src/generated/release-topology.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-release-snapshot-version
+          path: '${{ runner.temp }}/release-artifact/'
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload DevTools Chrome snapshot artifact
         uses: actions/upload-artifact@v4
         with:
           name: 'livestore-devtools-chrome-0.0.0-snapshot-${{ github.event.workflow_run.head_sha || github.sha }}'
-          path: '${{ runner.temp }}/livestore-devtools-snapshot/livestore-devtools-chrome-0.0.0-snapshot-${{ github.event.workflow_run.head_sha || github.sha }}.zip'
+          path: '${{ runner.temp }}/release-artifact/livestore-devtools-chrome-0.0.0-snapshot-${{ github.event.workflow_run.head_sha || github.sha }}.zip'
           if-no-files-found: error
           retention-days: 14
-      - name: Upload Nix diagnostics artifact
-        if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
-        uses: actions/upload-artifact@v4
+  validate-snapshot-version:
+    needs: [prepare-snapshot-version]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      manifest_sha512: ${{ steps.validate.outputs.manifest_sha512 }}
+    steps:
+      - uses: actions/checkout@v4
         with:
-          name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
-          if-no-files-found: ignore
-          retention-days: 14
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            .github/scripts
+            scripts/src/generated/release-topology.json
+            release/release-plan.json
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-release-snapshot-version
+          path: '${{ runner.temp }}/release-artifact'
+      - name: Validate exact packages and packed bytes
+        id: validate
+        env:
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          VERSION="0.0.0-snapshot-$SOURCE_SHA"
+          NPM_TAG=snapshot
+          node .github/scripts/release-artifact.mjs validate --artifact-dir "$RUNNER_TEMP/release-artifact" --source-sha "$SOURCE_SHA" --version "$VERSION" --npm-tag "$NPM_TAG" --topology scripts/src/generated/release-topology.json
+          echo "manifest_sha512=$(openssl dgst -sha512 -binary "$RUNNER_TEMP/release-artifact/manifest.json" | openssl base64 -A)" >> "$GITHUB_OUTPUT"
+  publish-snapshot-version:
+    needs: [prepare-snapshot-version, validate-snapshot-version]
+    runs-on: ubuntu-24.04
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-release-snapshot-version
+          path: '${{ runner.temp }}/release-artifact'
+      - name: Verify bytes and publish without build code
+        env:
+          ARTIFACT_DIR: '${{ runner.temp }}/release-artifact'
+          MANIFEST_SHA512: ${{ needs['validate-snapshot-version'].outputs.manifest_sha512 }}
+        run: |
+          set -euo pipefail
+          if [ -n "${NODE_AUTH_TOKEN:-}" ] || [ -n "${NPM_TOKEN:-}" ]; then
+            echo "npm publishing must use trusted publishing; token auth is not allowed in this job." >&2
+            exit 1
+          fi
+          actual="$(openssl dgst -sha512 -binary "$ARTIFACT_DIR/manifest.json" | openssl base64 -A)"
+          test "$actual" = "$MANIFEST_SHA512" || { echo "Validated manifest changed" >&2; exit 1; }
+          jq -r '.packages[] | [.name,.version,.filename,.integrity,.tag] | @tsv' "$ARTIFACT_DIR/manifest.json" > "$RUNNER_TEMP/publish-plan.tsv"
+          while IFS=$'\t' read -r name version filename integrity tag; do
+            test ! -L "$ARTIFACT_DIR/$filename" && test -f "$ARTIFACT_DIR/$filename"
+            actual="sha512-$(openssl dgst -sha512 -binary "$ARTIFACT_DIR/$filename" | openssl base64 -A)"
+            test "$actual" = "$integrity" || { echo "Tarball integrity mismatch: $filename" >&2; exit 1; }
+          done < "$RUNNER_TEMP/publish-plan.tsv"
+          registry_integrity() {
+            local result
+            if result="$(npm view "$1" dist.integrity --json --registry https://registry.npmjs.org 2>"$RUNNER_TEMP/npm-view-error")"; then
+              jq -er 'select(type == "string")' <<< "$result"
+            elif grep -q 'E404' "$RUNNER_TEMP/npm-view-error"; then
+              return 0
+            else
+              cat "$RUNNER_TEMP/npm-view-error" >&2
+              return 1
+            fi
+          }
+          while IFS=$'\t' read -r name version filename integrity tag; do
+            spec="$name@$version"
+            existing="$(registry_integrity "$spec")"
+            if [ -n "$existing" ]; then
+              test "$existing" = "$integrity" || { echo "$spec already exists with DIFFERENT integrity" >&2; exit 1; }
+              current="$(npm view "$name" "dist-tags.$tag" --json --registry https://registry.npmjs.org)"
+              test "$(jq -r . <<< "$current")" = "$version" || { echo "$spec has a stale $tag dist-tag; refusing rerun" >&2; exit 1; }
+              echo "$spec already published with matching integrity and tag; skipping"
+              continue
+            fi
+            if npm publish "$ARTIFACT_DIR/$filename" --ignore-scripts --provenance --access public --tag "$tag" --registry https://registry.npmjs.org >"$RUNNER_TEMP/npm-publish-log" 2>&1; then
+              cat "$RUNNER_TEMP/npm-publish-log"
+            else
+              cat "$RUNNER_TEMP/npm-publish-log" >&2
+              if ! { grep -Eiq '(E409|409 Conflict)' "$RUNNER_TEMP/npm-publish-log" && grep -iq 'cannot publish over previously staged version' "$RUNNER_TEMP/npm-publish-log"; }; then
+                existing="$(registry_integrity "$spec")"
+                test "$existing" = "$integrity" || exit 1
+              fi
+            fi
+            echo "Verifying $spec public registry visibility (60 retries, 5 seconds apart)."
+            for attempt in $(seq 0 60); do
+              existing="$(registry_integrity "$spec")"
+              if [ -n "$existing" ]; then
+                test "$existing" = "$integrity" || { echo "$spec is public with DIFFERENT integrity" >&2; exit 1; }
+                break
+              fi
+              if [ "$attempt" = 60 ]; then
+                echo "$spec is still not publicly visible after 60 retries at 5-second intervals. npm may have accepted a staged publish; staging does not auto-promote. A maintainer must run npm stage list $name --json, match version $version, review with npm stage view <stage-id>, and approve with npm stage approve <stage-id> (interactive 2FA), or use the Staged Packages tab on npmjs.com. Then rerun this release. If no stage exists, check npm registry status and the publish logs. For unattended direct publishing, check the trusted publisher allows npm publish, not only npm stage publish." >&2
+                exit 1
+              fi
+              echo "$spec is not public yet (check $((attempt + 1))/61); waiting for registry visibility or staged approval."
+              sleep 5
+            done
+            current="$(npm view "$name" "dist-tags.$tag" --json --registry https://registry.npmjs.org)"
+            test "$(jq -r . <<< "$current")" = "$version" || { echo "$spec has a stale $tag dist-tag" >&2; exit 1; }
+          done < "$RUNNER_TEMP/publish-plan.tsv"
