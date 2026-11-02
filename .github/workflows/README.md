@@ -198,8 +198,8 @@ reserve no capacity and apply independently to Linux and macOS pools.
 LiveStore's `namespaceRunner` helper defaults to delivery priority 3. Required
 checks and their prerequisites, main verification, release orchestration,
 docs/examples builds and deployments, and DevTools artifact verification use
-that default. The optional `perf-test`, independent `publish-nix-cache`, and
-advisory `report-pr-preview` jobs use background priority 6. None supplies a
+that default. The optional `perf-test` and independent `publish-nix-cache`
+jobs use background priority 6. Neither supplies a
 required check or a prerequisite for delivery jobs. The source-policy job keeps
 priority 3 wherever it is reused, including release and deployment workflows.
 A scheduled verification job retains delivery priority; its trigger alone does

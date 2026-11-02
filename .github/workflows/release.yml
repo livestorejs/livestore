@@ -62,7 +62,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 env:
   CI: 'true'
@@ -1013,7 +1012,6 @@ jobs:
     permissions:
       actions: write
       contents: write
-      id-token: write
       pull-requests: write
     defaults:
       run:

@@ -13,9 +13,6 @@ import {
   otelSetupStep,
   repoPnpmOnlyBuiltDependencies,
   runDevenvTasksBefore,
-  workflowReportCollectorStep,
-  workflowReportCommentBodyStep,
-  workflowReportPublisherStep,
 } from '../../genie/repo.ts'
 // Use the pinned member checkout so local generation and CI resolve the same snapshot helper.
 import {
@@ -32,37 +29,10 @@ const GITHUB_RUN_ID = '${{ github.run_id }}'
 const CACHE_PUBLISHER_IF =
   "github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')"
 const PR_HEAD_SHA = '${{ github.event.pull_request.head.sha || github.sha }}'
-const IS_NOT_FORK = 'github.event.pull_request.head.repo.fork != true'
+// Deploy credentials are never available to pull-request or manual-dispatch runs.
+const DEPLOY_MAIN_IF = "github.event_name == 'push' && github.ref == 'refs/heads/main'"
 const DLX_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `--allow-build=${name}`).join(' ')
 const PNPM_ADD_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `--allow-build=${name}`).join(' ')
-
-// =============================================================================
-// PR Preview Workflow Report
-// =============================================================================
-
-/**
- * Surface PR-time deploy outcomes (docs preview and examples previews) as a
- * single managed PR comment. Each producer job writes one or
- * more JSONL records to its own artifact; the dedicated `report-pr-preview`
- * job aggregates every artifact into one bundle and upserts the comment.
- *
- * Records are deduped by `subject.id` downstream, so each producer owns a
- * stable subject (`livestore-docs-preview`, `livestore-example-<slug>`) and
- * contributors see the latest URL per surface.
- */
-const PR_PREVIEW_REPORT_STATE_ID = 'pr-preview'
-
-const DOCS_REPORT_ARTIFACT_NAME = 'docs-deploy-workflow-report'
-const DOCS_REPORT_RECORD_PATH = '${{ runner.temp }}/workflow-reports/docs-deploy.jsonl'
-const DOCS_REPORT_DOWNLOAD_DIR = '${{ runner.temp }}/workflow-reports/docs-deploy-download'
-
-const EXAMPLES_REPORT_ARTIFACT_NAME = 'examples-deploy-workflow-report'
-const EXAMPLES_REPORT_RECORD_PATH = '${{ runner.temp }}/workflow-reports/examples-deploy.jsonl'
-const EXAMPLES_REPORT_DOWNLOAD_DIR = '${{ runner.temp }}/workflow-reports/examples-deploy-download'
-
-const PR_PREVIEW_REPORT_BUNDLE_PATH = '${{ runner.temp }}/workflow-reports/pr-preview-bundle.json'
-const PR_PREVIEW_REPORT_COMMENT_BODY_PATH = '${{ runner.temp }}/workflow-reports/pr-preview-comment.md'
-const PR_PREVIEW_REPORT_SUMMARY_PATH = '${{ runner.temp }}/workflow-reports/pr-preview-summary.md'
 
 // =============================================================================
 // Job Helpers
@@ -114,7 +84,6 @@ export default githubWorkflow({
   actionlint: defaultActionlintConfig,
 
   permissions: {
-    'id-token': 'write',
     contents: 'read',
   },
 
@@ -292,7 +261,7 @@ export default githubWorkflow({
         {
           // TODO: surface deploy url in github UI via environments
           name: 'Upload trace',
-          if: '${{ !cancelled() }}',
+          if: `\${{ !cancelled() && ${DEPLOY_MAIN_IF} }}`,
           env: {
             NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
             PLAYWRIGHT_SUITE: '${{ matrix.suite }}',
@@ -350,70 +319,6 @@ export default githubWorkflow({
       ],
     },
 
-    /**
-     * Aggregate every PR-time deploy/publish workflow report and upsert a
-     * single managed PR comment. Runs after the docs/examples jobs so all
-     * producer artifacts are available; individual artifacts are allowed to be
-     * missing so the comment still publishes whatever subset succeeded.
-     */
-    'report-pr-preview': {
-      if: `\${{ github.event_name == 'pull_request' && !cancelled() }}`,
-      needs: ['build-deploy-docs', 'build-and-deploy-examples-src'],
-      'runs-on': namespaceRunner(GITHUB_RUN_ID, 6),
-      permissions: {
-        contents: 'read',
-        'pull-requests': 'write',
-      },
-      defaults: bashShellDefaults,
-      steps: [
-        ...livestoreSetupSteps,
-        {
-          name: 'Download docs deploy workflow report',
-          if: `\${{ needs.build-deploy-docs.result == 'success' }}`,
-          uses: 'actions/download-artifact@v4',
-          'continue-on-error': true,
-          with: {
-            name: DOCS_REPORT_ARTIFACT_NAME,
-            path: DOCS_REPORT_DOWNLOAD_DIR,
-          },
-        },
-        {
-          name: 'Download examples deploy workflow report',
-          if: `\${{ needs.build-and-deploy-examples-src.result == 'success' }}`,
-          uses: 'actions/download-artifact@v4',
-          'continue-on-error': true,
-          with: {
-            name: EXAMPLES_REPORT_ARTIFACT_NAME,
-            path: EXAMPLES_REPORT_DOWNLOAD_DIR,
-          },
-        },
-        workflowReportCollectorStep({
-          bundleId: 'pr-preview',
-          inputPaths: [
-            `${DOCS_REPORT_DOWNLOAD_DIR}/docs-deploy.jsonl`,
-            `${EXAMPLES_REPORT_DOWNLOAD_DIR}/examples-deploy.jsonl`,
-          ],
-          outputPath: PR_PREVIEW_REPORT_BUNDLE_PATH,
-          allowMissingInput: true,
-        }),
-        workflowReportCommentBodyStep({
-          bundlePath: PR_PREVIEW_REPORT_BUNDLE_PATH,
-          commentBodyPath: PR_PREVIEW_REPORT_COMMENT_BODY_PATH,
-          summaryPath: PR_PREVIEW_REPORT_SUMMARY_PATH,
-          title: 'PR preview',
-          noRecordsMessage: 'No previews were published for this commit.',
-          stateId: PR_PREVIEW_REPORT_STATE_ID,
-          entryId: PR_HEAD_SHA,
-          entryLabel: `PR \${{ github.event.pull_request.number }}`,
-        }),
-        workflowReportPublisherStep({
-          commentBodyPath: PR_PREVIEW_REPORT_COMMENT_BODY_PATH,
-          summaryPath: PR_PREVIEW_REPORT_SUMMARY_PATH,
-          stateId: PR_PREVIEW_REPORT_STATE_ID,
-        }),
-      ],
-    },
-
     'build-and-deploy-examples-src': {
       ...namespaceRunnerConfig,
       defaults: bashShellDefaults,
@@ -440,27 +345,12 @@ export default githubWorkflow({
           },
         },
         {
-          id: 'deploy-examples',
           name: 'Deploy examples to Cloudflare',
-          if: IS_NOT_FORK,
-          run: ['mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_FILE")"', runDevenvTasksBefore('examples:deploy')].join(
-            '\n',
-          ),
+          if: DEPLOY_MAIN_IF,
+          run: runDevenvTasksBefore('examples:deploy'),
           env: {
             CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
             CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
-            WORKFLOW_REPORT_OUTPUT_FILE: EXAMPLES_REPORT_RECORD_PATH,
-          },
-        },
-        {
-          name: 'Upload examples deploy workflow report',
-          if: `\${{ github.event_name == 'pull_request' && steps.deploy-examples.outcome == 'success' }}`,
-          uses: 'actions/upload-artifact@v4',
-          with: {
-            name: EXAMPLES_REPORT_ARTIFACT_NAME,
-            path: EXAMPLES_REPORT_RECORD_PATH,
-            'if-no-files-found': 'warn',
-            'retention-days': 14,
           },
         },
         {
@@ -472,8 +362,7 @@ export default githubWorkflow({
 
     /**
      * Docs deployment mapping (authoritative, with domains) — handled by `mono docs deploy`:
-     * - pull_request (any base): deploy alias on dev docs site (no purge)
-     *     example domain: https://<alias>--livestore-docs-dev.netlify.app
+     * - pull_request: build only; no deploy credentials or preview comments
      * - push to main: deploy to dev docs site as prod
      *     domain: https://dev.docs.livestore.dev
      * - stable release publish: release.yml deploys prod docs explicitly
@@ -520,24 +409,11 @@ export default githubWorkflow({
           },
         },
         {
-          id: 'deploy-docs',
           name: 'Deploy docs',
-          if: `\${{ success() && (github.event_name != 'pull_request' || ${IS_NOT_FORK}) }}`,
-          run: ['mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_FILE")"', runDevenvTasksBefore('docs:deploy')].join('\n'),
+          if: DEPLOY_MAIN_IF,
+          run: runDevenvTasksBefore('docs:deploy'),
           env: {
             NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
-            WORKFLOW_REPORT_OUTPUT_FILE: DOCS_REPORT_RECORD_PATH,
-          },
-        },
-        {
-          name: 'Upload docs deploy workflow report',
-          if: `\${{ github.event_name == 'pull_request' && steps.deploy-docs.outcome == 'success' }}`,
-          uses: 'actions/upload-artifact@v4',
-          with: {
-            name: DOCS_REPORT_ARTIFACT_NAME,
-            path: DOCS_REPORT_RECORD_PATH,
-            'if-no-files-found': 'warn',
-            'retention-days': 14,
           },
         },
       ]),
