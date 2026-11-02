@@ -12,6 +12,8 @@ Paths are repository-relative globs. Multiple paths in a rule are alternatives.
 rules:
   - paths:
       - .github/workflows/**
+      - .github/scripts/**
+      - .github/actions/**
       - .github/CODEOWNERS
       - .github/repo-settings.json
       - .github/repo-settings.json.genie.ts
@@ -65,6 +67,6 @@ Dependency bumps in published package manifests need Johannes's approval. Root a
 
 [CODEOWNERS](../../../.github/CODEOWNERS) projects these rules in reverse order because GitHub uses the last matching entry. Johannes-owned and kind-restricted rules use `@schickling`; unrestricted agent paths use ownerless entries to clear the default owner. The PR author is never listed as an approving code owner.
 
-The `main-branch-rules` ruleset requires code-owner review and otherwise requires zero approvals. GitHub cannot classify change kinds, so restricted rules remain code-owned. The profile document under `context/` stays with Johannes under the default rule, and the files that define and apply the code-owner gate stay with Johannes under the first rule, so a delegated PR cannot widen its own delegation. Workflows stay with Johannes because they can use repository secrets, including the ruleset App key. Repository settings are unchanged.
+The `main-branch-rules` ruleset requires code-owner review and otherwise requires zero approvals. GitHub cannot classify change kinds, so restricted rules remain code-owned. The profile document under `context/` stays with Johannes under the default rule, and the files that define and apply the code-owner gate stay with Johannes under the first rule. The reconcile job still runs tooling without a code owner; [#1701](https://github.com/livestorejs/livestore/issues/1701) tracks that. Workflows, and the scripts and actions they run, stay with Johannes because they can use repository secrets, including the ruleset App key. Repository settings are unchanged.
 
 The existing [collaboration flow](./spec.md) and [changelog guide](../../../contributor-docs/changelog-guide.md) still apply; delegation does not waive contribution checks or release-ledger requirements.

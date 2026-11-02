@@ -37,3 +37,5 @@
 /.github/workflows/repo-settings.yml.genie.ts @schickling
 /nix/devenv-modules/tasks/local/github-rulesets.nix @schickling
 /.github/workflows/ @schickling
+/.github/scripts/ @schickling
+/.github/actions/ @schickling
