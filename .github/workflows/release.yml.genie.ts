@@ -98,7 +98,6 @@ export default githubWorkflow({
 
   permissions: {
     contents: 'read',
-    'id-token': 'write',
   },
 
   env: {
@@ -121,7 +120,6 @@ export default githubWorkflow({
       permissions: {
         actions: 'write',
         contents: 'write',
-        'id-token': 'write',
         'pull-requests': 'write',
       },
       defaults: bashShellDefaults,
