@@ -33,7 +33,7 @@ const deliveryJobs = [
   'build-and-deploy-examples-src',
   'build-deploy-docs',
 ]
-const backgroundJobs = ['publish-nix-cache', 'perf-test', 'report-pr-preview']
+const backgroundJobs = ['publish-nix-cache', 'perf-test']
 const expectedPriorities = new Map<string, 3 | 6>([
   ...deliveryJobs.map((job) => [`ci.yml/${job}`, 3] as const),
   ...backgroundJobs.map((job) => [`ci.yml/${job}`, 6] as const),
@@ -72,10 +72,10 @@ const priorityErrors = (input: typeof workflows) => {
 }
 
 describe('Namespace generated workflow priorities', () => {
-  it('classifies all 13 delivery and three background jobs while preserving run affinity', () => {
+  it('classifies all 13 delivery and two background jobs while preserving run affinity', () => {
     expect(priorityErrors(workflows)).toEqual([])
     expect([...expectedPriorities.values()].filter((priority) => priority === 3)).toHaveLength(13)
-    expect([...expectedPriorities.values()].filter((priority) => priority === 6)).toHaveLength(3)
+    expect([...expectedPriorities.values()].filter((priority) => priority === 6)).toHaveLength(2)
   })
 
   it('keeps every Namespace required check and its prerequisite at delivery priority', () => {
