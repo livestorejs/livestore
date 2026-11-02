@@ -76,14 +76,27 @@ Before the first publish, an administrator must configure that environment with
 selected deployment branches restricted to `main`, no deployment tags, and no
 required reviewers. GitHub otherwise auto-creates an unprotected environment
 when a workflow first references it. This workflow has no release-tag trigger.
+An administrator applies this policy out of band; P4 IaC will declare it later.
+Inspect the effective policy before the first publish:
+
+```sh
+gh api repos/livestorejs/livestore/environments/npm-publish
+gh api repos/livestorejs/livestore/environments/npm-publish/deployment-branch-policies --jq '.branch_policies[]|{name,type}'
+```
+
+The result must contain exactly one rule, `{name: main, type: branch}`.
+Delete any other rule, including tag rules, before the first publish.
+
 The snapshot job separately restricts the source CI run to this repository's
 `main`, because a `workflow_run` job uses the default-branch ref regardless of
 the source run's branch.
 
 The npm trusted-publisher environment field is [optional](https://docs.npmjs.com/trusted-publishers/#for-github-actions).
 When it is unset, adding a GitHub environment does not require changing npm's
-trusted-publisher configuration. Binding npm to `npm-publish` is a separate
-change and must account for the PR-snapshot publisher sharing `release.yml`.
+trusted-publisher configuration. Binding npm's trusted publisher to `npm-publish`
+(Q278) would make `publish-pr-snapshot` fail because that job has no environment.
+Q278 must therefore either give the PR-snapshot publisher its own environment
+or leave the npm environment unset.
 
 A successful `ci.yml` run for any pull request packs an immutable candidate for
 the exact head as
