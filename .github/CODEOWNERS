@@ -30,3 +30,9 @@
 /.changeset/*.md @schickling
 /CHANGELOG.md @schickling
 /packages/@livestore/wa-sqlite/CHANGELOG.md @schickling
+/.github/CODEOWNERS @schickling
+/.github/repo-settings.json @schickling
+/.github/repo-settings.json.genie.ts @schickling
+/.github/workflows/repo-settings.yml @schickling
+/.github/workflows/repo-settings.yml.genie.ts @schickling
+/nix/devenv-modules/tasks/local/github-rulesets.nix @schickling
