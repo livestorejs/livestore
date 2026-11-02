@@ -24,6 +24,9 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 For maintainers and contributors:
 
+- **Repository rules:** Declare GitHub's extra approval requirement for unattributed
+  changes explicitly so the post-sync ruleset check matches the live policy
+  ([failed reconcile](https://github.com/livestorejs/livestore/actions/runs/41331402268)).
 - **CI tooling:** Pin effect-utils to `d883d18e` and use its trusted Namespace
   runner policy so Nix installation can create sandbox namespaces without
   granting privileged containers to fork pull requests ([#1691](https://github.com/livestorejs/livestore/pull/1691)).

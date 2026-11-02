@@ -170,9 +170,6 @@ export default defineConfig({
           href: 'https://bsky.app/profile/livestore.dev',
         },
       ],
-      expressiveCode: {
-        themes: ['github-dark', 'github-dark'],
-      },
       components: {
         SocialIcons: './src/components/SocialIcons.astro',
       },
