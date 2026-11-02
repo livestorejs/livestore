@@ -298,7 +298,7 @@ Error: ${parseErrorStr}
 Value:`,
             value,
           )
-          // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for SQL decode errors
+          // oxlint-disable-next-line no-debugger -- intentional breakpoint for SQL decode errors
           debugger
           throw res.failure
         } else {

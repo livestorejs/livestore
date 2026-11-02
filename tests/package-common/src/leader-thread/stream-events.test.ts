@@ -11,7 +11,12 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Fiber, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
-import { appConfigSetEvent, events as fixtureEvents, schema as fixtureSchema } from './fixture.ts'
+import {
+  appConfigSetEvent,
+  events as fixtureEvents,
+  makeSqliteServicesLayer,
+  schema as fixtureSchema,
+} from './fixture.ts'
 
 const allFixtureEvents = {
   ...fixtureEvents,
@@ -31,7 +36,7 @@ const withNodeFs = <R, E, A>(effect: Effect.Effect<A, E, R>) =>
  * (mock sync backend, shutdown plumbing, queues, etc.) because it verifies the
  * processor end-to-end. Here we only need three pieces:
  *   1. sqlite eventlog
- *   2. sqlite state DB (for the session changeset join)
+ *   2. sqlite state DB (for materialization and persisted state-head tracking)
  *   3. a controllable `syncState` subscription
  * Pulling those together directly keeps the unit test fast and focused while
  * still relying on the real persistence layer.
@@ -46,8 +51,9 @@ const makeTestEnvironment = Effect.gen(function* () {
   yield* Eventlog.initEventlogDb(dbEventlog)
 
   const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
-  const materializeEvent = yield* makeMaterializeEvent({ schema: fixtureSchema, dbState, dbEventlog })
-  yield* recreateDb({ dbState, dbEventlog, schema: fixtureSchema, bootStatusQueue, materializeEvent })
+  const servicesLayer = makeSqliteServicesLayer({ dbState, dbEventlog })
+  const materializeEvent = yield* makeMaterializeEvent({ schema: fixtureSchema }).pipe(Effect.provide(servicesLayer))
+  yield* recreateDb({ schema: fixtureSchema, bootStatusQueue, materializeEvent }).pipe(Effect.provide(servicesLayer))
   yield* Queue.shutdown(bootStatusQueue)
 
   const initialSyncState = SyncState.SyncState.make({
@@ -80,12 +86,8 @@ const makeTestEnvironment = Effect.gen(function* () {
   return { dbEventlog, dbState, syncState, advanceHead, closeHeads }
 })
 
-const toEncodedWithMeta = (event: LiveStoreEvent.Global.Encoded): LiveStoreEvent.Client.EncodedWithMeta =>
-  LiveStoreEvent.Client.EncodedWithMeta.fromGlobal(event, {
-    syncMetadata: Option.none(),
-    materializerHashLeader: Option.none(),
-    materializerHashSession: Option.none(),
-  })
+const toEncoded = (event: LiveStoreEvent.Global.Encoded): LiveStoreEvent.Client.Encoded =>
+  LiveStoreEvent.Client.fromGlobal(event)
 
 const makeClientOnlyEvent = ({
   base,
@@ -94,7 +96,7 @@ const makeClientOnlyEvent = ({
   base: EventSequenceNumber.Client.Composite
   event: LiveStoreEvent.Global.Encoded
 }): {
-  encoded: LiveStoreEvent.Client.EncodedWithMeta
+  encoded: LiveStoreEvent.Client.Encoded
   nextBase: EventSequenceNumber.Client.Composite
 } => {
   const nextPair = EventSequenceNumber.Client.nextPair({
@@ -104,7 +106,7 @@ const makeClientOnlyEvent = ({
   })
 
   return {
-    encoded: LiveStoreEvent.Client.EncodedWithMeta.make({
+    encoded: LiveStoreEvent.Client.Encoded.make({
       name: event.name,
       args: event.args,
       seqNum: nextPair.seqNum,
@@ -116,7 +118,7 @@ const makeClientOnlyEvent = ({
   }
 }
 
-const insertEvents = (dbEventlog: unknown, events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) =>
+const insertEvents = (dbEventlog: unknown, events: ReadonlyArray<LiveStoreEvent.Client.Encoded>) =>
   Effect.forEach(events, (event) =>
     Effect.gen(function* () {
       const eventDef = fixtureSchema.eventsDefsMap.get(event.name)
@@ -145,8 +147,8 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         })
 
         const initialEvents = [
-          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '1', text: 'first', completed: false })),
-          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '2', text: 'second', completed: false })),
+          toEncoded(eventFactory.todoCreated.next({ id: '1', text: 'first', completed: false })),
+          toEncoded(eventFactory.todoCreated.next({ id: '2', text: 'second', completed: false })),
         ]
 
         yield* insertEvents(dbEventlog, initialEvents)
@@ -164,8 +166,8 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         yield* advanceHead(initialEvents[1]!.seqNum)
 
         const laterEvents = [
-          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '3', text: 'third', completed: false })),
-          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '4', text: 'fourth', completed: false })),
+          toEncoded(eventFactory.todoCreated.next({ id: '3', text: 'third', completed: false })),
+          toEncoded(eventFactory.todoCreated.next({ id: '4', text: 'fourth', completed: false })),
         ]
 
         yield* insertEvents(dbEventlog, laterEvents)
@@ -201,10 +203,10 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         })
 
         const encodedEvents = [
-          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '1', text: 'first', completed: false })),
-          toEncodedWithMeta(eventFactory.todoCompleted.next({ id: '1' })),
-          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '2', text: 'second', completed: false })),
-          toEncodedWithMeta(eventFactory.todoCompleted.next({ id: '2' })),
+          toEncoded(eventFactory.todoCreated.next({ id: '1', text: 'first', completed: false })),
+          toEncoded(eventFactory.todoCompleted.next({ id: '1' })),
+          toEncoded(eventFactory.todoCreated.next({ id: '2', text: 'second', completed: false })),
+          toEncoded(eventFactory.todoCompleted.next({ id: '2' })),
         ]
 
         yield* insertEvents(dbEventlog, encodedEvents)
@@ -238,9 +240,9 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         })
 
         const encodedEvents = [
-          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '1', text: 'first', completed: false })),
-          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '2', text: 'second', completed: false })),
-          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '3', text: 'third', completed: false })),
+          toEncoded(eventFactory.todoCreated.next({ id: '1', text: 'first', completed: false })),
+          toEncoded(eventFactory.todoCreated.next({ id: '2', text: 'second', completed: false })),
+          toEncoded(eventFactory.todoCreated.next({ id: '3', text: 'third', completed: false })),
         ]
 
         yield* insertEvents(dbEventlog, encodedEvents)
@@ -274,8 +276,8 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           client: EventFactory.clientIdentity('client-1', 'session-1'),
         })
 
-        const first = toEncodedWithMeta(eventFactory.todoCreated.next({ id: '1', text: 'first', completed: false }))
-        const second = toEncodedWithMeta(eventFactory.todoCreated.next({ id: '2', text: 'second', completed: false }))
+        const first = toEncoded(eventFactory.todoCreated.next({ id: '1', text: 'first', completed: false }))
+        const second = toEncoded(eventFactory.todoCreated.next({ id: '2', text: 'second', completed: false }))
 
         yield* insertEvents(dbEventlog, [first, second])
 
@@ -311,8 +313,8 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           initialParent: 1,
         })
 
-        const eventA = toEncodedWithMeta(clientAFactory.todoCreated.next({ id: '1', text: 'first', completed: false }))
-        const eventB = toEncodedWithMeta(clientBFactory.todoCreated.next({ id: '2', text: 'second', completed: false }))
+        const eventA = toEncoded(clientAFactory.todoCreated.next({ id: '1', text: 'first', completed: false }))
+        const eventB = toEncoded(clientBFactory.todoCreated.next({ id: '2', text: 'second', completed: false }))
 
         yield* insertEvents(dbEventlog, [eventA, eventB])
 
@@ -349,10 +351,10 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           initialParent: 1,
         })
 
-        const eventSessionOne = toEncodedWithMeta(
+        const eventSessionOne = toEncoded(
           sessionOneFactory.todoCreated.next({ id: '1', text: 'first', completed: false }),
         )
-        const eventSessionTwo = toEncodedWithMeta(
+        const eventSessionTwo = toEncoded(
           sessionTwoFactory.todoCreated.next({ id: '2', text: 'second', completed: false }),
         )
 
@@ -387,9 +389,9 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         })
 
         const backendApproved = [
-          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '1', text: 'first', completed: false })),
-          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '2', text: 'second', completed: false })),
-          toEncodedWithMeta(eventFactory.todoCreated.next({ id: '3', text: 'third', completed: false })),
+          toEncoded(eventFactory.todoCreated.next({ id: '1', text: 'first', completed: false })),
+          toEncoded(eventFactory.todoCreated.next({ id: '2', text: 'second', completed: false })),
+          toEncoded(eventFactory.todoCreated.next({ id: '3', text: 'third', completed: false })),
         ]
 
         let clientBase = backendApproved[backendApproved.length - 1]!.seqNum
@@ -448,7 +450,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
 
         // Create 20 events
         const allEvents = Array.from({ length: 20 }, (_, index) =>
-          toEncodedWithMeta(
+          toEncoded(
             eventFactory.todoCreated.next({
               id: `${index + 1}`,
               text: `todo-${index + 1}`,
@@ -491,8 +493,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
   const eventCountSampleSchema = Schema.Literals([0, 1, 6, 10, 100])
   const batchesPerTickSampleSchema = Schema.Literals([1, 3, 10, 100])
 
-  Vitest.asProp(
-    Vitest.live,
+  Vitest.live.prop(
     'property: streams events across batches',
     [batchSizeSampleSchema, eventCountSampleSchema, batchesPerTickSampleSchema] as const,
     ([batchSize, eventCount, batchesPerTick], test) =>
@@ -507,7 +508,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           })
 
           const generatedEvents = Array.from({ length: eventCount }, (_, index) =>
-            toEncodedWithMeta(
+            toEncoded(
               eventFactory.todoCreated.next({
                 id: `${index + 1}`,
                 text: `todo-${index + 1}`,

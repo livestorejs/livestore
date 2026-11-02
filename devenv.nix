@@ -19,7 +19,6 @@ let
   oxlintNpm = effectUtils.lib.mkOxlintNpm {
     inherit pkgs;
     bun = pkgs.bun;
-    src = inputs.effect-utils;
   };
   oxlintWithPlugins = effectUtils.lib.mkOxlintWithPlugins {
     inherit pkgs oxlintNpm;
@@ -325,9 +324,8 @@ in
     # gh:apply-labels / gh:check-labels — reconcile .github/labels.json with live labels.
     (taskModules.gh-labels { repo = "livestorejs/livestore"; })
     (taskModules.megarepo { syncAll = !ci; })
-    (taskModules.ts {
-      tsconfigFile = "tsconfig.dev.json";
-      tsBinPkg = effectTsgo;
+    (taskModules.flake-lock-duplicates {
+      lockfiles = [ "packages/@livestore/wa-sqlite/flake.lock" ];
     })
     (taskModules.check {
       hasTests = false;
@@ -336,6 +334,7 @@ in
       hasNixCheck = false;
       extraChecks = [
         "lint:nix"
+        "nix:flake-lock:check-duplicates"
         "quarantine:check"
       ];
     })
@@ -347,37 +346,58 @@ in
     # nixfmt formatting and deadnix dead-code checks over this repo's tracked `.nix` files.
     # Gated through `extraChecks` above rather than run standalone.
     (taskModules.lint-nix { })
-    (taskModules.lint-oxc {
-      lintPaths = [
-        "packages"
-        "tests"
-        "scripts"
-        "docs"
-        ".github"
-      ];
-      geniePatterns = [
-        ".github/workflows/*.genie.ts"
-        ".oxfmtrc.json.genie.ts"
-        ".oxlintrc.json.genie.ts"
-        "scripts/*.genie.ts"
-        "docs/*.genie.ts"
-        "docs/src/**/*.genie.ts"
-        "tests/**/*.genie.ts"
-        "packages/@livestore/*/*.genie.ts"
-        "packages/@local/*/*.genie.ts"
-        "packages/@local/*/**/*.genie.ts"
-      ];
-      genieCoverageDirs = [
-        "packages"
-        "tests"
-        "docs"
-        "scripts"
-      ];
-      # TODO(oep-1n3.10): Keep wa-sqlite unmanaged by Genie for now.
-      # Effect-utils now supports exclusions for the coverage check.
-      genieCoverageExcludes = [ "packages/@livestore/wa-sqlite/" ];
-      tsconfig = "tsconfig.dev.json";
-    })
+    (
+      { config, ... }:
+      let
+        lint =
+          (taskModules.lint-oxc {
+            lintPaths = [
+              "packages"
+              "tests"
+              "scripts"
+              "docs"
+              ".github"
+            ];
+            geniePatterns = [
+              ".github/workflows/*.genie.ts"
+              ".oxfmtrc.json.genie.ts"
+              ".oxlintrc.json.genie.ts"
+              "scripts/*.genie.ts"
+              "docs/*.genie.ts"
+              "docs/src/**/*.genie.ts"
+              "tests/**/*.genie.ts"
+              "packages/@livestore/*/*.genie.ts"
+              "packages/@local/*/*.genie.ts"
+              "packages/@local/*/**/*.genie.ts"
+            ];
+            genieCoverageDirs = [
+              "packages"
+              "tests"
+              "docs"
+              "scripts"
+            ];
+            # Keep wa-sqlite unmanaged by Genie for now.
+            # Effect-utils now supports exclusions for the coverage check.
+            genieCoverageExcludes = [ "packages/@livestore/wa-sqlite/" ];
+            tsconfig = "tsconfig.dev.json";
+          })
+            { inherit lib pkgs config; };
+      in
+      lint
+      // {
+        tasks = lint.tasks // {
+          "lint:check:lockfile" = lint.tasks."lint:check:lockfile" // {
+            # Temporary until the Effect 4.1.0 migration takes effect-utils#2228 (3b661131).
+            # Frozen nix/devenv-modules/tasks/shared/lint-oxc.nix:82-89 omits pnpmPkg.
+            # Keep the guard first while exposing its pinned native to storage discovery.
+            exec = ''
+              export PATH="$PATH:${pnpmPkg}/bin"
+            ''
+            + lint.tasks."lint:check:lockfile".exec;
+          };
+        };
+      }
+    )
     (taskModules.pnpm {
       packages = pnpmPackages;
       inherit pnpmPkg;
@@ -401,6 +421,17 @@ in
     ./nix/devenv-modules/tasks/local/mono-wrappers.nix
     ./nix/devenv-modules/tasks/local/github-rulesets.nix
     ./nix/devenv-modules/tasks/local/quarantine.nix
+    # LiveStore owns its TypeScript solution; effect-utils no longer exports TS tasks.
+    {
+      tasks = lib.genAttrs [ "ts:check" "ts:build" ] (_: {
+        description = "Type check and build the LiveStore TypeScript solution";
+        exec = "${effectTsgo}/bin/tsgo --build tsconfig.dev.json";
+        after = [
+          "genie:run"
+          "pnpm:install"
+        ];
+      });
+    }
   ];
 
   # Non-`.genie.ts` generator inputs (source-of-truth modules that the `.genie.ts`

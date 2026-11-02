@@ -111,7 +111,7 @@ g.dashboard.new('Livestore Leader Thread')
   at(
     ls.tempoTable(
       'Materialize event traces',
-      '{name=~"@livestore/common:leader-thread:materializeEvent|@livestore/common:LeaderSyncProcessor:materializeEventItems|client-session-sync-processor:materialize-event"}',
+      '{name=~"@livestore/common:leader-thread:materializeEvent|@livestore/common:LeaderSyncProcessor:materializeEventItems|client-session-sync-processor:materialize-events|client-session-sync-processor:apply-pull-step"}',
       'A',
       50,
     ),

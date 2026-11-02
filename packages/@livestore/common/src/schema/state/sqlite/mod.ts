@@ -4,6 +4,7 @@ import type { MigrationOptions } from '../../../adapter-types.ts'
 import type { Materializer } from '../../EventDef/mod.ts'
 import type { InternalState } from '../../schema.ts'
 import { ClientDocumentTableDefSymbol, tableIsClientDocumentTable } from './client-document-def.ts'
+import { fingerprint } from './db-schema/ast/fingerprint.ts'
 import { SqliteAst } from './db-schema/mod.ts'
 import { stateSystemTables } from './system-tables/state-tables.ts'
 import type { TableDef, TableDefBase } from './table-def.ts'
@@ -55,19 +56,17 @@ export const makeState = <TStateInput extends InputState>(inputSchema: TStateInp
     }
   }
 
-  const hash = SqliteAst.hash({
+  const hash = fingerprint({
     _tag: 'dbSchema',
     tables: [...tables.values()].map((_) => _.sqliteDef.ast),
   })
 
-  return { sqlite: { tables, migrations: inputSchema.migrations ?? { strategy: 'auto' }, hash }, materializers }
+  return { sqlite: { tables, migrations: inputSchema.migrations ?? {}, hash }, materializers }
 }
 
 export type InputState = {
   readonly tables: Record<string, TableDefBase> | ReadonlyArray<TableDefBase>
   readonly materializers: Record<string, Materializer<any>>
-  /**
-   * @default { strategy: 'auto' }
-   */
+  /** Configures hooks and logging for automatic state migration. */
   readonly migrations?: MigrationOptions
 }

@@ -1,10 +1,15 @@
 import {
   type Adapter,
+  type AdapterArgs,
   ClientSessionLeaderThreadProxy,
   Devtools,
+  EventlogSqliteDb,
   type LockStatus,
   makeClientSession,
+  MaterializationJournal,
   migrateDb,
+  StateSqliteDb,
+  StateHead,
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
@@ -14,6 +19,7 @@ import {
   Eventlog,
   LeaderThreadCtx,
   makeLeaderThreadLayer,
+  markStateAsCompleted,
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -156,6 +162,7 @@ export const makeInMemoryAdapter =
         syncOptions: options.sync,
         syncPayloadEncoded,
         syncPayloadSchema,
+        params: adapterArgs.params,
         importSnapshot: options.importSnapshot,
         devtoolsEnabled,
         sharedWorker: sharedWorkerClient === undefined ? undefined : makeWebmeshWorkerProxy(sharedWorkerClient),
@@ -215,6 +222,7 @@ export interface MakeLeaderThreadArgs {
   importSnapshot: Uint8Array<ArrayBuffer> | undefined
   devtoolsEnabled: boolean
   sharedWorker: WebmeshWorkerProxy | undefined
+  params: AdapterArgs['params']
 }
 
 const makeLeaderThread = ({
@@ -228,6 +236,7 @@ const makeLeaderThread = ({
   importSnapshot,
   devtoolsEnabled,
   sharedWorker,
+  params,
 }: MakeLeaderThreadArgs) =>
   Effect.gen(function* () {
     const services = yield* Effect.context()
@@ -248,6 +257,7 @@ const makeLeaderThread = ({
       dbState.import(importSnapshot)
 
       const _migrationsReport = yield* migrateDb({ db: dbState, schema })
+      yield* markStateAsCompleted(dbState)
     }
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
@@ -259,6 +269,11 @@ const makeLeaderThread = ({
       clientId,
     })
 
+    const sqliteDbLayer = Layer.mergeAll(StateSqliteDb.layer(dbState), EventlogSqliteDb.layer(dbEventlog))
+    const stateServicesLayer = Layer.mergeAll(StateHead.layer, MaterializationJournal.layer).pipe(
+      Layer.provide(sqliteDbLayer),
+    )
+
     const layer = yield* Layer.build(
       makeLeaderThreadLayer({
         schema,
@@ -266,25 +281,23 @@ const makeLeaderThread = ({
         clientId,
         makeSqliteDb,
         syncOptions,
-        dbState,
-        dbEventlog,
         devtoolsOptions,
         shutdownChannel,
         syncPayloadEncoded,
         syncPayloadSchema: syncPayloadSchema as Schema.Decoder<Schema.Json, never> | undefined,
-      }),
+        params,
+      }).pipe(Layer.provide(Layer.mergeAll(sqliteDbLayer, stateServicesLayer))),
     )
 
     return yield* Effect.gen(function* () {
-      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
-        yield* LeaderThreadCtx
+      const { syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } = yield* LeaderThreadCtx
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
       const leaderThread = ClientSessionLeaderThreadProxy.of({
         events: {
           pull: ({ cursor }) => syncProcessor.pull({ cursor }),
-          push: (batch) => syncProcessor.push(batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item))),
+          push: syncProcessor.push,
           stream: (options) =>
             streamEventsWithSyncState({
               dbEventlog,

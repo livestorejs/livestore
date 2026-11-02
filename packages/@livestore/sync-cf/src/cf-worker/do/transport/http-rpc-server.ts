@@ -44,7 +44,7 @@ const createHttpRpcLayer = (forwardedHeaders: Record<string, string> | undefined
     'SyncHttpRpc.Push': (req) =>
       Effect.gen(function* () {
         const { ctx, env, doOptions, storeId } = yield* DoCtx.DoCtx
-        const push = makePush({ payload: undefined, headers, options: doOptions, storeId, ctx, env })
+        const push = makePush({ payload: req.payload, headers, options: doOptions, storeId, ctx, env })
 
         return yield* push(req)
       }),

@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
@@ -244,33 +244,34 @@ const runUnitTests = Effect.fn(function* ({ filter }: { filter: Option.Option<st
   } else {
     // For local development, run all in parallel (including sequential packages)
     const sequentialTargets: TestTarget[] = sequentialPackages.map((pkg) => ({ path: pkg }))
-    yield* Effect.forEach(
-      [...sequentialTargets, ...allPackagesWithTests],
-      (target) => {
-        const args =
-          target.config !== undefined
-            ? ['vitest', 'run', '--config', target.config]
-            : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
-        const label = target.config ?? target.path
-        // TODO use this https://x.com/luxdav/status/1942532247833436656
-        return TestPolicy.runTestTarget({
-          label,
-          policy: TestPolicy.blocking,
-          run: cmdText(args.join(' '), { stderr: 'pipe' }).pipe(
-            Effect.provide(LivestoreWorkspace.toCwd()),
-            Effect.tap((text) => Effect.sync(() => console.log(`Output for ${label}:\n\n${text}\n\n`))),
-          ),
-        })
-      },
-      { concurrency: 'unbounded' },
-    )
+    yield* runLocalUnitTests([...sequentialTargets, ...allPackagesWithTests])
   }
+})
+
+/** Local package failures must reach the CLI just as they do in the CI runner. */
+export const runLocalUnitTests = Effect.fn(function* (targets: readonly TestTarget[]) {
+  const workspaceRoot = yield* LivestoreWorkspace
+  yield* Effect.forEach(
+    targets,
+    (target) => {
+      const args =
+        target.config !== undefined
+          ? ['vitest', 'run', '--config', target.config]
+          : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
+      return TestPolicy.runTestTarget({
+        label: target.config ?? target.path,
+        policy: TestPolicy.blocking,
+        run: cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+      })
+    },
+    { concurrency: 'unbounded' },
+  )
 })
 
 export const testUnitCommand = Cli.Command.make(
   'unit',
   {
-    filter: Cli.Flag.string('filter').pipe(
+    filter: Cli.Flag.String('filter').pipe(
       Cli.Flag.optional,
       Cli.Flag.withDescription('Run only test suites whose path includes this substring'),
     ),
@@ -305,7 +306,7 @@ export const waSqliteTest = Cli.Command.make('wa-sqlite', {}, runWaSqliteTests)
 // TODO clean this up at some point
 
 /** A run in which the suite that had to prove something never executed. */
-export class NoTestsExecutedError extends Schema.TaggedErrorClass<NoTestsExecutedError>()('NoTestsExecutedError', {
+export class NoTestsExecutedError extends Schema.TaggedError<NoTestsExecutedError>()('NoTestsExecutedError', {
   reportPath: Schema.String,
   suiteFile: Schema.String,
 }) {}
@@ -341,7 +342,7 @@ export const assertTestsExecuted = Effect.fn(function* ({
   readonly suiteFile: string
 }) {
   const raw = fs.readFileSync(reportPath, 'utf8')
-  const report = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(VitestRunReport))(raw)
+  const report = yield* Schema.decodeEffect(Schema.fromJsonString(VitestRunReport))(raw)
 
   const executed = report.testResults
     .filter((file) => path.basename(file.name) === suiteFile)
@@ -383,7 +384,7 @@ const runSyncProviderTests = Effect.fn(function* ({ provider }: { provider: Opti
 export const syncProviderTest = Cli.Command.make(
   'sync-provider',
   {
-    provider: Cli.Flag.choice('provider', [...providerKeys]).pipe(
+    provider: Cli.Flag.Literals('provider', [...providerKeys]).pipe(
       Cli.Flag.optional,
       Cli.Flag.withDescription('Run only a specific sync provider test suite'),
     ),
@@ -413,7 +414,7 @@ const runIntegrationAllTests = Effect.fn('integration-tests:run-all')(function* 
 const testIntegrationAllCommand = Cli.Command.make(
   'all',
   {
-    concurrency: Cli.Flag.choice('concurrency', ['sequential', 'parallel']).pipe(Cli.Flag.withDefault('parallel')),
+    concurrency: Cli.Flag.Literals('concurrency', ['sequential', 'parallel']).pipe(Cli.Flag.withDefault('parallel')),
     localDevtoolsPreview: integrationTests.localDevtoolsPreviewOption,
   },
   runIntegrationAllTests,

@@ -14,7 +14,7 @@ This module provides a direct RPC communication layer for Cloudflare Durable Obj
 
 ### Architecture Principles
 
-- **Minimal Transport**: Use msgpack serialization over Cloudflare's native DO RPC
+- **Minimal Transport**: Use Effect SchemaBinary serialization over Cloudflare's native DO RPC
 - **Streaming-First**: Design for progressive data delivery rather than batch responses
 - **Effect-Native**: Leverage Effect's streaming, error handling, and context management
 - **Simple API**: Maintain the same API surface as standard Effect RPC clients/servers
@@ -28,7 +28,7 @@ This module provides a direct RPC communication layer for Cloudflare Durable Obj
 
 ### Transport Layer
 
-- **Serialization**: msgpack for efficient binary encoding
+- **Serialization**: Effect SchemaBinary for schema-aware binary encoding
 - **Streaming**: `ReadableStream` support for multi-value responses (requires binary messages)
 
 ## Usage Example

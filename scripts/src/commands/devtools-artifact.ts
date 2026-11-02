@@ -18,6 +18,10 @@ import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 
 import { supportedDevtoolsProtocolVersions } from '@livestore/common'
+import { Effect } from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
+
+import { runNpmPublish, submitNpmPackage, verifyNpmPackageVisibility } from '../shared/npm-publish.ts'
 
 type CompatibleLivestore =
   | { readonly kind: 'range'; readonly range: string }
@@ -730,22 +734,23 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
     }
   }
   if (hasFlag(flags, 'publish') === true) {
-    const alreadyPublished = packageVersionExists(metadata.packageName, version)
-    const publishArgs = ['npm', 'publish', '--tag', publishTag, '--access', 'public']
+    const publishArgs = ['--tag', publishTag, '--access', 'public']
     if (process.env.GITHUB_ACTIONS === 'true') publishArgs.push('--provenance')
     publishArgs.push(repackedPath)
-    if (alreadyPublished === true) {
-      console.warn(`${metadata.packageName}@${version} already published, skipping npm publish`)
-    } else {
-      try {
-        run(publishArgs, { cwd: workDir })
-      } catch (error) {
-        if (packageVersionExists(metadata.packageName, version) === false) {
-          throw error
-        }
-        console.warn(`${metadata.packageName}@${version} became visible after npm publish failed; continuing`)
-      }
-    }
+    const versionIsVisible = Effect.sync(() => packageVersionExists(metadata.packageName, version))
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        yield* submitNpmPackage({
+          packageSpec: `${metadata.packageName}@${version}`,
+          publish: runNpmPublish(publishArgs, workDir),
+          versionIsVisible,
+        })
+        yield* verifyNpmPackageVisibility({
+          packageSpec: `${metadata.packageName}@${version}`,
+          versionIsVisible,
+        })
+      }).pipe(Effect.provide(PlatformNode.NodeServices.layer)),
+    )
     if (chromeZipPath !== undefined) {
       const chromeZipAssetPath = materializeChromeZipAsset(version, chromeZipPath, workDir)
       if (isSnapshotVersion(version) === true) {

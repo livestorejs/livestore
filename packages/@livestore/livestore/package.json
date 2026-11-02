@@ -1,64 +1,4 @@
 {
-  "name": "@livestore/livestore",
-  "version": "0.4.0",
-  "license": "Apache-2.0",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/livestorejs/livestore.git"
-  },
-  "files": [
-    "dist",
-    "package.json",
-    "src",
-    "docs"
-  ],
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    ".": "./src/mod.ts",
-    "./effect": "./src/effect/mod.ts",
-    "./internal": "./src/internal/mod.ts",
-    "./internal/testing-utils": "./src/utils/tests/mod.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/mod.js",
-      "./internal": "./dist/internal/mod.js",
-      "./internal/testing-utils": "./dist/utils/tests/mod.js",
-      "./effect": "./dist/effect/mod.js"
-    }
-  },
-  "scripts": {
-    "build": "tsc",
-    "test": "vitest"
-  },
-  "dependencies": {
-    "@livestore/common": "workspace:^",
-    "@livestore/utils": "workspace:^",
-    "@opentelemetry/api": "1.9.0"
-  },
-  "devDependencies": {
-    "@livestore/adapter-web": "workspace:^",
-    "@livestore/utils-dev": "workspace:^",
-    "@opentelemetry/sdk-trace-base": "2.2.0",
-    "jsdom": "26.1.0",
-    "typescript": "6.0.3",
-    "vite": "7.3.1",
-    "vitest": "4.1.9"
-  },
-  "peerDependencies": {
-    "@effect/opentelemetry": "^4.0.0-beta.99",
-    "@effect/platform-browser": "^4.0.0-beta.99",
-    "@effect/platform-bun": "^4.0.0-beta.99",
-    "@effect/platform-node": "^4.0.0-beta.99",
-    "@effect/platform-node-shared": "^4.0.0-beta.99",
-    "@effect/vitest": "^4.0.0-beta.99",
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/resources": "^2.2.0",
-    "@standard-schema/spec": "^1.1.0",
-    "effect": "^4.0.0-beta.99"
-  },
   "$genie": {
     "source": "package.json.genie.ts",
     "warning": "DO NOT EDIT - changes will be overwritten",
@@ -73,5 +13,65 @@
       "packages/@livestore/wa-sqlite",
       "packages/@livestore/webmesh"
     ]
+  },
+  "name": "@livestore/livestore",
+  "version": "0.5.0",
+  "type": "module",
+  "sideEffects": false,
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/livestorejs/livestore.git"
+  },
+  "exports": {
+    ".": "./src/mod.ts",
+    "./effect": "./src/effect/mod.ts",
+    "./internal": "./src/internal/mod.ts",
+    "./internal/testing-utils": "./src/utils/tests/mod.ts"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src",
+    "docs"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:^",
+    "@livestore/utils": "workspace:^",
+    "@opentelemetry/api": "1.9.0"
+  },
+  "devDependencies": {
+    "@livestore/adapter-web": "workspace:^",
+    "@livestore/utils-dev": "workspace:^",
+    "@opentelemetry/sdk-trace-base": "2.2.0",
+    "jsdom": "26.1.0",
+    "typescript": "7.0.2",
+    "vite": "7.3.1",
+    "vitest": "4.1.9"
+  },
+  "peerDependencies": {
+    "@effect/opentelemetry": "^4.0.3",
+    "@effect/platform-browser": "^4.0.3",
+    "@effect/platform-bun": "^4.0.3",
+    "@effect/platform-node": "^4.0.3",
+    "@effect/platform-node-shared": "^4.0.3",
+    "@effect/vitest": "^4.0.3",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "@standard-schema/spec": "^1.1.0",
+    "effect": "^4.0.3"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./internal": "./dist/internal/mod.js",
+      "./internal/testing-utils": "./dist/utils/tests/mod.js",
+      "./effect": "./dist/effect/mod.js"
+    }
   }
 }

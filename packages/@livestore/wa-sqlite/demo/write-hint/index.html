@@ -32,8 +32,7 @@
       <div>Preamble:</div>
       <textarea id="preamble" rows="5" cols="80">
 CREATE TABLE t(x);      
-    </textarea
-      >
+    </textarea>
     </div>
     <div>
       <div>Transaction:</div>
@@ -42,8 +41,7 @@ PRAGMA write_hint;  -- simulate fcntl write transaction hint
 
 WITH cnt AS (SELECT COUNT() AS n FROM t)
 INSERT INTO t SELECT * FROM cnt WHERE n &lt; 500 RETURNING *;
-    </textarea
-      >
+    </textarea>
     </div>
     <div>
       <button id="run">Run</button>

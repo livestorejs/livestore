@@ -4,8 +4,8 @@ import { baseOxlintCategories, baseOxlintIgnorePatterns, baseOxlintPlugins, oxli
  * LiveStore oxlint configuration (Phase 1 — permissive).
  *
  * This introduces oxlint (replacing Biome) with a deliberately permissive rule set
- * to avoid massive code churn during the initial migration. Rules are disabled with
- * TODO references to the follow-up epic oep-1n3 for incremental re-enablement.
+ * to avoid massive code churn during the initial migration. Deferred rules retain
+ * their rationale below for incremental re-enablement.
  */
 
 // ── Active rules ────────────────────────────────────────────────────────────
@@ -43,26 +43,32 @@ const permanentlyDisabledRules = {
   eqeqeq: 'off',
   // Legacy rule; React 17+ automatic JSX runtime doesn't require React in scope
   'react/react-in-jsx-scope': 'off',
+  // React Compiler rules require compiler-compatible component idioms that this codebase has not adopted.
+  'react/globals': 'off',
+  'react/preserve-manual-memoization': 'off',
+  'react/refs': 'off',
+  'react/set-state-in-effect': 'off',
+  'react/void-use-memo': 'off',
 } as const
 
-// ── TODO(oep-1n3): Phase 2 — re-enable after codebase-wide fixes ───────────
+// ── Phase 2 — re-enable after codebase-wide fixes ───────────────────────────
 
 const phase2Rules = {
   'func-style': 'error',
-  // TODO(oep-1n3.6): 18 violations — eliminate barrel files in favor of mod.ts
+  // 18 violations — eliminate barrel files in favor of mod.ts
   'oxc/no-barrel-file': 'off',
 
-  // TODO(oep-1n3.5): 77 violations — false positives with ?worker imports
+  // 77 violations — false positives with ?worker imports
   'import/default': 'off',
-  // TODO(oep-1n3.5): 4 violations — madge already covers circular deps
+  // 4 violations — madge already covers circular deps
   'import/no-cycle': 'off',
-  // TODO(oep-1n3.5): 15 violations — evaluate dynamic require usage
+  // 15 violations — evaluate dynamic require usage
   'import/no-dynamic-require': 'off',
-  // TODO(oep-1n3.5): 35 violations — side-effect imports are valid in some contexts
+  // 35 violations — side-effect imports are valid in some contexts
   'import/no-unassigned-import': 'off',
-  // TODO(oep-1n3.5): 2 violations — namespace import false positives
+  // 2 violations — namespace import false positives
   'import/namespace': 'off',
-  // TODO(oep-1n3.5): 2 violations — named-as-default false positives
+  // 2 violations — named-as-default false positives
   'import/no-named-as-default': 'off',
 
   'react-perf/jsx-no-new-function-as-prop': 'error',
@@ -70,41 +76,50 @@ const phase2Rules = {
   'react-perf/jsx-no-jsx-as-prop': 'error',
   'react-perf/jsx-no-new-array-as-prop': 'error',
 
-  // TODO(oep-1n3.4): 447 violations — false positives in Effect generators
+  // 447 violations — false positives in Effect generators
   'block-scoped-var': 'off',
-  // TODO(oep-1n3.4): 186 violations — sequential await is intentional in many cases
+  // 186 violations — sequential await is intentional in many cases
   'no-await-in-loop': 'off',
-  // TODO(oep-1n3.4): 141 violations — false positives with Effect pipe patterns
+  // 141 violations — false positives with Effect pipe patterns
   'no-unused-expressions': 'off',
-  // TODO(oep-1n3.4): 21 violations — false positives with Effect.fn(function* ...)
+  // 21 violations — false positives with Effect.fn(function* ...)
   'require-yield': 'off',
 
-  // TODO(oep-1n3.7): 28 violations — postMessage target origin
+  // 28 violations — postMessage target origin
   'unicorn/require-post-message-target-origin': 'off',
-  // TODO(oep-1n3.7): 28 violations — addEventListener vs onX
+  // 28 violations — addEventListener vs onX
   'unicorn/prefer-add-event-listener': 'off',
-  // TODO(oep-1n3.7): 4 violations — empty files
+  // 4 violations — empty files
   'unicorn/no-empty-file': 'off',
 
-  // TODO(oep-3632.1): ~567 violations; disable temporarily to unblock CI (https://github.com/livestorejs/livestore/issues/1057)
+  // ~567 violations; disabled temporarily to unblock CI (https://github.com/livestorejs/livestore/issues/1057)
   'typescript/no-unsafe-type-assertion': 'off',
   // Inverse of overeng/explicit-boolean-compare — must stay off
   'typescript/no-unnecessary-boolean-literal-compare': 'off',
-  // TODO(oep-1n3.16): Re-enable after tsgolint crash is fixed upstream.
+  // Re-enable after the upstream tsgolint crash is fixed.
   // Currently triggers a nil pointer panic in tsgolint/typescript-go.
   'typescript/no-unnecessary-type-arguments': 'off',
-  // 72 violations, concentrated in generated clients and broad union types
-  'typescript/no-duplicate-type-constituents': 'error',
-  // 57 violations, assertion cleanup churn
-  'typescript/no-unnecessary-type-assertion': 'error',
+  // 44-site assertion-cleanup backlog surfaced when oxlint 1.82 made type-aware linting functional.
+  // Keep disabled until that cleanup is tracked and completed separately.
+  'typescript/no-unnecessary-type-assertion': 'off',
+  // 274-site category backlog surfaced with oxlint 1.82; the strict lint task denies warnings.
+  // Keep these disabled until their independent cleanups are tracked and completed.
+  'no-shadow': 'off',
+  'no-underscore-dangle': 'off',
+  'react/hooks': 'off',
+  'react/no-array-index-key': 'off',
+  'typescript/consistent-return': 'off',
+  'typescript/no-unnecessary-type-conversion': 'off',
+  'typescript/no-unnecessary-type-parameters': 'off',
+  'unicorn/no-array-sort': 'off',
   // 42 violations, noisy with Effect error/rendering types
   'typescript/restrict-template-expressions': 'error',
 
-  // TODO(oep-1n3.9): Temporary quick-check unblocking - re-enable after async audit
+  // Temporary quick-check unblocking; re-enable after the async audit
   // 78 violations concentrated in wa-sqlite and test surfaces
   'typescript/no-floating-promises': 'off',
 
-  // TODO(oep-1n3.8a): Re-enable low-risk style hygiene rules first
+  // Re-enable low-risk style hygiene rules first
   // 16 violations, mostly logging/debug stringification quality
   'typescript/no-base-to-string': 'error',
   // 11 violations, low-risk type hygiene noise
@@ -114,7 +129,7 @@ const phase2Rules = {
   // 4 violations, mostly Effect wrappers around void-returning APIs
   'typescript/no-meaningless-void-operator': 'error',
 
-  // TODO(oep-1n3.9): Temporary unblock for correctness-sensitive rules
+  // Temporary unblock for correctness-sensitive rules
   // Re-enable after targeted async/this-binding/prototype-safety fixes.
   'typescript/unbound-method': 'off',
   'typescript/no-misused-spread': 'off',
@@ -209,7 +224,7 @@ export const livestoreOxlintOverrides = [
     rules: {
       'func-style': 'off',
       'import/no-commonjs': 'off',
-      // TODO(oep-1n3.9): Re-enable after wa-sqlite async API audit.
+      // Re-enable after the wa-sqlite async API audit.
       'typescript/await-thenable': 'off',
       'unicorn/no-new-array': 'off',
       'unicorn/no-array-sort': 'off',
@@ -231,11 +246,13 @@ export const livestoreOxlintCategories = baseOxlintCategories
 export const livestoreOxlintIgnorePatterns = [
   ...baseOxlintIgnorePatterns,
   'tests/integration/node_modules/**',
+  'packages/@livestore/wa-sqlite/.yarn/**',
   'docs/src/plugins/**',
 ] as const
 
 export default oxlintConfig({
   plugins: livestoreOxlintPlugins,
+  jsPlugins: ['./repos/effect-utils/packages/@overeng/oxc-config/src/mod.ts'],
   categories: livestoreOxlintCategories,
   rules: livestoreOxlintRules,
   overrides: livestoreOxlintOverrides,

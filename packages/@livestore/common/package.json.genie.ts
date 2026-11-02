@@ -14,7 +14,10 @@ const runtimeDeps = catalog.compose({
   workspace: workspaceMember('packages/@livestore/common'),
   dependencies: {
     workspace: [utilsPkg, webmeshPkg],
-    external: catalog.pick('@opentelemetry/api'),
+    external: {
+      ...catalog.pick('@opentelemetry/api'),
+      '@noble/hashes': '2.4.0',
+    },
   },
   devDependencies: {
     workspace: [utilsDevPkg],

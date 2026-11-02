@@ -78,19 +78,23 @@ export const execSql = (sqliteDb: SqliteDb, sql: string, bind: BindValues) => {
     Effect.asVoid,
     // Effect.logDuration(`@livestore/common:execSql:${sql}`),
     Effect.withSpan(`@livestore/common:execSql`, {
-      attributes: { 'span.label': sql, sql, bindValueKeys: Object.keys(bindValues) },
+      attributes: { 'span.label': sql, sql, bindValueKeys: bindValueKeysAttribute(bindValues) },
     }),
   )
 }
 
-// const selectSqlPrepared = <T>(stmt: PreparedStatement, bind: BindValues) => {
-//   const bindValues = prepareBindValues(bind, stmt.sql)
-//   return Effect.try({
-//     try: () => stmt.select<T>(bindValues),
-//     catch: (cause) =>
-//       new SqliteError({ cause, query: { bindValues, sql: stmt.sql }, code: (cause as WaSqlite.SQLiteError).code }),
-//   })
-// }
+export const selectSql = <T>(sqliteDb: SqliteDb, sql: string, bind: BindValues) => {
+  const bindValues = prepareBindValues(bind, sql)
+  return Effect.try({
+    try: () => sqliteDb.select<T>(sql, bindValues),
+    catch: (cause) =>
+      new SqliteError({ cause, query: { bindValues, sql }, code: (cause as WaSqlite.SQLiteError).code }),
+  }).pipe(
+    Effect.withSpan(`@livestore/common:selectSql`, {
+      attributes: { 'span.label': sql, sql, bindValueKeys: bindValueKeysAttribute(bindValues) },
+    }),
+  )
+}
 
 // TODO actually use prepared statements
 export const execSqlPrepared = (sqliteDb: SqliteDb, sql: string, bindValues: PreparedBindValues) => {
@@ -105,8 +109,14 @@ export const execSqlPrepared = (sqliteDb: SqliteDb, sql: string, bindValues: Pre
       attributes: {
         'span.label': sql,
         sql,
-        bindValueKeys: Object.keys(bindValues),
+        bindValueKeys: bindValueKeysAttribute(bindValues),
       },
     }),
   )
 }
+
+/**
+ * Span attributes that are not strings, numbers or booleans are JSON-formatted on every span. These helpers run for
+ * each journal and head write, so the keys are joined into a string up front.
+ */
+const bindValueKeysAttribute = (bindValues: object) => Object.keys(bindValues).join(', ')

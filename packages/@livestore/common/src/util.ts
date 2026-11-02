@@ -19,6 +19,7 @@ export const SqliteReal = Schema.Number
 
 export const SqlValueSchema = Schema.Union([
   Schema.String,
+  // @effect-diagnostics-next-line schemaNumber:off -- SQLite REAL permits Infinity/NaN; SqliteReal is the documented domain carve-out
   SqliteReal,
   Schema.Uint8Array as any as Schema.Codec<Uint8Array<ArrayBuffer>>,
   Schema.Null,

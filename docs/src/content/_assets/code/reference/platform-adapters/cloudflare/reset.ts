@@ -25,7 +25,7 @@ export const maybeResetStore = async ({
     clientId: 'client-do',
     sessionId: nanoid(),
     durableObject: { ctx, env, bindingName: 'CLIENT_DO' },
-    syncBackendStub: env.SYNC_BACKEND_DO.get(env.SYNC_BACKEND_DO.idFromName(storeId)),
+    getSyncBackendStub: () => env.SYNC_BACKEND_DO.get(env.SYNC_BACKEND_DO.idFromName(storeId)),
     livePull: true,
     resetPersistence: shouldReset,
   })

@@ -365,7 +365,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           Stream.mapEffect(Effect.fromResult),
           Stream.tap((message) =>
             Effect.gen(function* () {
-              const packet = yield* Schema.decodeUnknownEffect(WebmeshSchema.Packet)(message)
+              const packet = yield* Schema.decodeEffect(WebmeshSchema.Packet)(message)
 
               // console.debug(nodeName, 'recv', packet._tag, packet.source, packet.target)
 

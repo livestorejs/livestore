@@ -6,6 +6,7 @@ import {
   type ClientSessionSyncProcessor,
   type IntentionalShutdownCause,
   isQueryBuilder,
+  type MaterializationJournal,
   type MaterializeError,
   type QueryBuilder,
   type StoreInterrupted,
@@ -52,11 +53,19 @@ export type LiveStoreContext<TSchema extends LiveStoreSchema = LiveStoreSchema.A
 
 export type ShutdownDeferred = Deferred.Deferred<
   IntentionalShutdownCause,
-  UnknownError | StoreInterrupted | MaterializeError | BackendIdMismatchError
+  | UnknownError
+  | StoreInterrupted
+  | MaterializeError
+  | MaterializationJournal.MaterializationJournalError
+  | BackendIdMismatchError
 >
 export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.make<
   IntentionalShutdownCause,
-  UnknownError | StoreInterrupted | MaterializeError | BackendIdMismatchError
+  | UnknownError
+  | StoreInterrupted
+  | MaterializeError
+  | MaterializationJournal.MaterializationJournalError
+  | BackendIdMismatchError
 >()
 
 /**

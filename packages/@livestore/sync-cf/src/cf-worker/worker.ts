@@ -200,7 +200,7 @@ export const handleSyncRequest = <
       // Always decode with the supplied schema when present, even if payload is undefined.
       // This ensures required payloads are enforced by the schema.
       if (syncPayloadSchema !== undefined) {
-        const decodedResult = Schema.decodeUnknownResult(syncPayloadSchema)(payload)
+        const decodedResult = Schema.decodeResult(syncPayloadSchema)(payload)
         if (Result.isFailure(decodedResult) === true) {
           const message = decodedResult.failure.toString()
           console.error('Invalid payload (decode failed)', message)

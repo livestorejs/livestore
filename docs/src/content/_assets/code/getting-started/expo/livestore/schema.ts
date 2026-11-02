@@ -34,12 +34,12 @@ export const events = {
     name: 'v1.TodoDeleted',
     schema: Schema.Struct({
       id: Schema.String,
-      deletedAt: Schema.DateFromString.check(Schema.isDateValid()),
+      deletedAt: Schema.DateFromString,
     }),
   }),
   todoClearedCompleted: Events.synced({
     name: 'v1.TodoClearedCompleted',
-    schema: Schema.Struct({ deletedAt: Schema.DateFromString.check(Schema.isDateValid()) }),
+    schema: Schema.Struct({ deletedAt: Schema.DateFromString }),
   }),
   uiStateSet: tables.uiState.set,
 }

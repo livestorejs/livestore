@@ -48,3 +48,13 @@ the normative contract stays here):
   off `workflow_run.conclusion == 'success'`); tracked in
   [.delta/DELTA-001](./.delta/DELTA-001-snapshot-gated-on-ci-conclusion.md).
   Adopted 2026-07-18 (owner-confirmed).
+- **LS.DEL.REL-R08 Fork snapshot trust:** Every pull-request head may produce
+  an untrusted immutable snapshot candidate without secrets or repository write
+  authority. A repository-owned candidate requires the ordinary current-head
+  review decision to publish; a fork candidate requires the maintainer-managed
+  `ci:publish-snapshot` label to remain present through the final live PR/head
+  check immediately before publication. The fork label grants revocable trust
+  to the PR's mutable head repository and branch, including later commits while
+  it remains present. Adopted 2026-08-18 (design interview; evidence:
+  [.experiments/0001](./.experiments/0001-label-gated-fork-snapshots.md) and
+  [.experiments/0002](./.experiments/0002-pack-all-fork-candidates.md)).

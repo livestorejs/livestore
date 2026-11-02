@@ -14,7 +14,10 @@ a Cloudflare Durable Object as a headless client. Refines
   VFS (required pragmas enforced), surviving DO eviction.
 - **LS.SYS.RT.CF-R03 RPC sync path:** The DO client syncs with the sync backend
   DO via a typed RPC stub; optional live pull delivers updates through DO-RPC
-  callbacks instead of polling.
+  callbacks instead of polling. Live delivery survives client-DO
+  reconstruction: the reverse-RPC callback carries the subscription's
+  `storeId`, so a store-less wake re-boots and catches up rather than dropping
+  the update.
 - **LS.SYS.RT.CF-R04 Server-side parity:** The DO client materializes with the
   same WASM SQLite build and materializers as browser clients, so
   server-derived state equals client-derived state. `refines: LS-R05`

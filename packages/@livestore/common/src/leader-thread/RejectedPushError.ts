@@ -1,7 +1,7 @@
 /**
  * Push validation errors returned by {@link LeaderSyncProcessor.push}.
  *
- * All three errors share a common {@link RejectedPushErrorTypeId} so consumers can catch the
+ * All errors share a common {@link RejectedPushErrorTypeId} so consumers can catch the
  * family as a group via {@link isRejectedPushError} instead of matching individual tags.
  * Recovery is the same in every case: the client should rebase and retry.
  *
@@ -21,7 +21,7 @@ export const RejectedPushErrorTypeId = '~@livestore/common/RejectedPushError' as
  * This is a defensive check — callers are expected to construct monotonic event batches.
  * The client should rebase and retry.
  */
-export class NonMonotonicBatchError extends Schema.TaggedErrorClass<NonMonotonicBatchError>(
+export class NonMonotonicBatchError extends Schema.TaggedError<NonMonotonicBatchError>(
   `${RejectedPushErrorTypeId}/NonMonotonicBatchError`,
 )('NonMonotonicBatchError', {
   /** The sequence number that broke the monotonic invariant (i.e. the one that is >= the next). */
@@ -40,6 +40,24 @@ export class NonMonotonicBatchError extends Schema.TaggedErrorClass<NonMonotonic
   }
 }
 
+/** A pushed batch skips an event required to connect it to the leader's admitted push prefix. */
+export class NonContiguousBatchError extends Schema.TaggedError<NonContiguousBatchError>(
+  `${RejectedPushErrorTypeId}/NonContiguousBatchError`,
+)('NonContiguousBatchError', {
+  expectedSeqNum: EventSequenceNumber.Client.Composite,
+  providedSeqNum: EventSequenceNumber.Client.Composite,
+  expectedParentSeqNum: EventSequenceNumber.Client.Composite,
+  providedParentSeqNum: EventSequenceNumber.Client.Composite,
+  violationIndex: Schema.Finite,
+  sessionId: Schema.String,
+}) {
+  readonly [RejectedPushErrorTypeId] = RejectedPushErrorTypeId
+
+  override get message(): string {
+    return `Pushed events are not contiguous at index ${this.violationIndex} (session ${this.sessionId}): expected ${EventSequenceNumber.Client.toString(this.expectedSeqNum)} after ${EventSequenceNumber.Client.toString(this.expectedParentSeqNum)}, got ${EventSequenceNumber.Client.toString(this.providedSeqNum)} after ${EventSequenceNumber.Client.toString(this.providedParentSeqNum)}`
+  }
+}
+
 /**
  * A pushed batch of events failed validation because its rebase generation is older than the leader's current rebase generation.
  *
@@ -47,7 +65,7 @@ export class NonMonotonicBatchError extends Schema.TaggedErrorClass<NonMonotonic
  *
  * This happens when events were enqueued before a backend-pull-triggered rebase incremented the generation.
  */
-export class StaleRebaseGenerationError extends Schema.TaggedErrorClass<StaleRebaseGenerationError>(
+export class StaleRebaseGenerationError extends Schema.TaggedError<StaleRebaseGenerationError>(
   `${RejectedPushErrorTypeId}/StaleRebaseGenerationError`,
 )('StaleRebaseGenerationError', {
   /** The leader's current rebase generation. */
@@ -73,7 +91,7 @@ export class StaleRebaseGenerationError extends Schema.TaggedErrorClass<StaleReb
  * This occurs when another client session (or a backend pull) has pushed events that the current
  * session hasn't seen yet.
  */
-export class LeaderAheadError extends Schema.TaggedErrorClass<LeaderAheadError>(
+export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>(
   `${RejectedPushErrorTypeId}/LeaderAheadError`,
 )('LeaderAheadError', {
   minimumExpectedNum: EventSequenceNumber.Client.Composite,
@@ -88,7 +106,12 @@ export class LeaderAheadError extends Schema.TaggedErrorClass<LeaderAheadError>(
   }
 }
 
-export const RejectedPushError = Schema.Union([LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError])
+export const RejectedPushError = Schema.Union([
+  LeaderAheadError,
+  NonContiguousBatchError,
+  NonMonotonicBatchError,
+  StaleRebaseGenerationError,
+])
 
 export type RejectedPushError = typeof RejectedPushError.Type
 

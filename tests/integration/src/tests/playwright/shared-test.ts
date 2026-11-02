@@ -65,7 +65,7 @@ export const runAndGetExit = <S extends Schema.Decoder<{ readonly exit: unknown 
 
       yield* Effect.promise(() =>
         page.exposeFunction('onMessageReceived', (message: string) => {
-          const result = Schema.decodeUnknownOption(schema)(message)
+          const result = Schema.decodeOption(schema)(message)
           // console.log('onMessageReceived', message, result)
           if (result._tag === 'Some') {
             Deferred.succeed(deferred, result.value.exit).pipe(Effect.runSync)

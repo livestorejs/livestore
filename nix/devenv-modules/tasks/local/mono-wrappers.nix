@@ -71,6 +71,24 @@ let
 in
 {
   tasks = {
+    "meetings:check" = {
+      description = "Validate contributor schedule and publication behavior";
+      exec = ''
+        node scripts/src/meetings/publish.ts --validate
+        node_modules/.bin/vitest run --config scripts/vitest.config.ts src/meetings
+      '';
+      after = [ "pnpm:install" ];
+    };
+    "meetings:verify-site" = {
+      description = "Verify the production meeting page, room and public calendar";
+      exec = "node docs/src/utils/verify-contributor-meeting.ts";
+      after = [ "pnpm:install" ];
+    };
+    "meetings:publish" = {
+      description = "Reconcile Google events after production website verification";
+      exec = "node scripts/src/meetings/publish.ts --apply";
+      after = [ "pnpm:install" ];
+    };
     # =========================================================================
     # Testing
     # =========================================================================
@@ -408,6 +426,7 @@ in
     "examples:deploy:prod" = {
       description = "Deploy examples to production Cloudflare Workers";
       exec = "mono examples deploy --prod";
+      after = [ "pnpm:install" ];
     };
 
     "examples:validate-links" = {
@@ -629,7 +648,7 @@ in
 
     "lint:full:fix" = {
       description = "Fix lint issues, then run full lint checks";
-      # CONTRIBUTING/CLAUDE.md point contributors at this task before committing, so it has to
+      # CONTRIBUTING/AGENTS.md point contributors at this task before committing, so it has to
       # cover what `lint:full` gates in CI — otherwise the documented pre-commit command passes
       # while CI fails. Nix formatting gets the fixing variant; the rest are check-only.
       after = [

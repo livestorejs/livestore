@@ -3,7 +3,9 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": ["ES2023"],
+    "lib": [
+      "ES2023"
+    ],
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "resolveJsonModule": true,
@@ -21,7 +23,9 @@
     "sourceMap": true,
     "rootDir": ".",
     "outDir": "./dist",
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "jsx": "preserve",
     "jsxImportSource": "astro"
   },
@@ -33,5 +37,11 @@
       "path": "../../../@livestore/utils"
     }
   ],
-  "include": ["astro.config.mjs", "src", "scripts", "tests", "playwright.config.ts"]
+  "include": [
+    "astro.config.mjs",
+    "src",
+    "scripts",
+    "tests",
+    "playwright.config.ts"
+  ]
 }

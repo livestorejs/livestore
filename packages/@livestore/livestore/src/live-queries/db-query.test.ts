@@ -25,6 +25,10 @@ Vitest.describe('otel', () => {
       if (key === 'code.stacktrace') {
         return '<STACKTRACE>'
       }
+      // Savepoint ids are process-local counters, not part of the query tracing contract.
+      if (key === 'sql.query' && typeof val === 'string') {
+        return val.replace(/livestore_savepoint_\d+/g, 'livestore_savepoint_<id>')
+      }
       return val
     })
   }

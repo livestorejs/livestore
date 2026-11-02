@@ -54,16 +54,60 @@ const ResetPersistenceSnapshotSchema = Schema.Struct({
   after: PersistenceSnapshotSchema,
 })
 
+const RebuildResponseSchema = Schema.Struct({
+  todos: Schema.Array(Schema.Struct({ id: Schema.String, title: Schema.String })),
+  attemptedEvents: Schema.Array(Schema.String),
+  attemptedHooks: Schema.Array(Schema.String),
+  instanceId: Schema.String,
+})
+
+const readRebuildResponse = HttpClientResponse.schemaBodyJson(RebuildResponseSchema)
+
 const makeStoreHelpers = (serverUrl: string, storeId: string) =>
   Effect.gen(function* () {
-    const client = (yield* HttpClient.HttpClient).pipe(
+    const rawClient = (yield* HttpClient.HttpClient).pipe(
       HttpClient.mapRequest((req) =>
         req.pipe(HttpClientRequest.prependUrl(serverUrl), HttpClientRequest.setUrlParam('storeId', storeId)),
       ),
-      HttpClient.filterStatusOk,
     )
+    const client = HttpClient.filterStatusOk(rawClient)
 
     return {
+      // Recovery tests deliberately inspect failed boot responses.
+      rebuild: (params: Record<string, string>) => rawClient.post('/store/rebuild', { urlParams: params }),
+      blockCleanup: (stage: 'pages' | 'registry') =>
+        client.post('/store/rebuild/block-cleanup', { urlParams: { stage } }),
+      unblockCleanup: () => client.del('/store/rebuild/block-cleanup'),
+      blockRegistration: () => client.post('/store/rebuild/block-registration'),
+      stateFiles: () =>
+        client
+          .get('/store/rebuild/ownership')
+          .pipe(Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Array(Schema.String)))),
+      forgetStateFileOwnership: () => client.del('/store/rebuild/ownership'),
+      rebuildFiles: (paths: ReadonlyArray<string> = []) =>
+        (paths.length === 0
+          ? client.get('/store/rebuild/files')
+          : HttpClientRequest.post('/store/rebuild/files').pipe(
+              HttpClientRequest.bodyJson(paths),
+              Effect.flatMap(client.execute),
+            )
+        ).pipe(
+          Effect.flatMap(
+            HttpClientResponse.schemaBodyJson(
+              Schema.Array(Schema.Struct({ path: Schema.String, pages: Schema.Finite })),
+            ),
+          ),
+        ),
+      rebuildEventlog: () =>
+        client
+          .get('/store/rebuild/eventlog')
+          .pipe(
+            Effect.flatMap(
+              HttpClientResponse.schemaBodyJson(
+                Schema.Struct({ events: Schema.Array(Schema.Json), sync: Schema.Array(Schema.Json) }),
+              ),
+            ),
+          ),
       createTodo: (id: string, title: string) =>
         HttpClientRequest.post('/store/todos').pipe(
           HttpClientRequest.bodyJson({ id, title }),
@@ -131,6 +175,289 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
   })
 
 Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
+  for (const failure of ['replay', 'post', 'abort']) {
+    Vitest.live(`removes obsolete state only after successful rebuild following ${failure} (#1555)`, (test) =>
+      Effect.gen(function* () {
+        const server = yield* WranglerDevServer.WranglerDevServer
+        const { rebuild, rebuildFiles, stateFiles, rebuildEventlog, resetMetrics, getMetrics } =
+          yield* makeStoreHelpers(server.url, `cf-stale-state-${nanoid(6)}`)
+        const seeded = yield* rebuild({ seed: 'true' })
+        expect(seeded.status).toBe(200)
+        const seedBody = yield* readRebuildResponse(seeded)
+        const before = yield* rebuildEventlog()
+        const originalFiles = yield* rebuildFiles()
+        expect(originalFiles).toHaveLength(1)
+        const oldState = originalFiles[0]!
+        const unrelated = { path: '/unrelated.db', pages: 1 }
+        yield* rebuildFiles(['/unrelated.db'])
+
+        const failed = yield* rebuild(
+          failure === 'replay' ? { failAt: 'todo-3' } : { post: failure === 'post' ? 'fail' : 'abort' },
+        )
+        expect(failed.status).toBe(500)
+        const failedFiles = yield* rebuildFiles()
+        expect(failedFiles).toContainEqual(oldState)
+        expect(failedFiles).toContainEqual(unrelated)
+        expect(yield* stateFiles()).toEqual(
+          failedFiles.filter(({ path }) => path !== unrelated.path).map(({ path }) => path),
+        )
+        expect(yield* rebuildEventlog()).toEqual(before)
+
+        const recovered = yield* rebuild({ post: 'complete' })
+        expect(recovered.status).toBe(200)
+        const recoveredBody = yield* readRebuildResponse(recovered)
+        expect(recoveredBody.todos).toEqual([{ id: 'post-hook', title: 'completed' }, ...seedBody.todos])
+        expect(recoveredBody.attemptedEvents).toHaveLength(5)
+        expect(yield* rebuildEventlog()).toEqual(before)
+        const retainedFiles = yield* rebuildFiles()
+        expect(retainedFiles).toHaveLength(2)
+        expect(retainedFiles).toContainEqual(unrelated)
+        expect(yield* stateFiles()).toEqual(
+          retainedFiles.filter(({ path }) => path !== unrelated.path).map(({ path }) => path),
+        )
+        expect(retainedFiles.some(({ path }) => path === oldState.path)).toBe(false)
+        yield* Effect.promise(() => test.annotate(`Removed ${oldState.pages} obsolete VFS pages`))
+
+        yield* resetMetrics()
+        const reopened = yield* rebuild({ post: 'fail' })
+        expect(reopened.status).toBe(200)
+        expect(yield* readRebuildResponse(reopened)).toMatchObject({
+          todos: recoveredBody.todos,
+          attemptedEvents: [],
+          attemptedHooks: [],
+        })
+        expect(yield* rebuildFiles()).toEqual(retainedFiles)
+        expect((yield* getMetrics()).totalRowsWritten).toBe(0)
+      }).pipe(withTestCtx(test)),
+    )
+  }
+
+  Vitest.live('preserves untracked files even when their names match LiveStore state (#1555)', (test) =>
+    Effect.gen(function* () {
+      const server = yield* WranglerDevServer.WranglerDevServer
+      const { rebuild, rebuildFiles, stateFiles, forgetStateFileOwnership } = yield* makeStoreHelpers(
+        server.url,
+        `cf-cleanup-ownership-${nanoid(6)}`,
+      )
+      expect((yield* rebuild({ seed: 'true' })).status).toBe(200)
+      const currentFiles = yield* rebuildFiles()
+      const untrackedPaths = [
+        '/state-cache@1.db',
+        '/state123@5.db',
+        '/stateUnLwYzVBhwzPCK5q7TrPU3q2N0dTe8m_98bud8HsAs8@6.db',
+      ]
+      yield* rebuildFiles(untrackedPaths)
+      yield* forgetStateFileOwnership()
+
+      const reopened = yield* rebuild({ seed: 'true', seedCount: '0' })
+      expect(reopened.status).toBe(200)
+      expect(yield* readRebuildResponse(reopened)).toMatchObject({ attemptedEvents: [], attemptedHooks: [] })
+      expect(yield* stateFiles()).toEqual(currentFiles.map(({ path }) => path))
+      const retainedFiles = yield* rebuildFiles()
+      expect(retainedFiles).toHaveLength(currentFiles.length + untrackedPaths.length)
+      expect(retainedFiles).toEqual(
+        expect.arrayContaining([...currentFiles, ...untrackedPaths.map((path) => ({ path, pages: 1 }))]),
+      )
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.live('does not create state when recording ownership fails (#1555)', (test) =>
+    Effect.gen(function* () {
+      const server = yield* WranglerDevServer.WranglerDevServer
+      const { rebuild, rebuildFiles, stateFiles, blockRegistration } = yield* makeStoreHelpers(
+        server.url,
+        `cf-registration-failure-${nanoid(6)}`,
+      )
+      expect((yield* rebuild({ seed: 'true' })).status).toBe(200)
+      const files = yield* rebuildFiles()
+      const ownedFiles = yield* stateFiles()
+      yield* blockRegistration()
+
+      expect((yield* rebuild({ post: 'complete' })).status).toBe(500)
+      expect(yield* rebuildFiles()).toEqual(files)
+      expect(yield* stateFiles()).toEqual(ownedFiles)
+    }).pipe(withTestCtx(test)),
+  )
+
+  for (const stage of ['pages', 'registry'] as const) {
+    Vitest.live(`retries rejected ${stage} cleanup on completed-state reopen without replay (#1555)`, (test) =>
+      Effect.gen(function* () {
+        const server = yield* WranglerDevServer.WranglerDevServer
+        const { rebuild, rebuildFiles, rebuildEventlog, stateFiles, blockCleanup, unblockCleanup } =
+          yield* makeStoreHelpers(server.url, `cf-cleanup-retry-${nanoid(6)}`)
+        expect((yield* rebuild({ seed: 'true' })).status).toBe(200)
+        const completed = yield* rebuild({ post: 'complete' })
+        expect(completed.status).toBe(200)
+        const { todos } = yield* readRebuildResponse(completed)
+        const files = yield* rebuildFiles()
+        const eventlog = yield* rebuildEventlog()
+        const ownedFiles = yield* stateFiles()
+        yield* blockCleanup(stage)
+
+        const blocked = yield* rebuild({ post: 'fail' })
+        expect(blocked.status).toBe(200)
+        expect(yield* readRebuildResponse(blocked)).toMatchObject({ todos, attemptedEvents: [], attemptedHooks: [] })
+        expect(yield* rebuildFiles()).toContainEqual({ path: '/previous-state.db', pages: 1 })
+        expect(yield* stateFiles()).toEqual(['/previous-state.db', ...ownedFiles])
+
+        yield* unblockCleanup()
+        const retried = yield* rebuild({ post: 'fail' })
+        expect(retried.status).toBe(200)
+        expect(yield* readRebuildResponse(retried)).toMatchObject({ todos, attemptedEvents: [], attemptedHooks: [] })
+        expect(yield* rebuildFiles()).toEqual(files)
+        expect(yield* stateFiles()).toEqual(ownedFiles)
+        expect(yield* rebuildEventlog()).toEqual(eventlog)
+      }).pipe(withTestCtx(test)),
+    )
+  }
+
+  for (const eventCount of [250, 1000]) {
+    Vitest.live(`schema rebuild stays within the write budget for ${eventCount} events (#1555)`, (test) =>
+      Effect.gen(function* () {
+        const server = yield* WranglerDevServer.WranglerDevServer
+        const { rebuild, rebuildEventlog, getMetrics, resetMetrics } = yield* makeStoreHelpers(
+          server.url,
+          `cf-replay-writes-${nanoid(6)}`,
+        )
+        const seeded = yield* rebuild({ seed: 'true', seedCount: String(eventCount) })
+        expect(seeded.status).toBe(200)
+        const seedBody = yield* readRebuildResponse(seeded)
+        expect(seedBody.todos).toHaveLength(eventCount)
+        expect((yield* getMetrics()).totalRowsWritten).toBeGreaterThan(0)
+        const eventlogBefore = yield* rebuildEventlog()
+        expect(eventlogBefore.events).toHaveLength(eventCount)
+
+        yield* resetMetrics()
+        const rebuilt = yield* rebuild({ post: 'complete' })
+        expect(rebuilt.status).toBe(200)
+        const rebuiltBody = yield* readRebuildResponse(rebuilt)
+        const { totalRowsWritten } = yield* getMetrics()
+        expect(rebuiltBody.todos).toEqual([{ id: 'post-hook', title: 'completed' }, ...seedBody.todos])
+        expect(rebuiltBody.attemptedEvents).toEqual(Array.from({ length: eventCount }, (_, i) => `todo-${i + 1}`))
+        expect(rebuiltBody.attemptedHooks).toEqual(['init', 'pre', 'post'])
+        expect(yield* rebuildEventlog()).toEqual(eventlogBefore)
+
+        yield* resetMetrics()
+        const reopened = yield* rebuild({ post: 'fail' })
+        expect(reopened.status).toBe(200)
+        expect(yield* readRebuildResponse(reopened)).toMatchObject({
+          todos: rebuiltBody.todos,
+          attemptedEvents: [],
+          attemptedHooks: [],
+        })
+        expect((yield* getMetrics()).totalRowsWritten).toBe(0)
+
+        yield* Effect.promise(() => test.annotate(`${totalRowsWritten} rebuild writes for ${eventCount} events`))
+        expect(totalRowsWritten).toBeGreaterThan(0)
+        expect(totalRowsWritten).toBeLessThanOrEqual(eventCount * 5)
+      }).pipe(withTestCtx(test)),
+    )
+  }
+
+  Vitest.live('retries an interrupted schema rebuild instead of serving partial state (#1605)', (test) =>
+    Effect.gen(function* () {
+      const server = yield* WranglerDevServer.WranglerDevServer
+      const storeId = `cf-rebuild-${nanoid(6)}`
+      const { rebuild: request, rebuildEventlog: eventlog } = yield* makeStoreHelpers(server.url, storeId)
+      const expected = Array.from({ length: 5 }, (_, i) => ({ id: `todo-${i + 1}`, title: `item ${i + 1}` }))
+
+      const seeded = yield* request({ seed: 'true' })
+      expect(seeded.status).toBe(200)
+      const seededBody = yield* readRebuildResponse(seeded)
+      expect(seededBody).toMatchObject({ todos: expected })
+
+      const before = yield* eventlog()
+      expect(before.events).toHaveLength(5)
+
+      // The table rename forces replay into a new persisted state database.
+      const failed = yield* request({ failAt: 'todo-3' })
+      expect(failed.status).toBe(500)
+      expect(yield* failed.json).toMatchObject({
+        attemptedEvents: ['todo-1', 'todo-2', 'todo-3'],
+      })
+
+      const failedAgain = yield* request({ failAt: 'todo-3' })
+      expect(failedAgain.status).toBe(500)
+      expect(yield* failedAgain.json).toMatchObject({
+        attemptedEvents: ['todo-1', 'todo-2', 'todo-3'],
+      })
+
+      const recovered = yield* request({})
+      expect(recovered.status).toBe(200)
+      expect(yield* recovered.json).toMatchObject({ todos: expected })
+      expect(yield* eventlog()).toEqual(before)
+
+      const reused = yield* request({ failAt: 'todo-1' })
+      expect(reused.status).toBe(200)
+      expect(yield* reused.json).toMatchObject({ todos: expected, attemptedEvents: [] })
+    }).pipe(withTestCtx(test)),
+  )
+
+  for (const post of ['fail', 'abort'] as const) {
+    Vitest.live(`retries a rebuild after post-hook ${post}, without publishing partial state (#1605)`, (test) =>
+      Effect.gen(function* () {
+        const server = yield* WranglerDevServer.WranglerDevServer
+        const storeId = `cf-rebuild-post-${nanoid(6)}`
+        const { rebuild: request } = yield* makeStoreHelpers(server.url, storeId)
+        const seeded = yield* request({ seed: 'true' })
+        expect(seeded.status).toBe(200)
+        const seedBody = yield* readRebuildResponse(seeded)
+
+        const failed = yield* request({ post })
+        expect(failed.status).toBe(500)
+        if (post === 'fail') {
+          expect(yield* failed.json).toMatchObject({
+            attemptedEvents: ['todo-1', 'todo-2', 'todo-3', 'todo-4', 'todo-5'],
+            attemptedHooks: ['init', 'pre', 'post'],
+          })
+        } else {
+          expect(yield* failed.text).toContain('Rebuild fixture aborted during post hook')
+        }
+
+        const recovered = yield* request({ post: 'complete' })
+        expect(recovered.status).toBe(200)
+        const recoveredBody = yield* readRebuildResponse(recovered)
+        expect(recoveredBody).toMatchObject({
+          todos: [{ id: 'post-hook', title: 'completed' }, ...seedBody.todos],
+          attemptedEvents: ['todo-1', 'todo-2', 'todo-3', 'todo-4', 'todo-5'],
+          attemptedHooks: ['init', 'pre', 'post'],
+        })
+        if (post === 'abort') expect(recoveredBody.instanceId).not.toBe(seedBody.instanceId)
+
+        const reused = yield* request({ post: 'fail' })
+        expect(reused.status).toBe(200)
+        expect(yield* reused.json).toMatchObject({
+          todos: recoveredBody.todos,
+          attemptedEvents: [],
+          attemptedHooks: [],
+        })
+      }).pipe(withTestCtx(test)),
+    )
+  }
+
+  Vitest.live('records completion for an empty eventlog and does not repeat hooks (#1605)', (test) =>
+    Effect.gen(function* () {
+      const server = yield* WranglerDevServer.WranglerDevServer
+      const storeId = `cf-rebuild-empty-${nanoid(6)}`
+      const { rebuild: request } = yield* makeStoreHelpers(server.url, storeId)
+      const first = yield* request({ post: 'complete' })
+      expect(first.status).toBe(200)
+      const firstBody = yield* readRebuildResponse(first)
+      expect(firstBody).toMatchObject({
+        todos: [{ id: 'post-hook', title: 'completed' }],
+        attemptedEvents: [],
+        attemptedHooks: ['init', 'pre', 'post'],
+      })
+      const reused = yield* request({ post: 'fail' })
+      expect(reused.status).toBe(200)
+      expect(yield* reused.json).toMatchObject({
+        todos: firstBody.todos,
+        attemptedEvents: [],
+        attemptedHooks: [],
+      })
+    }).pipe(withTestCtx(test)),
+  )
+
   Vitest.live('keeps Durable Object state when resetPersistence is not requested', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServer.WranglerDevServer
@@ -244,6 +571,9 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
       const preShutdownTodos = yield* listTodos()
       expect(preShutdownTodos).toHaveLength(todos.length)
 
+      // Let blocking sync acknowledge seeded events before measuring an idle reopen.
+      yield* shutdownStore()
+      expect(yield* listTodos()).toEqual(preShutdownTodos)
       yield* shutdownStore()
       yield* resetMetrics()
 

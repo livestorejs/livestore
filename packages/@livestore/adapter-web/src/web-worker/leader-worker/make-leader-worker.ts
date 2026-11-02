@@ -1,7 +1,8 @@
 import type * as otel from '@opentelemetry/api'
 
 import type { BootStatus, BootWarningReason, LogConfig, SqliteDb, SyncOptions } from '@livestore/common'
-import { Devtools, UnknownError } from '@livestore/common'
+import { MaterializationJournal } from '@livestore/common'
+import { Devtools, EventlogSqliteDb, StateHead, StateSqliteDb, UnknownError } from '@livestore/common'
 import type { DevtoolsOptions, StreamEventsOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
@@ -10,8 +11,7 @@ import {
   makeLeaderThreadLayer,
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
-import type { LiveStoreSchema } from '@livestore/common/schema'
-import { LiveStoreEvent } from '@livestore/common/schema'
+import { LiveStoreEvent, type LiveStoreSchema } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
@@ -25,6 +25,7 @@ import {
   OtelTracer,
   Queue,
   References,
+  RpcSerialization,
   RpcServer,
   RpcWorker,
   Schema,
@@ -133,11 +134,13 @@ const makeMessagePortRpcServerProtocol = (port: MessagePort): Layer.Layer<RpcSer
         send: (_clientId, response, transferables) =>
           Effect.sync(() => port.postMessage([1, response], { transfer: (transferables ?? []) as Transferable[] })),
         end: () => Effect.void,
-        clientIds: Effect.sync(() => clientIds),
+        clientIds: Effect.succeed(clientIds),
         initialMessage: Effect.asSome(Deferred.await(initialMessage)),
         supportsAck: true,
         supportsTransferables: true,
         supportsSpanPropagation: true,
+        supportsNotifications: true,
+        codecFor: RpcSerialization.json.codecFor,
         run: (writeRequest) =>
           Effect.gen(function* () {
             const context = yield* Effect.context<never>()
@@ -189,7 +192,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
 
       const leaderThreadContextOnce = yield* Effect.cached(
         Effect.gen(function* () {
-          const { storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayloadEncoded } =
+          const { storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayloadEncoded, params } =
             yield* RpcWorker.initialMessage(WorkerSchema.LeaderWorkerInnerInitialMessage.payloadSchema)
 
           const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
@@ -266,24 +269,26 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
 
           const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, dbState, dbEventlog })
           const shutdownChannel = yield* makeShutdownChannel(storeId)
-
-          return yield* Layer.buildWithScope(
-            makeLeaderThreadLayer({
-              schema,
-              storeId,
-              clientId,
-              makeSqliteDb,
-              syncOptions,
-              dbState,
-              dbEventlog,
-              devtoolsOptions,
-              shutdownChannel,
-              syncPayloadEncoded,
-              syncPayloadSchema: syncPayloadSchema as Schema.Decoder<Schema.Json, never> | undefined,
-              ...(bootWarning !== undefined ? { bootWarning } : {}),
-            }),
-            leaderThreadScope,
+          const sqliteDbLayer = Layer.mergeAll(StateSqliteDb.layer(dbState), EventlogSqliteDb.layer(dbEventlog))
+          const stateServicesLayer = Layer.mergeAll(StateHead.layer, MaterializationJournal.layer).pipe(
+            Layer.provide(sqliteDbLayer),
           )
+
+          const leaderThreadLayer = makeLeaderThreadLayer({
+            schema,
+            storeId,
+            clientId,
+            makeSqliteDb,
+            syncOptions,
+            devtoolsOptions,
+            shutdownChannel,
+            syncPayloadEncoded,
+            syncPayloadSchema: syncPayloadSchema as Schema.Decoder<Schema.Json, never> | undefined,
+            params,
+            ...(bootWarning !== undefined ? { bootWarning } : {}),
+          }).pipe(Layer.provide(Layer.mergeAll(sqliteDbLayer, stateServicesLayer)))
+
+          return yield* Layer.buildWithScope(Layer.mergeAll(leaderThreadLayer, sqliteDbLayer), leaderThreadScope)
         }).pipe(
           Scope.provide(leaderThreadScope),
           Effect.tapCauseLogPretty,
@@ -311,6 +316,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         GetRecreateSnapshot: () =>
           Effect.gen(function* () {
             const workerCtx = yield* LeaderThreadCtx
+            const dbState = yield* StateSqliteDb.StateSqliteDb
 
             // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
             // const cachedSnapshot =
@@ -318,7 +324,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
 
             // return cachedSnapshot ?? workerCtx.db.export()
 
-            const snapshot = workerCtx.dbState.export()
+            const snapshot = dbState.export()
             return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
           }).pipe(provideLeaderThread),
         PullStream: ({ cursor }) =>
@@ -332,35 +338,30 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
             // Stream.tapLogWithLabel('@livestore/adapter-web:worker:PullStream'),
           ),
         PushToLeader: ({ batch }) =>
-          Effect.andThen(LeaderThreadCtx, ({ syncProcessor }) =>
-            syncProcessor.push(batch.map((event) => new LiveStoreEvent.Client.EncodedWithMeta(event))),
-          ).pipe(
+          Effect.andThen(LeaderThreadCtx, ({ syncProcessor }) => syncProcessor.push(batch)).pipe(
             provideLeaderThread,
             Effect.uninterruptible,
             Effect.withSpan('@livestore/adapter-web:worker:PushToLeader'),
           ),
         StreamEvents: (options) =>
-          LeaderThreadCtx.pipe(
-            Effect.map(({ dbEventlog, syncProcessor }) =>
-              streamEventsWithSyncState({
-                dbEventlog,
-                syncState: syncProcessor.syncState,
-                options: options as StreamEventsOptions,
-              }),
-            ),
-            provideLeaderThread,
-            Stream.unwrap,
-            Stream.withSpan('@livestore/adapter-web:worker:StreamEvents'),
-          ),
+          Effect.gen(function* () {
+            const { syncProcessor } = yield* LeaderThreadCtx
+            const dbEventlog = yield* EventlogSqliteDb.EventlogSqliteDb
+            return streamEventsWithSyncState({
+              dbEventlog,
+              syncState: syncProcessor.syncState,
+              options: options as StreamEventsOptions,
+            })
+          }).pipe(provideLeaderThread, Stream.unwrap, Stream.withSpan('@livestore/adapter-web:worker:StreamEvents')),
         Export: () =>
-          LeaderThreadCtx.pipe(
-            Effect.flatMap((_) => Effect.sync(() => _.dbState.export())),
+          StateSqliteDb.StateSqliteDb.pipe(
+            Effect.flatMap((dbState) => Effect.sync(() => dbState.export())),
             provideLeaderThread,
             Effect.withSpan('@livestore/adapter-web:worker:Export'),
           ),
         ExportEventlog: () =>
-          LeaderThreadCtx.pipe(
-            Effect.flatMap((_) => Effect.sync(() => _.dbEventlog.export())),
+          EventlogSqliteDb.EventlogSqliteDb.pipe(
+            Effect.flatMap((dbEventlog) => Effect.sync(() => dbEventlog.export())),
             provideLeaderThread,
             Effect.withSpan('@livestore/adapter-web:worker:ExportEventlog'),
           ),
@@ -372,8 +373,8 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           ),
         GetLeaderHead: () =>
           Effect.gen(function* () {
-            const workerCtx = yield* LeaderThreadCtx
-            return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
+            const dbEventlog = yield* EventlogSqliteDb.EventlogSqliteDb
+            return Eventlog.getClientHeadFromDb(dbEventlog)
           }).pipe(provideLeaderThread),
         GetLeaderSyncState: () =>
           Effect.gen(function* () {

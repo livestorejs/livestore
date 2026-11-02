@@ -28,6 +28,12 @@ slug.
   [`contributor-docs/examples-cloudflare.md`](../../../contributor-docs/examples-cloudflare.md)
   (owned by this node).
 
+When CI's example-test step fails, `build-and-deploy-examples-src` retains
+`examples/**/test-results/` as `example-test-failure-results` for seven days
+(LS.DOCS.EX-R02). The upload contains existing Playwright screenshots and
+failure context, not environment dumps or deployment credentials. Treat
+browser-rendered content as potentially sensitive; keep test data synthetic.
+
 ## Open Design Questions
 
 - **LS.DOCS.EX-DQ1 Coverage matrix.** Which pluggable-dimension combinations

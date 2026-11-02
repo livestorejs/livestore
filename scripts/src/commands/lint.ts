@@ -4,7 +4,7 @@ import { Cli } from '@livestore/utils/node'
 
 import { runPeerDepCheck } from '../shared/peer-deps.ts'
 
-export class LintError extends Schema.TaggedErrorClass<LintError>()('LintError', {
+export class LintError extends Schema.TaggedError<LintError>()('LintError', {
   message: Schema.String,
 }) {}
 
@@ -57,7 +57,7 @@ const runFormatFix = cmd(['oxfmt', '.', ...oxfmtExcludePatterns]).pipe(
 )
 
 /** Run oxlint check (uses .oxlintrc.json) */
-// TODO(oep-3632.1) enable --type-aware once remaining no-unsafe-type-assertion violations are addressed (~567 remaining)
+// Enable --type-aware once the remaining no-unsafe-type-assertion violations are addressed (~567 remaining)
 const runLintCheck = cmd(['oxlint', '--import-plugin', '--deny-warnings']).pipe(
   Effect.provide(LivestoreWorkspace.toCwd()),
   Effect.withSpan('lintCheck'),
@@ -71,7 +71,7 @@ const runLintFix = cmd(['oxlint', '--import-plugin', '--deny-warnings', '--fix']
 
 export const lintCommand = Cli.Command.make(
   'lint',
-  { fix: Cli.Flag.boolean('fix').pipe(Cli.Flag.withDefault(false)) },
+  { fix: Cli.Flag.Boolean('fix').pipe(Cli.Flag.withDefault(false)) },
   Effect.fn(function* ({ fix }) {
     // Run oxfmt and oxlint (format + lint)
     if (fix === true) {

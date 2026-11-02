@@ -65,7 +65,6 @@ export default githubWorkflow({
   },
 
   env: {
-    CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}',
     CI: 'true',
     FORCE_SETUP: '1',
     ARTIFACT_METADATA_URL: '${{ github.event.client_payload.artifactMetadataUrl || inputs.metadata_url }}',

@@ -12,6 +12,7 @@ import {
 import type { ClientSessionLeaderThreadProxy } from './ClientSessionLeaderThreadProxy.ts'
 import type * as Devtools from './devtools/mod.ts'
 import type { IntentionalShutdownCause, MaterializeError, UnknownError } from './errors.ts'
+import type * as MaterializationJournal from './MaterializationJournal.ts'
 import type { LiveStoreSchema } from './schema/mod.ts'
 import type { SqliteDb } from './sqlite-types.ts'
 import type { BackendIdMismatchError } from './sync/index.ts'
@@ -35,7 +36,10 @@ export interface ClientSession {
   /** Status info whether current session is leader or not */
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
   shutdown: (
-    cause: Exit.Exit<IntentionalShutdownCause, UnknownError | MaterializeError | BackendIdMismatchError>,
+    cause: Exit.Exit<
+      IntentionalShutdownCause,
+      UnknownError | MaterializeError | MaterializationJournal.MaterializationJournalError | BackendIdMismatchError
+    >,
   ) => Effect.Effect<void>
   /** A proxy API to communicate with the leader thread */
   leaderThread: ClientSessionLeaderThreadProxy
@@ -92,29 +96,20 @@ export type BootStatus = typeof BootStatus.Type
 
 export type LockStatus = 'has-lock' | 'no-lock'
 
-// TODO possibly allow a combination of these options
 // TODO allow a way to stream the migration progress back to the app
-export type MigrationOptions =
-  | {
-      strategy: 'auto'
-      hooks?: Partial<MigrationHooks>
-      logging?: {
-        excludeAffectedRows?: (sqlStmt: string) => boolean
-      }
-    }
-  | {
-      strategy: 'manual'
-      migrate: (
-        oldDb: Uint8Array<ArrayBuffer>,
-      ) => Uint8Array<ArrayBuffer> | Promise<Uint8Array<ArrayBuffer>> | Effect.Effect<Uint8Array<ArrayBuffer>, unknown>
-    }
+export type MigrationOptions = {
+  hooks?: Partial<MigrationHooks>
+  logging?: {
+    excludeAffectedRows?: (sqlStmt: string) => boolean
+  }
+}
 
 export type MigrationHooks = {
   /** Runs on the empty in-memory database with no database schemas applied yet */
   init: MigrationHook
-  /** Runs before applying the migration strategy but after table schemas have been applied and singleton rows have been created */
+  /** Runs after table schemas and singleton rows are created, but before rematerializing state from the eventlog */
   pre: MigrationHook
-  /** Runs after applying the migration strategy before creating export snapshot and closing the database */
+  /** Runs after rematerializing state from the eventlog */
   post: MigrationHook
 }
 
@@ -134,11 +129,18 @@ export type Adapter = (args: AdapterArgs) => Effect.Effect<ClientSession, Unknow
 export interface AdapterArgs {
   schema: LiveStoreSchema
   storeId: string
+  /** Runtime parameters resolved by `createStore` before the adapter is invoked. */
+  params: {
+    stateRebuildBatchSize: number
+  }
   devtoolsEnabled: boolean
   debugInstanceId: string
   bootStatusQueue: Queue.Queue<BootStatus>
   shutdown: (
-    exit: Exit.Exit<IntentionalShutdownCause, UnknownError | MaterializeError | BackendIdMismatchError>,
+    exit: Exit.Exit<
+      IntentionalShutdownCause,
+      UnknownError | MaterializeError | MaterializationJournal.MaterializationJournalError | BackendIdMismatchError
+    >,
   ) => Effect.Effect<void>
   connectDevtoolsToStore: ConnectDevtoolsToStore
   /**

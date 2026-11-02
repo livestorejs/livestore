@@ -89,7 +89,9 @@ this tree):
    hash).
 2. **SQL result cache** (`QueryCache.ts`): an LRU (200 entries) keyed on
    SQL text + bind values, invalidated per written table on
-   `cachedExecute`; transaction-control statements are ignored. This caches
+   `cachedExecute`. `ROLLBACK` (including `ROLLBACK TO` a savepoint) and
+   changeset apply clear the whole cache, since neither reports which tables
+   it touched; other transaction-control statements are ignored. This caches
    *values*, not reactivity — a hot table with >200 distinct queries evicts
    silently (flagged as provisional in code comments).
 
@@ -102,3 +104,11 @@ mishandles), and the result cache above. Write tracking here only
 invalidates cached values; the refresh that re-runs live queries is driven
 separately by the store bumping `tableRefs`. `getTablesUsed` is the shared
 primitive feeding both mechanisms.
+
+The Store hands the SQLite state services (`StateSqliteDb`, hence
+`MaterializationJournal` and `StateHead`; see
+[`02-state/01-sqlite`](../../02-state/01-sqlite/spec.md)) the wrapper's
+`serviceDb` view of the same connection (`store/store.ts`). That view skips the
+wrapper's spans, since the services trace their own statements, but its writes,
+rollbacks and changeset applies still pass through the result cache, so journal
+rollback during rebase cannot leave stale cached reads.

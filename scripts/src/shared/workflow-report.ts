@@ -8,7 +8,7 @@ import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 export const workflowReportRecordLineMarker = 'WORKFLOW_REPORT_V1: '
 
 /** Module-scoped JSON encoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
-const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
+const jsonStringify = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown))
 
 /**
  * Schema-compatible shape for a single record. We intentionally keep this as a

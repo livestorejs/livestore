@@ -1,3 +1,5 @@
+import { prReviewsPullRequestRule } from '#mr/effect-utils/genie/ci-workflow.ts'
+
 import { requiredCIJobs } from '../genie/ci.ts'
 import { githubRuleset } from '../genie/repo.ts'
 
@@ -15,11 +17,11 @@ export default githubRuleset({
     {
       type: 'pull_request',
       parameters: {
-        required_approving_review_count: 0,
-        dismiss_stale_reviews_on_push: false,
-        require_code_owner_review: true,
-        require_last_push_approval: false,
-        required_review_thread_resolution: true,
+        ...prReviewsPullRequestRule({
+          dismissStaleReviewsOnPush: false,
+          requireCodeOwnerReview: true,
+        }).parameters,
+        require_extra_approval_for_unattributed_changes: true,
       },
     },
     {

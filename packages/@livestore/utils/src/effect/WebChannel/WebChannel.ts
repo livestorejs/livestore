@@ -378,8 +378,7 @@ export const toOpenChannel = <MsgListen, MsgSend>(
           const deferred = yield* Deferred.make<void>()
           pendingPingDeferredRef.current = { deferred, requestId }
           yield* Deferred.await(deferred).pipe(
-            Effect.timeout(timeout),
-            Effect.catchTag('TimeoutError', () => channel.shutdown),
+            Effect.timeoutOrElse({ duration: timeout, orElse: () => channel.shutdown }),
           )
         }
       }).pipe(Effect.withSpan(`WebChannel:heartbeat`), Effect.forkScoped)

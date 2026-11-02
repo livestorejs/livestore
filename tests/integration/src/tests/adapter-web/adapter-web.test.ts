@@ -3,14 +3,21 @@ import { fileURLToPath } from 'node:url'
 
 import { expect } from 'vitest'
 
+import { UnknownError } from '@livestore/common'
 import { BrowserContext, browserContextLayer } from '@livestore/effect-playwright'
 import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Duration, Effect, FetchHttpClient, HttpClient, Layer, Schedule, Schema } from '@livestore/utils/effect'
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
 
+declare global {
+  interface Window {
+    __adapterWebLeaderAvailable?: () => Promise<boolean>
+  }
+}
+
 /** The dev server did not become reachable within the readiness retry budget. */
-class DevServerNotReadyError extends Schema.TaggedErrorClass<DevServerNotReadyError>()('DevServerNotReadyError', {
+class DevServerNotReadyError extends Schema.TaggedError<DevServerNotReadyError>()('DevServerNotReadyError', {
   cause: Schema.Defect(),
 }) {}
 
@@ -30,6 +37,51 @@ const withTestCtx = Vitest.makeWithTestCtx({
 })
 
 Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
+  Vitest.live('rejects incomplete OPFS snapshots before fast-path boot (#1605)', (test) =>
+    Effect.gen(function* () {
+      const port = yield* getFreePort.pipe(Effect.map(String))
+      yield* cmd(`./node_modules/.bin/vite --config ${viteConfigRel} dev --port ${port}`, {
+        env: { TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined, LSD_DEVTOOLS_LOCAL_PREVIEW: undefined },
+      }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)), Effect.forkScoped)
+      const url = `http://localhost:${port}`
+      const httpClient = HttpClient.filterStatusOk(yield* HttpClient.HttpClient)
+      yield* httpClient.head(url).pipe(
+        Effect.retry(Schedule.exponentialBackoff10Sec),
+        Effect.mapError((error) => new DevServerNotReadyError({ cause: error })),
+      )
+      const { browserContext } = yield* BrowserContext
+      const page = yield* Effect.promise(() => browserContext.newPage())
+      yield* Effect.promise(() => page.goto(url))
+      const response = yield* Effect.promise(() =>
+        page.evaluate(
+          (workerUrl) =>
+            new Promise((resolve, reject) => {
+              const worker = new Worker(workerUrl, { type: 'module' })
+              worker.onmessage = (event) => {
+                worker.terminate()
+                resolve(event.data)
+              }
+              worker.onerror = (event) => {
+                worker.terminate()
+                reject(new Error(event.message))
+              }
+            }),
+          `/@fs/${path.resolve(integrationRoot, '../../packages/@livestore/adapter-web/src/web-worker/common/persisted-sqlite.test-fixture.ts')}`,
+        ),
+      )
+      expect(response).toEqual({
+        result: {
+          incomplete: 'PersistedSqliteError',
+          missingMarkerTable: 'PersistedSqliteError',
+          complete: 'accepted',
+          rows: [{ id: 'complete' }, { id: 'partial' }],
+          closeCountsBeforeScopeExit: [1, 1, 0],
+          closeCountsAfterScopeExit: [1, 1, 1],
+        },
+      })
+    }).pipe(withTestCtx(test)),
+  )
+
   /**
    * SharedWorker boot/leader race can stall startup when two tabs boot concurrently.
    * Issue: https://github.com/livestorejs/livestore/issues/763
@@ -104,6 +156,70 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
     }).pipe(withTestCtx(test)),
   )
 
+  Vitest.live('leader handoff accepts different per-client rebuild batch sizes', (test) =>
+    Effect.gen(function* () {
+      const port = yield* getFreePort.pipe(Effect.map(String))
+      yield* cmd(`./node_modules/.bin/vite --config ${viteConfigRel} dev --port ${port}`, {
+        env: { TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined, LSD_DEVTOOLS_LOCAL_PREVIEW: undefined },
+      }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)), Effect.forkScoped)
+      const url = `http://localhost:${port}`
+      const httpClient = HttpClient.filterStatusOk(yield* HttpClient.HttpClient)
+      yield* httpClient.head(url).pipe(
+        Effect.retry(Schedule.exponentialBackoff10Sec),
+        Effect.mapError((error) => new DevServerNotReadyError({ cause: error })),
+      )
+
+      const { browserContext } = yield* BrowserContext
+      const page1 = yield* Effect.promise(() => browserContext.newPage())
+      const page2 = yield* Effect.promise(() => browserContext.newPage())
+      const appUrl = `${url}/adapter-web/concurrent-boot`
+      const storeId = 'adapter-web-batch-size-handoff'
+
+      yield* Effect.promise(() =>
+        page1.goto(`${appUrl}?storeId=${storeId}&sessionId=a&clientId=A&stateRebuildBatchSize=1`),
+      )
+      yield* Effect.promise(() =>
+        page1.waitForSelector('text=Adapter Web Test App', { state: 'visible', timeout: 15000 }),
+      )
+      yield* Effect.promise(() =>
+        page2.goto(`${appUrl}?storeId=${storeId}&sessionId=b&clientId=B&stateRebuildBatchSize=2`),
+      )
+      yield* Effect.promise(() =>
+        page2.waitForSelector('text=Adapter Web Test App', { state: 'visible', timeout: 15000 }),
+      )
+
+      yield* Effect.promise(() => page1.close())
+      const leaderLockName = `livestore-tab-lock-${storeId}`
+      yield* Effect.promise(() =>
+        expect
+          .poll(
+            () =>
+              page2.evaluate(async (lockName) => {
+                const snapshot = await navigator.locks.query()
+                return snapshot.held?.some((lock) => lock.name === lockName) ?? false
+              }, leaderLockName),
+            { timeout: 15000 },
+          )
+          .toBe(true),
+      )
+      yield* Effect.sleep(Duration.millis(250))
+      yield* Effect.promise(() =>
+        expect
+          .poll(
+            () =>
+              page2.evaluate(() =>
+                Promise.race([
+                  window.__adapterWebLeaderAvailable?.() ?? Promise.resolve(false),
+                  new Promise<false>((resolve) => setTimeout(() => resolve(false), 1000)),
+                ]),
+              ),
+            { timeout: 15000 },
+          )
+          .toBe(true),
+      )
+    }).pipe(withTestCtx(test)),
+  )
+
   /**
    * Single-tab mode fallback for browsers without SharedWorker support (e.g. Android Chrome).
    *
@@ -174,8 +290,8 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
   )
 
   /**
-   * Verifies that two tabs in single-tab mode operate independently
-   * (no cross-tab synchronization when SharedWorker is unavailable).
+   * Independent single-tab stores must use separate OPFS files. Sharing a storeId
+   * opens the same file from two leaders, which is unsupported without SharedWorker (#1609).
    */
   Vitest.live('single-tab mode: tabs operate independently', (test) =>
     Effect.gen(function* () {
@@ -201,7 +317,15 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       const page1 = yield* Effect.promise(() => browserContext.newPage())
       const page2 = yield* Effect.promise(() => browserContext.newPage())
 
-      // Disable SharedWorker on both pages
+      const browserErrors: string[] = []
+      for (const [index, page] of [page1, page2].entries()) {
+        page.on('pageerror', (error) => browserErrors.push(`Tab ${index + 1}: ${error.message}`))
+        page.on('console', (message) => {
+          if (message.type() === 'error') browserErrors.push(`Tab ${index + 1}: ${message.text()}`)
+        })
+      }
+
+      // Disable SharedWorker on both pages.
       yield* Effect.promise(() =>
         Promise.all([
           page1.addInitScript(() => {
@@ -216,30 +340,43 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       )
 
       const url = appUrl('/adapter-web/concurrent-boot')
+      const storeId1 = 'independent-store-1'
+      const storeId2 = 'independent-store-2'
 
       // Boot both tabs
       yield* Effect.promise(() =>
         Promise.all([
-          page1.goto(`${url}?sessionId=tab1&clientId=client1`),
-          page2.goto(`${url}?sessionId=tab2&clientId=client2`),
+          page1.goto(`${url}?storeId=${storeId1}&sessionId=tab1&clientId=client1`),
+          page2.goto(`${url}?storeId=${storeId2}&sessionId=tab2&clientId=client2`),
         ]),
       )
 
-      // Verify both tabs boot successfully
-      const didBoot = (page: typeof page1) =>
-        Effect.tryPromise({
-          try: () => page.waitForSelector('text=Adapter Web Test App', { state: 'visible', timeout: 15000 }),
-          catch: () => false,
-        }).pipe(
-          Effect.map(() => true),
-          Effect.orElseSucceed(() => false),
-        )
+      // Preserve browser errors and the original timeout instead of reducing failures to false.
+      yield* Effect.tryPromise({
+        try: () =>
+          Promise.all(
+            [page1, page2].map((page) =>
+              page.waitForSelector('text=Adapter Web Test App', { state: 'visible', timeout: 15000 }),
+            ),
+          ),
+        catch: (cause) =>
+          new UnknownError({ cause, note: `Independent tabs failed to boot:\n${browserErrors.join('\n')}` }),
+      })
 
-      const [boot1, boot2] = yield* Effect.all([didBoot(page1), didBoot(page2)])
-      expect(boot1 && boot2).toBe(true)
+      yield* Effect.promise(async () => {
+        const todos1 = page1.getByRole('listitem')
+        const todos2 = page2.getByRole('listitem')
+        expect(await todos1.allTextContents()).toEqual([])
+        expect(await todos2.allTextContents()).toEqual([])
 
-      // Both tabs should operate independently (this is expected behavior in single-tab mode)
-      // We're just verifying they both boot; cross-tab sync is intentionally disabled
+        await page1.getByRole('button', { name: 'Add todo' }).click()
+        await expect.poll(() => todos1.allTextContents()).toEqual([storeId1])
+        expect(await todos2.allTextContents()).toEqual([])
+
+        await page2.getByRole('button', { name: 'Add todo' }).click()
+        await expect.poll(() => todos2.allTextContents()).toEqual([storeId2])
+        expect(await todos1.allTextContents()).toEqual([storeId1])
+      })
     }).pipe(withTestCtx(test)),
   )
 })

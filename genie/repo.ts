@@ -46,12 +46,7 @@ import {
 } from '#mr/effect-utils/genie/external.ts'
 import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from '#mr/effect-utils/genie/oxfmt-base.ts'
 
-import {
-  effectV4Catalog,
-  livestoreOnlyCatalog,
-  livestoreWorkspaceCatalog,
-  obsoleteEffectV3Packages,
-} from './external.ts'
+import { effectV4Catalog, livestoreOnlyCatalog, livestoreWorkspaceCatalog } from './external.ts'
 import { livestoreCurrentPackageNames, type LivestorePackageName } from './repo-topology.ts'
 
 export { baseTsconfigCompilerOptions, reactJsx }
@@ -142,29 +137,9 @@ const releaseVersion = repo.readJson<{
   readonly version: string
 }>('release/version.json')
 
-/** TODO: Remove once effect-utils upgrades its TypeScript catalog pin: https://github.com/overengineeringstudio/effect-utils/issues/892 */
-const livestoreCatalogOverrides = {
-  typescript: '6.0.3',
-} as const
-
-const obsoleteEffectV3PackageNames = new Set<string>(obsoleteEffectV3Packages)
-
-const effectV4CatalogPackageNames = new Set<string>(Object.keys(effectV4Catalog))
-
-/**
- * Keep inheriting non-Effect tooling versions from effect-utils while LiveStore
- * owns the Effect v4 package surface for this migration slice.
- */
-const effectUtilsCatalogWithoutEffectV3 = Object.fromEntries(
-  Object.entries(effectUtilsCatalog).filter(
-    ([name]) => obsoleteEffectV3PackageNames.has(name) === false && effectV4CatalogPackageNames.has(name) === false,
-  ),
-)
-
-/** Composed catalog - effect-utils base + LiveStore overrides + Effect v4 + livestore-specific + workspace packages */
+/** Composed catalog - effect-utils base + Effect v4 + livestore-specific + workspace packages */
 export const catalog = defineCatalog({
-  ...effectUtilsCatalogWithoutEffectV3,
-  ...livestoreCatalogOverrides,
+  ...effectUtilsCatalog,
   ...effectV4Catalog,
   ...livestoreWorkspaceCatalog,
   ...livestoreOnlyCatalog,
@@ -289,22 +264,21 @@ import {
   bashShellDefaults,
   cachixCliBuildStep,
   cachixStep,
-  defaultActionlintConfig,
+  defaultActionlintConfig as defaultActionlintConfigBase,
   dispatchAlignmentStep,
-  namespaceRunner as namespaceRunnerBase,
   installNixStep,
+  namespaceRunner as effectUtilsNamespaceRunner,
   applyMegarepoLockStep,
   checkoutStep,
   defaultRefPolicyCheckJob,
   prepareCiScriptsStep,
+  preparedCiRuntimeScriptsDir,
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
   restoreMegarepoStoreStep,
-  restorePnpmStateStep,
   runDevenvTasksBefore,
   nixDiagnosticsArtifactStep,
   saveMegarepoStoreStep,
-  savePnpmStateStep,
   validateNixStoreStep,
   workflowReportCollectorStep,
   workflowReportCommentBodyStep,
@@ -321,15 +295,12 @@ export {
   cachixCliBuildStep,
   cachixStep,
   checkoutStep,
-  defaultActionlintConfig,
   dispatchAlignmentStep,
   installNixStep,
   nixDiagnosticsArtifactStep,
   pnpmStateSetupStep,
   preparePinnedDevenvStep,
-  restorePnpmStateStep,
   runDevenvTasksBefore,
-  savePnpmStateStep,
   validateNixStoreStep,
   workflowReportCollectorStep,
   workflowReportCommentBodyStep,
@@ -337,20 +308,34 @@ export {
   workflowReportPublisherStep,
 }
 
-export const namespaceRunner = (runId: string) =>
-  namespaceRunnerBase({ profile: 'namespace-profile-linux-x86-64', runId })
+export const defaultActionlintConfig = {
+  ...defaultActionlintConfigBase,
+  selfHostedRunnerLabels: [
+    ...(defaultActionlintConfigBase.selfHostedRunnerLabels ?? []),
+    'namespace-profile-linux-x86-64;job.priority=3',
+    'namespace-profile-linux-x86-64;job.priority=6',
+  ],
+}
+
+/** LiveStore delivery is priority 3; optional background work is priority 6. */
+export const namespaceRunner = (runId: string, priority: 3 | 6 = 3) => {
+  return effectUtilsNamespaceRunner({
+    profile: 'namespace-profile-linux-x86-64',
+    runId,
+    priority,
+    privileged: 'trusted',
+  })
+}
 
 const shellSingleQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
 
+// Commit-tree setup reuses prepared cached subtrees read-only instead of re-authoring them.
 const setupMegarepoRun = (run: string) =>
   run.replace(
     'nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all',
     [
       'nix run --no-write-lock-file',
-      '--override-input flake-utils "https://codeload.github.com/numtide/flake-utils/tar.gz/11707dc2f618dd54ca8739b309ec4fc024de578b"',
-      '--override-input nixpkgs "https://codeload.github.com/NixOS/nixpkgs/tar.gz/5b63481602d9b0a714d5791c53bebe829d6b1a3c"',
-      '--override-input tsgo "https://codeload.github.com/Effect-TS/tsgo/tar.gz/8d34c0a2d603a4b963b85ffccd4322c0ef74f472"',
-      '"https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all',
+      '"github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --worktree-mode commit --commit-all-members --lock-sync off',
     ].join(' '),
   )
 
@@ -360,7 +345,7 @@ const withNixRetry = <TStep extends { readonly name: string; readonly run: strin
 ): TStep => ({
   ...step,
   run: [
-    `__genie_ci_retry_script='\${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'`,
+    `__genie_ci_retry_script='${preparedCiRuntimeScriptsDir}/run-with-nix-gc-race-retry.sh'`,
     `bash "$__genie_ci_retry_script" ${shellSingleQuote(step.name)} ${shellSingleQuote(run)}`,
   ].join('\n'),
 })
@@ -373,8 +358,8 @@ const withNixSetupRetry = <TStep extends { readonly name: string; readonly run: 
  * {@link restoreMegarepoStoreStep} / {@link saveMegarepoStoreStep} (from effect-utils) it stops CI
  * from cold-cloning large members (e.g. `effect-ts/effect`) every run: the store lives at the
  * stable `cacheableMegarepoStore` path so the actions/cache version is stable across runs and
- * restores hit. `withNixSetupRetry` preserves the step's `env` (the cacheable path) while
- * rewriting the run for the codeload override.
+ * restores hit. `withNixSetupRetry` preserves the step's `env` (the cacheable path)
+ * and retries transient Nix store races without overriding the producer's flake inputs.
  */
 const stableStoreSyncStep = applyMegarepoLockStep({ cacheableStore: true })
 
@@ -383,17 +368,16 @@ const stableStoreSyncStep = applyMegarepoLockStep({ cacheableStore: true })
  * Uses shared step atoms from effect-utils/genie/ci-workflow.ts.
  */
 export const livestoreSetupStepsAfterCheckout = [
-  // Copy CI helper scripts (e.g. the nix-gc-race retry wrapper) into the prepared
-  // scripts dir before any retry-wrapped command runs, and before any alternate
-  // checkout can replace the workspace. Required by the genie CI workflow validator.
-  prepareCiScriptsStep,
+  // Copy CI helper scripts after checkout and Nix installation so retry-wrapped
+  // commands keep a stable helper path. Required by the genie CI workflow validator.
   installNixStep({
     extraConf:
       'extra-substituters = https://cache.nixos.org\nextra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=',
   }),
+  prepareCiScriptsStep,
   cachixCliBuildStep,
   (() => {
-    const base = cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' })
+    const base = cachixStep({ name: 'livestore' })
     return { ...base, with: { ...base.with, skipPush: true } }
   })(),
   restoreMegarepoStoreStep(),
@@ -401,7 +385,6 @@ export const livestoreSetupStepsAfterCheckout = [
   saveMegarepoStoreStep(),
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
-  restorePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
   withNixRetry(validateNixStoreStep),
 ] as const
 
@@ -411,10 +394,13 @@ export const livestoreSetupStepsAfterCheckout = [
  */
 export const livestoreSetupSteps = [checkoutStep(), ...livestoreSetupStepsAfterCheckout] as const
 
-/** Dedicated source-policy job so policy failures do not hide test/lint results. */
+/** Source-policy job; effect-utils uses the frozen Effect 4 branch (effect-utils#2226). */
 export const livestoreDefaultRefPolicyJob = defaultRefPolicyCheckJob({
   runsOn: namespaceRunner('${{ github.run_id }}'),
   firstPartyOwners: ['overengineeringstudio'],
+  defaultRefs: {
+    'overengineeringstudio/effect-utils': 'published-effect-4.0',
+  },
   normalizeGitBranchRefs: true,
   verifyReachable: true,
 })

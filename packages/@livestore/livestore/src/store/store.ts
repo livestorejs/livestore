@@ -10,12 +10,15 @@ import {
   IntentionalShutdownCause,
   isQueryBuilder,
   liveStoreVersion,
+  MaterializationJournal,
   MaterializeError,
   MaterializerHashMismatchError,
   makeClientSessionSyncProcessor,
   prepareBindValues,
   QueryBuilderAstSymbol,
   resolveSessionIdSymbolInBindValues,
+  StateSqliteDb,
+  StateHead,
   type StorageMode,
   type SyncState,
   UnknownError,
@@ -31,6 +34,7 @@ import {
   Exit,
   Fiber,
   Inspectable,
+  Layer,
   Option,
   OtelTracer,
   Queue,
@@ -45,6 +49,7 @@ import { makeReactivityGraph } from '../live-queries/base-class.ts'
 import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.ts'
 import { queryDb } from '../live-queries/db-query.ts'
 import type { Ref } from '../reactive.ts'
+import * as ReactiveStateSqliteDb from '../ReactiveStateSqliteDb.ts'
 import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
 import { ReferenceCountedSet } from '../utils/data-structures.ts'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.ts'
@@ -207,94 +212,112 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.storageMode = clientSession.leaderThread.initialState.storageMode
 
     const reactivityGraph = makeReactivityGraph()
+    const sqliteDbWrapper = new SqliteDbWrapper({ otel: otelOptions, db: clientSession.sqliteDb })
+    // Journal rollback must invalidate cached reads too. Both roles use the same connection, with the state
+    // services consuming its cache-aware adapter instead of bypassing it during changeset/savepoint rollback.
+    const stateDbLayer = StateSqliteDb.layer(sqliteDbWrapper.serviceDb)
+    const reactiveStateDbLayer = ReactiveStateSqliteDb.layer(sqliteDbWrapper)
+    const stateServicesLayer = Layer.mergeAll(MaterializationJournal.layer, StateHead.layer).pipe(
+      Layer.provide(stateDbLayer),
+    )
+    const materializationLayer = Layer.mergeAll(stateDbLayer, reactiveStateDbLayer, stateServicesLayer)
+    // Build the services once: `materializeEvent` runs for every committed and replayed event, and providing the layer
+    // there rebuilt the journal and state-head services each time. None of them owns resources, so the build scope can
+    // close right away.
+    const materializationContext = Layer.build(materializationLayer).pipe(
+      Effect.scoped,
+      Effect.runSyncWith(effectContext.services),
+    )
 
     const syncProcessor = makeClientSessionSyncProcessor({
       schema,
       clientSession,
-      materializeEvent: Effect.fn('client-session-sync-processor:materialize-event')(
-        (eventEncoded, { materializerHashLeader }) =>
-          // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
-          Effect.gen({ self: this }, function* () {
-            const resolution = yield* resolveEventDef(schema, {
-              operation: '@livestore/livestore:store:materializeEvent',
-              event: eventEncoded,
-            })
+      // No span per event: the processor traces each commit batch and pull step, and replaying a rebase materializes
+      // every pending event, where a span per event was a large share of the step's main-thread time.
+      materializeEvent: (eventEncoded, { materializerHashLeader }) =>
+        Effect.gen(function* () {
+          const materializationJournal = yield* MaterializationJournal.MaterializationJournal
+          const dbState = yield* ReactiveStateSqliteDb.ReactiveStateSqliteDb
+          const resolution = yield* resolveEventDef(schema, {
+            operation: '@livestore/livestore:store:materializeEvent',
+            event: eventEncoded,
+          })
 
-            if (resolution._tag === 'unknown') {
-              // Runtime schema doesn't know this event yet; skip materialization but
-              // keep the log entry so upgraded clients can replay it later.
-              return {
-                writeTables: new Set<string>(),
-                sessionChangeset: { _tag: 'no-op' as const },
-                materializerHash: Option.none(),
+          if (resolution._tag === 'unknown') {
+            // Runtime schema doesn't know this event yet; skip materialization but
+            // keep the log entry so upgraded clients can replay it later.
+            yield* materializationJournal.record({ key: eventEncoded.seqNum, changeset: null })
+            return {
+              writeTables: new Set<string>(),
+              materializerHash: Option.none(),
+            }
+          }
+
+          const { eventDef, materializer } = resolution
+
+          const execArgsArr = getExecStatementsFromMaterializer({
+            eventDef,
+            materializer,
+            dbState,
+            event: { decoded: undefined, encoded: eventEncoded },
+          })
+
+          const materializerHash =
+            isDevEnv() === true ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
+
+          // Hash mismatch detection only occurs during the pull path (when receiving events from the leader).
+          // During push path (local commits), materializerHashLeader is always Option.none(), so this condition
+          // will never be met. The check happens when the same event comes back from the leader during sync,
+          // allowing us to compare the leader's computed hash with our local re-materialization hash.
+          if (
+            materializerHashLeader._tag === 'Some' &&
+            materializerHash._tag === 'Some' &&
+            materializerHashLeader.value !== materializerHash.value
+          ) {
+            return yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
+          }
+
+          const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+          const otelContext = otel.trace.setSpan(otel.context.active(), span)
+
+          const writeTablesForEvent = new Set<string>()
+
+          const exec = () => {
+            for (const { statementSql, bindValues, writeTables = dbState.getTablesUsed(statementSql) } of execArgsArr) {
+              try {
+                dbState.cachedExecute(statementSql, bindValues, {
+                  otelContext,
+                  writeTables,
+                })
+              } catch (cause) {
+                // TOOD refactor with `SqliteError`
+                throw UnknownError.make({
+                  cause,
+                  note: `Error executing materializer for event "${eventEncoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
+                })
               }
-            }
 
-            const { eventDef, materializer } = resolution
-
-            const execArgsArr = getExecStatementsFromMaterializer({
-              eventDef,
-              materializer,
-              dbState: this[StoreInternalsSymbol].sqliteDbWrapper,
-              event: { decoded: undefined, encoded: eventEncoded },
-            })
-
-            const materializerHash =
-              isDevEnv() === true ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
-
-            // Hash mismatch detection only occurs during the pull path (when receiving events from the leader).
-            // During push path (local commits), materializerHashLeader is always Option.none(), so this condition
-            // will never be met. The check happens when the same event comes back from the leader during sync,
-            // allowing us to compare the leader's computed hash with our local re-materialization hash.
-            if (
-              materializerHashLeader._tag === 'Some' &&
-              materializerHash._tag === 'Some' &&
-              materializerHashLeader.value !== materializerHash.value
-            ) {
-              return yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
-            }
-
-            const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
-            const otelContext = otel.trace.setSpan(otel.context.active(), span)
-
-            const writeTablesForEvent = new Set<string>()
-
-            const exec = () => {
-              for (const {
-                statementSql,
-                bindValues,
-                writeTables = this[StoreInternalsSymbol].sqliteDbWrapper.getTablesUsed(statementSql),
-              } of execArgsArr) {
-                try {
-                  this[StoreInternalsSymbol].sqliteDbWrapper.cachedExecute(statementSql, bindValues, {
-                    otelContext,
-                    writeTables,
-                  })
-                } catch (cause) {
-                  // TOOD refactor with `SqliteError`
-                  throw UnknownError.make({
-                    cause,
-                    note: `Error executing materializer for event "${eventEncoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
-                  })
-                }
-
-                // durationMsTotal += durationMs
-                for (const table of writeTables) {
-                  writeTablesForEvent.add(table)
-                }
-
-                this[StoreInternalsSymbol].sqliteDbWrapper.debug.head = eventEncoded.seqNum
+              // durationMsTotal += durationMs
+              for (const table of writeTables) {
+                writeTablesForEvent.add(table)
               }
+
+              dbState.debug.head = eventEncoded.seqNum
             }
+          }
 
-            const sessionChangeset = this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset
+          const changeset = dbState.withChangeset(exec).changeset
+          yield* materializationJournal.record({ key: eventEncoded.seqNum, changeset })
 
-            return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
-          }).pipe(Effect.mapError((cause) => MaterializeError.make({ cause }))),
-      ),
-      rollback: (changeset) => {
-        this[StoreInternalsSymbol].sqliteDbWrapper.rollback(changeset)
-      },
+          return { writeTables: writeTablesForEvent, materializerHash }
+        }).pipe(
+          Effect.provideContext(materializationContext),
+          Effect.mapError((cause) =>
+            MaterializationJournal.isMaterializationJournalError(cause) === true
+              ? cause
+              : MaterializeError.make({ cause }),
+          ),
+        ),
       refreshTables: (tables) => {
         const tablesToUpdate = [] as [Ref<null, ReactivityGraphContext, RefreshReason>, null][]
         for (const tableName of tables) {
@@ -310,7 +333,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         }),
       },
       confirmUnsavedChanges,
-    }).pipe(Effect.runSyncWith(effectContext.services))
+    }).pipe(Effect.provideContext(materializationContext), Effect.runSyncWith(effectContext.services))
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     const tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> } = {}
@@ -378,9 +401,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       yield* syncProcessor.boot
     })
-
-    // Build Sqlite wrapper last to avoid using getters before internals are set
-    const sqliteDbWrapper = new SqliteDbWrapper({ otel: otelOptions, db: clientSession.sqliteDb })
 
     // Initialize internals bag
     this[StoreInternalsSymbol] = {
@@ -813,19 +833,16 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *   events.todoCompleted({ id: todoId }))
    * ```
    *
-   * For more advanced transaction scenarios, you can pass a synchronous function to `commit` which will receive a callback
-   * to which you can pass multiple events to be committed in the same database transaction.
-   * Under the hood this will simply collect all events and apply them in a single database transaction.
+   * For conditional batches, you can pass a synchronous function to `commit` which returns an array of events.
+   * LiveStore evaluates the function before applying the returned events in a single database transaction.
    *
    * @example
    * ```ts
-   * store.commit((commit) => {
+   * store.commit(() => {
    *   const todoId = nanoid()
-   *   if (Math.random() > 0.5) {
-   *     commit(events.todoCreated({ id: todoId, text: 'Make coffee' }))
-   *   } else {
-   *     commit(events.todoCompleted({ id: todoId }))
-   *   }
+   *   return Math.random() > 0.5
+   *     ? [events.todoCreated({ id: todoId, text: 'Make coffee' })]
+   *     : [events.todoCompleted({ id: todoId })]
    * })
    * ```
    *
@@ -847,25 +864,16 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    */
   commit: {
     <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(...list: TCommitArg): void
-    (
-      txn: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(
-        ...list: TCommitArg
-      ) => void,
-    ): void
+    (buildEvents: CommitBatchBuilder<TSchema>): void
     <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(
       options: StoreCommitOptions,
       ...list: TCommitArg
     ): void
-    (
-      options: StoreCommitOptions,
-      txn: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(
-        ...list: TCommitArg
-      ) => void,
-    ): void
-  } = (firstEventOrTxnFnOrOptions: any, ...restEvents: any[]) => {
+    (options: StoreCommitOptions, buildEvents: CommitBatchBuilder<TSchema>): void
+  } = (firstEventOrBatchBuilderOrOptions: any, ...restEvents: any[]) => {
     this.checkShutdown('commit')
 
-    const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
+    const { events, options } = this.getCommitArgs(firstEventOrBatchBuilderOrOptions, restEvents)
 
     Effect.gen({ self: this }, function* () {
       const commitsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.commitsSpanContext)
@@ -875,22 +883,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       if (events.length === 0) return
 
-      const localServices = yield* Effect.context()
-
-      const encodedEvents = yield* this[StoreInternalsSymbol].syncProcessor.encodeEvents(events)
-
-      const { writeTables } = yield* Effect.try({
-        try: () => {
-          const materialize = () =>
-            this[StoreInternalsSymbol].syncProcessor
-              .materializeEvents(encodedEvents)
-              .pipe(Effect.runSyncWith(localServices))
-          return events.length > 1 ? this[StoreInternalsSymbol].sqliteDbWrapper.txn(materialize) : materialize()
-        },
-        catch: (cause) => UnknownError.make({ cause }),
-      })
-
-      yield* this[StoreInternalsSymbol].syncProcessor.push(encodedEvents)
+      const { writeTables } = yield* this[StoreInternalsSymbol].syncProcessor.commit(events)
 
       const tablesToUpdate: [Ref<null, ReactivityGraphContext, RefreshReason>, null][] = []
       for (const tableName of writeTables) {
@@ -1163,7 +1156,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *
    * This is called automatically when the store was created using the React or Effect API.
    */
-  shutdown = (cause?: Cause.Cause<UnknownError | MaterializeError>): Effect.Effect<void> => {
+  shutdown = (
+    cause?: Cause.Cause<UnknownError | MaterializeError | MaterializationJournal.MaterializationJournalError>,
+  ): Effect.Effect<void> => {
     this[StoreInternalsSymbol].isShutdown = true
     return this[StoreInternalsSymbol].clientSession.shutdown(
       cause !== undefined ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })),
@@ -1263,33 +1258,42 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     effect.pipe(Effect.tapCauseLogPretty, Effect.runPromiseWith(this[StoreInternalsSymbol].effectContext.services))
 
   private getCommitArgs = (
-    firstEventOrTxnFnOrOptions: any,
+    firstEventOrBatchBuilderOrOptions: any,
     restEvents: any[],
   ): {
     events: LiveStoreEvent.Input.ForSchema<TSchema>[]
     options: StoreCommitOptions | undefined
   } => {
-    let events: LiveStoreEvent.Input.ForSchema<TSchema>[]
+    let events: LiveStoreEvent.Input.ForSchema<TSchema>[] = []
     let options: StoreCommitOptions | undefined
+    let commitArgs = [firstEventOrBatchBuilderOrOptions, ...restEvents]
 
-    if (typeof firstEventOrTxnFnOrOptions === 'function') {
-      // TODO ensure that function is synchronous and isn't called in a async way (also write tests for this)
-      events = firstEventOrTxnFnOrOptions((arg: any) => events.push(arg))
-    } else if (
-      firstEventOrTxnFnOrOptions?.label !== undefined ||
-      firstEventOrTxnFnOrOptions?.skipRefresh !== undefined ||
-      firstEventOrTxnFnOrOptions?.otelContext !== undefined ||
-      firstEventOrTxnFnOrOptions?.spanLinks !== undefined
+    if (
+      firstEventOrBatchBuilderOrOptions?.label !== undefined ||
+      firstEventOrBatchBuilderOrOptions?.skipRefresh !== undefined ||
+      firstEventOrBatchBuilderOrOptions?.otelContext !== undefined ||
+      firstEventOrBatchBuilderOrOptions?.spanLinks !== undefined ||
+      typeof restEvents[0] === 'function'
     ) {
-      options = firstEventOrTxnFnOrOptions
-      events = restEvents
-    } else if (firstEventOrTxnFnOrOptions === undefined) {
-      // When `commit` is called with no arguments (which sometimes happens when dynamically filtering events)
-      events = []
-    } else {
-      events = [firstEventOrTxnFnOrOptions, ...restEvents]
+      options = firstEventOrBatchBuilderOrOptions
+      commitArgs = restEvents
+    }
+
+    const firstEventOrBatchBuilder = commitArgs[0]
+    if (typeof firstEventOrBatchBuilder === 'function') {
+      const builtEvents: unknown = firstEventOrBatchBuilder()
+      if (Array.isArray(builtEvents) === false) {
+        throw new TypeError('store.commit callback must synchronously return an array of events')
+      }
+
+      // Copy the completed batch so callers cannot mutate the array while it enters the commit pipeline.
+      events = [...builtEvents]
+    } else if (firstEventOrBatchBuilder !== undefined) {
+      events = commitArgs
     }
 
     return { events, options }
   }
 }
+
+type CommitBatchBuilder<TSchema extends LiveStoreSchema> = () => ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>

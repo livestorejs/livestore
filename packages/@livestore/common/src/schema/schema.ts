@@ -73,7 +73,7 @@ export interface InternalState {
     readonly tables: Map<string, TableDef.Any>
     readonly migrations: MigrationOptions
     /** Compound hash of all table defs etc */
-    readonly hash: number
+    readonly hash: string
   }
   readonly materializers: Map<string, Materializer>
 }

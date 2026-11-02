@@ -1,18 +1,23 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/common",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/webmesh"
+    ]
+  },
   "name": "@livestore/common",
-  "version": "0.4.0",
+  "version": "0.5.0",
+  "type": "module",
+  "sideEffects": false,
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/livestorejs/livestore.git"
   },
-  "files": [
-    "dist",
-    "package.json",
-    "src"
-  ],
-  "type": "module",
-  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
     "./leader-thread": "./src/leader-thread/mod.ts",
@@ -22,6 +27,46 @@
     "./sync/next": "./src/sync/next/mod.ts",
     "./sync/next/test": "./src/sync/next/test/mod.ts",
     "./testing": "./src/testing/mod.ts"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
+  "scripts": {
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@livestore/utils": "workspace:^",
+    "@livestore/webmesh": "workspace:^",
+    "@noble/hashes": "2.4.0",
+    "@opentelemetry/api": "1.9.0"
+  },
+  "devDependencies": {
+    "@effect/opentelemetry": "4.0.3",
+    "@effect/platform-browser": "4.0.3",
+    "@effect/platform-bun": "4.0.3",
+    "@effect/platform-node": "4.0.3",
+    "@effect/platform-node-shared": "4.0.3",
+    "@effect/vitest": "4.0.3",
+    "@livestore/utils-dev": "workspace:^",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/resources": "2.2.0",
+    "@standard-schema/spec": "1.1.0",
+    "effect": "4.0.3",
+    "vitest": "4.1.9"
+  },
+  "peerDependencies": {
+    "@effect/opentelemetry": "^4.0.3",
+    "@effect/platform-browser": "^4.0.3",
+    "@effect/platform-bun": "^4.0.3",
+    "@effect/platform-node": "^4.0.3",
+    "@effect/platform-node-shared": "^4.0.3",
+    "@effect/vitest": "^4.0.3",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "@standard-schema/spec": "^1.1.0",
+    "effect": "^4.0.3"
   },
   "publishConfig": {
     "access": "public",
@@ -35,49 +80,5 @@
       "./sync/next/test": "./dist/sync/next/test/mod.js",
       "./testing": "./dist/testing/mod.js"
     }
-  },
-  "scripts": {
-    "test": "vitest"
-  },
-  "dependencies": {
-    "@livestore/utils": "workspace:^",
-    "@livestore/webmesh": "workspace:^",
-    "@opentelemetry/api": "1.9.0"
-  },
-  "devDependencies": {
-    "@effect/opentelemetry": "4.0.0-beta.99",
-    "@effect/platform-browser": "4.0.0-beta.99",
-    "@effect/platform-bun": "4.0.0-beta.99",
-    "@effect/platform-node": "4.0.0-beta.99",
-    "@effect/platform-node-shared": "4.0.0-beta.99",
-    "@effect/vitest": "4.0.0-beta.99",
-    "@livestore/utils-dev": "workspace:^",
-    "@opentelemetry/api": "1.9.0",
-    "@opentelemetry/resources": "2.2.0",
-    "@standard-schema/spec": "1.1.0",
-    "effect": "4.0.0-beta.99",
-    "vitest": "4.1.9"
-  },
-  "peerDependencies": {
-    "@effect/opentelemetry": "^4.0.0-beta.99",
-    "@effect/platform-browser": "^4.0.0-beta.99",
-    "@effect/platform-bun": "^4.0.0-beta.99",
-    "@effect/platform-node": "^4.0.0-beta.99",
-    "@effect/platform-node-shared": "^4.0.0-beta.99",
-    "@effect/vitest": "^4.0.0-beta.99",
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/resources": "^2.2.0",
-    "@standard-schema/spec": "^1.1.0",
-    "effect": "^4.0.0-beta.99"
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/common",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/webmesh"
-    ]
   }
 }

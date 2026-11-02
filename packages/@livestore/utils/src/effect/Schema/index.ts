@@ -12,7 +12,7 @@ import {
   SchemaTransformation,
   Struct,
 } from 'effect'
-import { Transferable } from 'effect/unstable/workers'
+import { Transferable } from 'effect/workers'
 
 import { shouldNeverHappen } from '../../misc.ts'
 
@@ -45,11 +45,13 @@ export const pluck =
  * Like {@link fromJsonString}, but the ENCODED form is an *indented* JSON string
  * (default 2-space) instead of compact — for committed/human-read JSON files
  * (package.json, release plans, CI previews) that must stay diff-friendly while
- * still round-tripping through the schema. `fromJsonString` hardcodes a compact
- * `stringifyJson()`; we compose the schema's encoded side with an indenting one.
+ * still round-tripping through the schema.
  *
  * Use a concrete schema for known shapes (adds validation) or `Schema.Unknown`
- * for open-ended ones (the indented analogue of `UnknownFromJsonString`).
+ * for open-ended ones (the indented analogue of `fromJsonString(Schema.Unknown)`).
+ *
+ * TODO collapse into `fromJsonString(schema, { space })` now that Effect 4 accepts a
+ * `space` option; kept separate here to keep the Effect upgrade free of release-tooling changes.
  */
 export const jsonStringIndented = <S extends Schema.Top>(schema: S, space: number | string = 2) =>
   schema.pipe(
@@ -87,13 +89,13 @@ export const headOrElse: {
     array.pipe(
       Schema.decodeTo(
         Schema.toType(array.value),
-        SchemaTransformation.transformOrFail({
+        SchemaTransformation.transformEffect({
           decode: (array) =>
             Array.isReadonlyArrayNonEmpty(array) === true
               ? Effect.succeed(Array.headNonEmpty(array))
               : orElse === undefined
                 ? Effect.fail(
-                    new SchemaIssue.InvalidValue(Option.some(array), {
+                    new SchemaIssue.InvalidValue({
                       message: 'Unable to retrieve the first element of an empty array',
                     }),
                   )

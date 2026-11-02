@@ -6,11 +6,10 @@ import {
   Result,
   Exit,
   Latch,
-  Layer,
-  Msgpack,
   Queue,
   Schedule,
   Schema,
+  SchemaBinary,
   Scope,
   Socket,
   Stream,
@@ -31,7 +30,7 @@ export const WSEdgePayload = Schema.TaggedStruct('WSEdgePayload', {
 
 export const WSEdgeMessage = Schema.Union([WSEdgeInit, WSEdgePayload])
 
-export const MessageMsgpack = Msgpack.schema(WSEdgeMessage)
+export const MessageBinary = SchemaBinary.toCodec(WSEdgeMessage)
 
 export type SocketType =
   | {
@@ -66,13 +65,7 @@ export const connectViaWebSocket = ({
     )
 
     yield* Deferred.await(edgeChannel.webChannel.closedDeferred)
-  }).pipe(Effect.scoped, Effect.forever, Effect.interruptible, Effect.provide(binaryWebSocketConstructorLayer))
-
-const binaryWebSocketConstructorLayer = Layer.succeed(Socket.WebSocketConstructor, (url, protocols) => {
-  const socket = new globalThis.WebSocket(url, protocols)
-  socket.binaryType = 'arraybuffer'
-  return socket
-})
+  }).pipe(Effect.scoped, Effect.forever, Effect.interruptible, Effect.provide(Socket.layerWebSocketConstructorGlobal))
 
 export const makeWebSocketEdge = ({
   socket,
@@ -132,7 +125,7 @@ export const makeWebSocketEdge = ({
         Stream.retry(retryOpenErrorSchedule),
         Stream.tap(
           Effect.fn(function* (bytes) {
-            const msg = yield* Schema.decodeEffect(MessageMsgpack)(new Uint8Array(bytes))
+            const msg = yield* Schema.decodeEffect(MessageBinary)(new Uint8Array(bytes))
             if (msg._tag === 'WSEdgeInit') {
               yield* Deferred.succeed(fromDeferred, msg.from)
             } else {
@@ -155,7 +148,7 @@ export const makeWebSocketEdge = ({
       )
 
       const initHandshake = (from: string) =>
-        sendToSocket(Schema.encodeSync(MessageMsgpack)({ _tag: 'WSEdgeInit', from }))
+        sendToSocket.write(Schema.encodeSync(MessageBinary)({ _tag: 'WSEdgeInit', from }))
 
       if (socketType._tag === 'leaf') {
         yield* initHandshake(socketType.from)
@@ -172,7 +165,7 @@ export const makeWebSocketEdge = ({
         Effect.gen(function* () {
           yield* isConnectedLatch.await
           const payload = yield* Schema.encodeEffect(schema.send)(message)
-          yield* sendToSocket(yield* Schema.encodeEffect(MessageMsgpack)({ _tag: 'WSEdgePayload', payload, from }))
+          yield* sendToSocket.write(yield* Schema.encodeEffect(MessageBinary)({ _tag: 'WSEdgePayload', payload, from }))
         }).pipe(Effect.orDie)
 
       const listen = Stream.fromQueue(listenQueue).pipe(

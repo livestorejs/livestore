@@ -43,7 +43,7 @@ const exampleChoices = (() => {
 const examplesTestCommand = Cli.Command.make(
   'test',
   {
-    example: Cli.Flag.choice('example', exampleChoices).pipe(Cli.Flag.optional),
+    example: Cli.Flag.Literals('example', exampleChoices).pipe(Cli.Flag.optional),
   },
   Effect.fn(function* ({ example }) {
     // Reuse the deploy helpers so local workflows and CI keep the same validation rules.
@@ -65,7 +65,7 @@ const examplesTestCommand = Cli.Command.make(
 const examplesRunCommand = Cli.Command.make(
   'run',
   {
-    example: Cli.Argument.choice('example', exampleChoices),
+    example: Cli.Argument.Literals('example', exampleChoices),
   },
   Effect.fn(function* ({ example }) {
     const availableExamples = yield* readExampleSlugs()

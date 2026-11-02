@@ -6,7 +6,7 @@ import { table } from '../table-def.ts'
  * STATE DATABASE SYSTEM TABLES
  *
  * ⚠️  SAFE TO CHANGE: State tables are automatically rebuilt from eventlog when schema changes.
- * No need to bump `liveStoreStorageFormatVersion` (uses hash-based migration via SqliteAst.hash()).
+ * No need to bump `liveStoreStorageFormatVersion` because state tables use fingerprint-based migration.
  */
 
 export const SCHEMA_META_TABLE = '__livestore_schema'
@@ -18,7 +18,7 @@ export const schemaMetaTable = table({
   name: SCHEMA_META_TABLE,
   columns: {
     tableName: SqliteDsl.text({ primaryKey: true }),
-    schemaHash: SqliteDsl.integer({ nullable: false }),
+    schemaHash: SqliteDsl.text({ nullable: false }),
     /** ISO date format */
     updatedAt: SqliteDsl.text({ nullable: false }),
   },
@@ -43,27 +43,65 @@ export const schemaEventDefsMetaTable = table({
 
 export type SchemaEventDefsMetaRow = typeof schemaEventDefsMetaTable.Type
 
-/**
- * Table which stores SQLite changeset blobs which is used for rolling back
- * read-model state during rebasing.
- */
-export const SESSION_CHANGESET_META_TABLE = '__livestore_session_changeset'
+export const STATE_HEAD_META_TABLE = '__livestore_state_head'
 
-export const sessionChangesetMetaTable = table({
-  name: SESSION_CHANGESET_META_TABLE,
+/**
+ * Single-row marker for the latest event sequence number reflected by the state DB.
+ *
+ * @remarks
+ * This is separate from the materialization journal, so a state database snapshot
+ * carries its own event sequence number. Journal rows are rollback records and
+ * may be pruned after event confirmation, so they are not a reliable marker for
+ * the event sequence number reflected by the current state database contents.
+ */
+export const stateHeadMetaTable = table({
+  name: STATE_HEAD_META_TABLE,
+  columns: {
+    id: SqliteDsl.integer({ primaryKey: true }),
+    seqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.Global.Schema }),
+    seqNumClient: SqliteDsl.integer({ schema: EventSequenceNumber.Client.Schema }),
+    seqNumRebaseGeneration: SqliteDsl.integer({}),
+  },
+})
+
+export type StateHeadMetaRow = typeof stateHeadMetaTable.Type
+
+export const REBUILD_META_TABLE = '__livestore_rebuild'
+
+/** Only a completed replay and successful migration hooks may insert the marker row. */
+export const rebuildMetaTable = table({
+  name: REBUILD_META_TABLE,
+  columns: {
+    id: SqliteDsl.integer({ primaryKey: true }),
+  },
+})
+
+export const MATERIALIZATION_JOURNAL_META_TABLE = '__livestore_materialization_journal'
+
+/**
+ * Materialization journal used to roll back state database changes during rebasing.
+ */
+export const materializationJournalMetaTable = table({
+  name: MATERIALIZATION_JOURNAL_META_TABLE,
   columns: {
     // TODO bring back primary key
     seqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.Global.Schema }),
     seqNumClient: SqliteDsl.integer({ schema: EventSequenceNumber.Client.Schema }),
     seqNumRebaseGeneration: SqliteDsl.integer({}),
     changeset: SqliteDsl.blob({ nullable: true }),
-    debug: SqliteDsl.json({ nullable: true }),
   },
-  indexes: [{ columns: ['seqNumGlobal', 'seqNumClient'], name: 'idx_session_changeset_id' }],
+  // Retain the legacy physical index name for the same compatibility reason as the table name.
+  indexes: [{ columns: ['seqNumGlobal', 'seqNumClient'], name: 'idx_materialization_journal_id' }],
 })
 
-export type SessionChangesetMetaRow = typeof sessionChangesetMetaTable.Type
+export type MaterializationJournalMetaRow = typeof materializationJournalMetaTable.Type
 
-export const stateSystemTables = [schemaMetaTable, schemaEventDefsMetaTable, sessionChangesetMetaTable] as const
+export const stateSystemTables = [
+  schemaMetaTable,
+  schemaEventDefsMetaTable,
+  stateHeadMetaTable,
+  materializationJournalMetaTable,
+  rebuildMetaTable,
+] as const
 
 export const isStateSystemTable = (tableName: string) => stateSystemTables.some((_) => _.sqliteDef.name === tableName)

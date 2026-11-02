@@ -23,14 +23,9 @@ import {
   livestoreSetupSteps,
   nixDiagnosticsArtifactStep,
   runDevenvTasksBefore,
-  savePnpmStateStep,
 } from '../../genie/repo.ts'
 
-const withNixDiagnosticsOnFailure = (steps: unknown[]) => [
-  ...steps,
-  savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
-  nixDiagnosticsArtifactStep(),
-]
+const withNixDiagnosticsOnFailure = (steps: unknown[]) => [...steps, nixDiagnosticsArtifactStep()]
 
 /** A push to `main` only ever refreshes the dev index; prod is release-gated. */
 const isDevTarget = "github.event_name == 'push' || inputs.target == 'dev'"

@@ -1,0 +1,9 @@
+.git
+.devenv
+.direnv
+**/node_modules
+result
+# Local secret files must never enter the image via the broad COPY.
+.envrc.local
+**/.envrc.local
+.env*

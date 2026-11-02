@@ -70,9 +70,9 @@ tokens for package publish jobs. Each published `@livestore/*` package must
 trust `livestorejs/livestore` with workflow filename `release.yml` in npm
 package settings.
 
-A successful `ci.yml` run for a repository-owned pull request also publishes
-an immutable candidate for the exact head as
-`0.0.0-snapshot-pr.<number>.<40-character-head-sha>`. Forks are excluded.
+A successful `ci.yml` run for any pull request packs an immutable candidate for
+the exact head as
+`0.0.0-snapshot-pr.<number>.<40-character-head-sha>`.
 The PR job only packs the fixed public package cohort on a GitHub-hosted runner
 without secrets, write permissions, or OIDC. The default-branch `release.yml`
 validation job re-resolves the open PR from the completed run, requires its
@@ -83,12 +83,12 @@ package archives and creates a custom GitHub attestation that binds the package
 and manifest digests to the exact PR head, source CI run, and trusted release
 topology.
 
-npm promotion uses the repository's ordinary required code-review decision as
-its only manual trust boundary. GitHub's authoritative review decision must be
+npm promotion for repository-owned PRs uses the ordinary required code-review
+decision as its manual trust boundary. GitHub's authoritative review decision must be
 `APPROVED`, and a counting approval must name the current head commit. An
 approval for an earlier head, a non-counting approval, or a later changes request
 does not authorize publication. Approval before CI is observed when CI completes.
-For approval after CI, the trusted default-branch workflow polls approved open
+For approval after CI, the trusted default-branch workflow polls authorized open
 PRs every five minutes and dispatches `release.yml` explicitly at `main`; it does
 not grant workflow-write authority to PR-controlled review-event code. The
 dispatched run treats PR and head inputs only as selectors, then resolves and
@@ -104,6 +104,13 @@ verification receipt is uploaded only after every registry integrity matches the
 validated candidate; the scheduler redispatches until that exact PR head, CI run,
 and pack attempt receipt exists. npm provenance identifies this trusted default-branch promotion
 workflow; the custom candidate attestation supplies the separate link back to PR CI.
+
+Fork PRs use the maintainer-managed `ci:publish-snapshot` label instead of
+review approval. The label trusts the PR's mutable head repository and branch,
+including later commits while it remains present. The trusted workflow resolves
+fork producers by exact repository, branch, and SHA and rechecks the live label
+and unchanged head immediately before publication. Removing the label stops
+publication that has not started.
 
 Snapshot DevTools Chrome ZIPs are uploaded as short-lived workflow artifacts,
 not GitHub Releases. Public GitHub Releases are reserved for dev/stable release
@@ -172,3 +179,38 @@ sync is also run by the stable release publish workflow.
 It runs on pushes to `main` that touch docs content and can also be dispatched
 manually. It is separate from the docs build/deploy jobs in `ci.yml`: CI verifies
 and deploys the website, while this workflow updates the external search index.
+
+## Namespace queue priorities
+
+The shared capacity policy uses explicit `job.priority` runner features. Lower
+numbers start first among waiting jobs; running jobs are not preempted. Priorities
+reserve no capacity and apply independently to Linux and macOS pools.
+
+| Priority | Work                                                                      |
+| -------- | ------------------------------------------------------------------------- |
+| 1        | effect-utils required CI, delivery verification, releases and deployments |
+| 2        | Smalltalk, PTY and similar tooling dependencies: equivalent delivery work |
+| 3        | LiveStore delivery work                                                   |
+| 4        | effect-utils background work                                              |
+| 5        | Smalltalk and tooling background work                                     |
+| 6        | LiveStore background work                                                 |
+
+LiveStore's `namespaceRunner` helper defaults to delivery priority 3. Required
+checks and their prerequisites, main verification, release orchestration,
+docs/examples builds and deployments, and DevTools artifact verification use
+that default. The optional `perf-test`, independent `publish-nix-cache`, and
+advisory `report-pr-preview` jobs use background priority 6. None supplies a
+required check or a prerequisite for delivery jobs. The source-policy job keeps
+priority 3 wherever it is reused, including release and deployment workflows.
+A scheduled verification job retains delivery priority; its trigger alone does
+not make it background work. GitHub-hosted runners do not consume Namespace
+capacity and retain their existing routing.
+
+The helper delegates runner labels to effect-utils with `privileged: 'trusted'`.
+Linux jobs from trusted events and same-repository pull requests request
+`container.privileged=true` so Nix's strict sandbox can create kernel namespaces.
+Fork pull requests do not receive privileged containers. Nix sandboxing remains
+enabled with fallback disabled.
+
+This policy leaves runner shapes, caches, access controls, required checks,
+triggers, cancellation, test frequency and account limits unchanged.

@@ -4,9 +4,11 @@ import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { Effect, Exit } from '@livestore/utils/effect'
+import { LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { ChildProcessSpawner, Effect, Exit } from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
 
-import { assertTestsExecuted } from './test-commands.ts'
+import { assertTestsExecuted, runLocalUnitTests } from './test-commands.ts'
 
 const suiteFile = 'sync-provider.test.ts'
 
@@ -48,5 +50,31 @@ describe('assertTestsExecuted', () => {
 
   it('rejects a run missing the conformance suite entirely', async () => {
     expect(Exit.isSuccess(await run({ 'registry.test.ts': ['passed'] }))).toBe(false)
+  })
+})
+
+describe('local unit-test package aggregation', () => {
+  const runPackages = (exitCodes: readonly number[]) =>
+    Effect.gen(function* () {
+      const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+      let invocation = 0
+      return yield* runLocalUnitTests(exitCodes.map((_, index) => ({ path: `package-${index}` }))).pipe(
+        Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, {
+          ...spawner,
+          // This boundary replaces process execution, not the runner's failure handling.
+          exitCode: () => Effect.succeed(ChildProcessSpawner.ExitCode(exitCodes[invocation++]!)),
+          string: () => Effect.succeed('Vitest output, including any assertion failures'),
+        }),
+        Effect.provide(LivestoreWorkspace.fromPath('/repo')),
+        Effect.exit,
+      )
+    }).pipe(Effect.provide(PlatformNode.NodeServices.layer), Effect.runPromise)
+
+  it('fails when one package exits nonzero even if another package passes', async () => {
+    expect(Exit.isFailure(await runPackages([0, 1]))).toBe(true)
+  })
+
+  it('succeeds when every package exits zero', async () => {
+    expect(Exit.isSuccess(await runPackages([0, 0]))).toBe(true)
   })
 })

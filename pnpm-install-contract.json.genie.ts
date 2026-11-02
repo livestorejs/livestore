@@ -12,13 +12,8 @@ import rootPnpmWorkspaceYaml from './pnpm-workspace.yaml.genie.ts'
  * LiveStore; shared storage authority comes from effect-utils' canonical v2
  * contract.
  *
- * Fields LiveStore intentionally does not set are omitted from the generated
- * JSON (undefined keys are dropped on serialization):
- * - `installPolicy.peerDependencyRules`: LiveStore drops the shared Effect-v3
- *   peer suppressions so stale peers fail loudly during the v4 migration
- *   (see `pnpm-workspace.yaml.genie.ts`).
- * - `workspaceManifestContract.patchedDependencies` / `allowUnusedPatches`:
- *   LiveStore ships no pnpm patches.
+ * `workspaceManifestContract.patchedDependencies` and `allowUnusedPatches` are
+ * omitted because LiveStore ships no pnpm patches.
  */
 const packageManager = rootPackageJson.data.packageManager ?? 'pnpm@unknown'
 const pnpmVersion = packageManager.startsWith('pnpm@') ? packageManager.slice('pnpm@'.length) : packageManager

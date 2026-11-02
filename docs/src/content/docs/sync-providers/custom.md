@@ -22,7 +22,7 @@ export type SyncBackend = {
 }
 
 // my-sync-backend.ts
-const makeMySyncBackend = (args: { /* ... */ }) => {
+const makeMySyncBackend = (args: {/* ... */}) => {
   return {
     pull: (cursor) => {
       // ...
@@ -36,9 +36,7 @@ const makeMySyncBackend = (args: { /* ... */ }) => {
 // my-app.ts
 const adapter = makeAdapter({
   sync: {
-    backend: makeMySyncBackend({
-      /* ... */
-    }),
+    backend: makeMySyncBackend({/* ... */}),
   },
 })
 ```

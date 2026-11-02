@@ -31,7 +31,7 @@ import {
 } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 
-export class UpdateDepsError extends Schema.TaggedErrorClass<UpdateDepsError>()('UpdateDepsError', {
+export class UpdateDepsError extends Schema.TaggedError<UpdateDepsError>()('UpdateDepsError', {
   message: Schema.String,
 }) {}
 
@@ -112,9 +112,9 @@ const readPatchedDependencies = () =>
         catch: () => new UpdateDepsError({ message: 'Failed to read root package.json' }),
       })
 
-      const packageJson = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(RootPackageJson))(
-        packageJsonContent,
-      ).pipe(Effect.mapError(() => new UpdateDepsError({ message: 'Failed to parse root package.json' })))
+      const packageJson = yield* Schema.decodeEffect(Schema.fromJsonString(RootPackageJson))(packageJsonContent).pipe(
+        Effect.mapError(() => new UpdateDepsError({ message: 'Failed to parse root package.json' })),
+      )
 
       const validated = packageJson.pnpm?.patchedDependencies ?? {}
 
@@ -136,7 +136,7 @@ const discoverUpdates = (target: string) =>
         ),
       )
 
-      const validated = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(NCUOutput))(ncuOutput).pipe(
+      const validated = yield* Schema.decodeEffect(Schema.fromJsonString(NCUOutput))(ncuOutput).pipe(
         Effect.mapError(
           (error) => new UpdateDepsError({ message: `Failed to parse NCU output: ${objectToString(error)}` }),
         ),
@@ -186,7 +186,7 @@ const fetchExpoConstraints = () =>
         {} as Record<string, string>,
       )
 
-      const validated = yield* Schema.decodeUnknownEffect(ExpoConstraints)(constraints)
+      const validated = yield* Schema.decodeEffect(ExpoConstraints)(constraints)
 
       yield* Console.log(`Retrieved constraints for ${Object.keys(validated).length} Expo-managed packages`)
 
@@ -273,9 +273,9 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
               catch: () => new UpdateDepsError({ message: `Failed to read ${packageJsonPath}` }),
             })
 
-            const packageJson = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(WorkspacePackageJson))(
-              content,
-            ).pipe(Effect.mapError(() => new UpdateDepsError({ message: `Failed to parse ${packageJsonPath}` })))
+            const packageJson = yield* Schema.decodeEffect(Schema.fromJsonString(WorkspacePackageJson))(content).pipe(
+              Effect.mapError(() => new UpdateDepsError({ message: `Failed to parse ${packageJsonPath}` })),
+            )
 
             const updatedPackageJson = {
               ...packageJson,
@@ -325,15 +325,15 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
 export const updateDepsCommand = Cli.Command.make(
   'update-deps',
   {
-    dryRun: Cli.Flag.boolean('dry-run').pipe(
+    dryRun: Cli.Flag.Boolean('dry-run').pipe(
       Cli.Flag.withDescription('Preview changes without executing updates'),
       Cli.Flag.withDefault(false),
     ),
-    target: Cli.Flag.string('target').pipe(
+    target: Cli.Flag.String('target').pipe(
       Cli.Flag.withDescription('Update target: latest, minor, patch (default: minor)'),
       Cli.Flag.withDefault('minor'),
     ),
-    validate: Cli.Flag.boolean('validate').pipe(
+    validate: Cli.Flag.Boolean('validate').pipe(
       Cli.Flag.withDescription('Run validation after updates (default: true)'),
       Cli.Flag.withDefault(true),
     ),

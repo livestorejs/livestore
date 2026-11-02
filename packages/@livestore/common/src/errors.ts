@@ -2,14 +2,11 @@ import { Cause, Effect, Layer, Option, Schema, Stream, Struct } from '@livestore
 
 import * as LiveStoreEvent from './schema/LiveStoreEvent/mod.ts'
 
-export class UnknownError extends Schema.TaggedErrorClass<UnknownError>('~@livestore/common/UnknownError')(
-  'UnknownError',
-  {
-    cause: Schema.Defect(),
-    note: Schema.optional(Schema.String),
-    payload: Schema.optional(Schema.Any),
-  },
-) {
+export class UnknownError extends Schema.TaggedError<UnknownError>('~@livestore/common/UnknownError')('UnknownError', {
+  cause: Schema.Defect(),
+  note: Schema.optional(Schema.String),
+  payload: Schema.optional(Schema.Any),
+}) {
   static mapToUnknownError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     effect.pipe(
       Effect.mapError((cause) => (Schema.is(UnknownError)(cause) === true ? cause : new UnknownError({ cause }))),
@@ -34,7 +31,7 @@ export class UnknownError extends Schema.TaggedErrorClass<UnknownError>('~@lives
 
 const materializerHashMismatchNote = 'Please make sure your event materializer is a pure function without side effects.'
 
-export class MaterializerHashMismatchError extends Schema.TaggedErrorClass<MaterializerHashMismatchError>(
+export class MaterializerHashMismatchError extends Schema.TaggedError<MaterializerHashMismatchError>(
   '~@livestore/common/MaterializerHashMismatchError',
 )('MaterializerHashMismatchError', {
   eventName: Schema.String,
@@ -44,20 +41,20 @@ export class MaterializerHashMismatchError extends Schema.TaggedErrorClass<Mater
   ),
 }) {}
 
-export class IntentionalShutdownCause extends Schema.TaggedErrorClass<IntentionalShutdownCause>(
+export class IntentionalShutdownCause extends Schema.TaggedError<IntentionalShutdownCause>(
   '~@livestore/common/IntentionalShutdownCause',
 )('IntentionalShutdownCause', {
   reason: Schema.Literals(['devtools-reset', 'devtools-import', 'adapter-reset', 'manual', 'backend-id-mismatch']),
 }) {}
 
-export class StoreInterrupted extends Schema.TaggedErrorClass<StoreInterrupted>('~@livestore/common/StoreInterrupted')(
+export class StoreInterrupted extends Schema.TaggedError<StoreInterrupted>('~@livestore/common/StoreInterrupted')(
   'StoreInterrupted',
   {
     reason: Schema.String,
   },
 ) {}
 
-export class SqliteError extends Schema.TaggedErrorClass<SqliteError>('~@livestore/common/SqliteError')('SqliteError', {
+export class SqliteError extends Schema.TaggedError<SqliteError>('~@livestore/common/SqliteError')('SqliteError', {
   query: Schema.optional(
     Schema.Struct({
       sql: Schema.String,
@@ -73,16 +70,17 @@ export class SqliteError extends Schema.TaggedErrorClass<SqliteError>('~@livesto
   note: Schema.optional(Schema.String),
 }) {}
 
-export class UnknownEventError extends Schema.TaggedErrorClass<UnknownEventError>(
-  '~@livestore/common/UnknownEventError',
-)('UnknownEventError', {
-  event: LiveStoreEvent.Client.Encoded.mapFields(Struct.pick(['name', 'args', 'seqNum', 'clientId', 'sessionId'])),
-  reason: Schema.Literals(['event-definition-missing', 'materializer-missing']),
-  operation: Schema.String,
-  note: Schema.optional(Schema.String),
-}) {}
+export class UnknownEventError extends Schema.TaggedError<UnknownEventError>('~@livestore/common/UnknownEventError')(
+  'UnknownEventError',
+  {
+    event: LiveStoreEvent.Client.Encoded.mapFields(Struct.pick(['name', 'args', 'seqNum', 'clientId', 'sessionId'])),
+    reason: Schema.Literals(['event-definition-missing', 'materializer-missing']),
+    operation: Schema.String,
+    note: Schema.optional(Schema.String),
+  },
+) {}
 
-export class MaterializeError extends Schema.TaggedErrorClass<MaterializeError>('~@livestore/common/MaterializeError')(
+export class MaterializeError extends Schema.TaggedError<MaterializeError>('~@livestore/common/MaterializeError')(
   'MaterializeError',
   {
     cause: Schema.Union([MaterializerHashMismatchError, SqliteError, UnknownEventError]),

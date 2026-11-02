@@ -265,25 +265,41 @@ export function table<
   return tableDef as any
 }
 
+/**
+ * The encoded side of the schema decides which columns exist (a transformation may flatten a nested
+ * type into columns). Where the schema itself declares a property of the same name, that property's
+ * own AST becomes the column schema: it still carries the field's encoding, so a codec such as
+ * `Schema.DateFromString` or `Schema.DateFromMillis` stores its encoded form and decodes back to
+ * its type. Substituting the type-side AST instead would strip that encoding and leave a `Date`
+ * with nothing SQLite can store natively, which is how date columns ended up JSON-encoded and
+ * unreadable.
+ */
 const getSqlitePropertySignatures = (schema: Schema.Top): ReadonlyArray<SchemaAST.PropertySignature> => {
   const encodedPropertySignatures = getPropertySignatures(SchemaAST.toEncoded(schema.ast))
-  const typePropertySignatures = getPropertySignatures(SchemaAST.toType(schema.ast))
+  const ownPropertySignatures = getPropertySignatures(schema.ast)
 
   return encodedPropertySignatures.map((encodedPropertySignature) => {
-    const typePropertySignature = typePropertySignatures.find(
+    const ownPropertySignature = ownPropertySignatures.find(
       (propertySignature) => propertySignature.name === encodedPropertySignature.name,
     )
 
-    if (typePropertySignature === undefined || hasLiveStoreSqliteAnnotation(encodedPropertySignature.type) === true) {
+    if (ownPropertySignature === undefined || hasLiveStoreSqliteAnnotation(encodedPropertySignature.type) === true) {
       return encodedPropertySignature
     }
 
-    return new SchemaAST.PropertySignature(encodedPropertySignature.name, typePropertySignature.type)
+    return ownPropertySignature
   })
 }
 
 const getPropertySignatures = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.PropertySignature> => {
   if (SchemaAST.isObjects(ast) === true) return ast.propertySignatures
+
+  // Class declarations encode through their fields object. Inspect that first
+  // link before toEncoded strips the individual field codecs.
+  if (SchemaAST.isDeclaration(ast) === true) {
+    const fieldsAst = ast.encoding?.[0]?.to
+    if (fieldsAst !== undefined) return getPropertySignatures(fieldsAst)
+  }
 
   if (SchemaAST.isUnion(ast) === true) {
     const members = ast.types.map(getPropertySignatures)
@@ -303,20 +319,25 @@ const getPropertySignatures = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.Prop
       }
 
       const propertySignatures = [propertySignature, ...matchingPropertySignatures]
+      /**
+       * `SchemaAST.optionalKey` became internal in Effect rc.109, so the optional-key marker is
+       * applied by constructing the union with an optional `Context`. Equivalent here because the
+       * union is freshly built and therefore carries no encoding chain to propagate the marker to.
+       */
+      const hasOptionalMember =
+        propertySignatures.some((memberPropertySignature) => SchemaAST.isOptional(memberPropertySignature.type)) ===
+        true
+      const keyContext = hasOptionalMember === true ? new SchemaAST.Context(true, false) : undefined
       const union = new SchemaAST.Union(
         propertySignatures.map((memberPropertySignature) => memberPropertySignature.type),
-        ast.mode,
+        ast.options,
+        undefined,
+        undefined,
+        undefined,
+        keyContext,
       )
 
-      return [
-        new SchemaAST.PropertySignature(
-          propertySignature.name,
-          propertySignatures.some((memberPropertySignature) => SchemaAST.isOptional(memberPropertySignature.type)) ===
-            true
-            ? SchemaAST.optionalKey(union)
-            : union,
-        ),
-      ]
+      return [new SchemaAST.PropertySignature(propertySignature.name, union)]
     })
   }
 

@@ -114,7 +114,7 @@ import {
   Schema,
   Stream,
 } from '@livestore/utils/effect'
-import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
+import { Cli, NodeFileSystem } from '@livestore/utils/node'
 
 import type { LineOwnerMarker, LineOwnerMetadata, TwoslashRuntimeOptions } from '../expressive-code.ts'
 import { createExpressiveCodeConfig, normalizeRuntimeOptions } from '../expressive-code.ts'
@@ -122,8 +122,8 @@ import { resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths
 import type { SnippetBundle } from '../vite/snippet-graph.ts'
 import { buildSnippetBundle, __internal as snippetGraphInternal } from '../vite/snippet-graph.ts'
 
-const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
-const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
+const jsonStringify = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown))
+const jsonParse = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))
 const jsonStringifyPretty = (value: unknown): string => JSON.stringify(value, null, 2)
 
 type THastRendererResult = {
@@ -144,7 +144,7 @@ const SNIPPET_IMPORT_REGEX = /['"]([^'"\n]+\?snippet[^'"]*)['"]/g
 const SUPPORTED_SOURCE_EXTENSIONS = new Set(['.astro', '.md', '.mdx', '.ts', '.mts', '.tsx', '.js', '.mjs', '.jsx'])
 const EXCLUDED_DIRECTORIES = new Set(['node_modules', '.git', '.cache', 'dist', '.astro', '.netlify', 'logs'])
 
-export class SnippetBuildError extends Schema.TaggedErrorClass<SnippetBuildError>()('SnippetBuildError', {
+export class SnippetBuildError extends Schema.TaggedError<SnippetBuildError>()('SnippetBuildError', {
   message: Schema.String,
   cause: Schema.optional(Schema.Unknown),
   entry: Schema.optional(Schema.String),
@@ -157,7 +157,7 @@ const hashString = (value: string): string => crypto.createHash('sha256').update
  * Returns the Twoslash language id inferred from a filename.
  * Falls back to the provided value or TypeScript when no extension can be resolved.
  */
-const guessLanguage = (filename: string, fallback: string | undefined = undefined): string => {
+const guessLanguage = (filename: string, fallback?: string): string => {
   const extension = filename.split('.').pop()?.toLowerCase()
   if (extension === undefined || extension.length === 0) return fallback ?? 'ts'
   if (extension === 'ts' || extension === 'cts' || extension === 'mts') return 'ts'
@@ -1751,11 +1751,7 @@ export const watchSnippets = (options: WatchSnippetsOptions = {}) => {
   })
   return watchSnippetsInternal(resolved, normalizedWatch).pipe(
     Effect.withSpan('astro-twoslash-code/watch-snippets'),
-    /**
-     * Must use NodeFileSystemWithWatch to ensure recursive file watching works correctly.
-     * @see https://github.com/Effect-TS/effect/issues/5913
-     */
-    Effect.provide(NodeFileSystemWithWatch),
+    Effect.provide(NodeFileSystem.layer),
   )
 }
 
@@ -1781,11 +1777,7 @@ export const createSnippetsCommand = ({
 
   const watchHandler = watchSnippetsInternal(resolved, normalizeWatchOptions({})).pipe(
     Effect.withSpan('astro-twoslash-code/cli/snippets-watch'),
-    /**
-     * Must use NodeFileSystemWithWatch to ensure recursive file watching works correctly.
-     * @see https://github.com/Effect-TS/effect/issues/5913
-     */
-    Effect.provide(NodeFileSystemWithWatch),
+    Effect.provide(NodeFileSystem.layer),
     Effect.asVoid,
   )
 

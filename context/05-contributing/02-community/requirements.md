@@ -27,6 +27,9 @@ docs pages are derived views of this node (LS-R15).
   node and must not contradict it. `refines: LS-R15` Adopted 2026-07-16
   (interview).
 
+Contributor meeting requirements are owned by
+[01-contributor-meetings](./01-contributor-meetings/requirements.md).
+
 ## Open Design Questions
 
 - **LS.CONTRIB.COMM-DQ1 Onboarding funnel.** There is no specced

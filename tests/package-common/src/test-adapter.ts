@@ -1,5 +1,6 @@
 import {
   type Adapter,
+  type AdapterArgs,
   ClientSessionLeaderThreadProxy,
   type LockStatus,
   type MakeSqliteDb,
@@ -38,6 +39,8 @@ import {
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
+import { makeSqliteServicesLayer } from './leader-thread/fixture.ts'
+
 export type TestingOverrides = {
   clientSession?: {
     leaderThreadProxy?: (
@@ -68,7 +71,7 @@ export const makeTestAdapter = ({
 } = {}): Adapter =>
   ((adapterArgs) =>
     Effect.gen(function* () {
-      const { schema, storeId, syncPayloadEncoded, syncPayloadSchema } = adapterArgs
+      const { schema, storeId, syncPayloadEncoded, syncPayloadSchema, params } = adapterArgs
       const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
       const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
       const shutdownChannel = yield* makeShutdownChannel(storeId)
@@ -93,6 +96,7 @@ export const makeTestAdapter = ({
         syncOptions: sync,
         syncPayloadEncoded,
         syncPayloadSchema,
+        params,
         testing,
         shutdownChannel,
       }).pipe(UnknownError.mapToUnknownError)
@@ -129,6 +133,7 @@ const makeLocalLeaderThread = ({
   syncOptions,
   syncPayloadEncoded,
   syncPayloadSchema,
+  params,
   testing,
   shutdownChannel,
 }: {
@@ -139,6 +144,7 @@ const makeLocalLeaderThread = ({
   syncOptions: SyncOptions | undefined
   syncPayloadEncoded: Schema.Json | undefined
   syncPayloadSchema: Schema.Decoder<Schema.Json> | undefined
+  params: AdapterArgs['params']
   testing?: { overrides?: TestingOverrides }
   shutdownChannel: ShutdownChannel.ShutdownChannel
 }) =>
@@ -168,18 +174,16 @@ const makeLocalLeaderThread = ({
         clientId,
         makeSqliteDb,
         syncOptions,
-        dbState,
-        dbEventlog,
         devtoolsOptions: { enabled: false },
         shutdownChannel,
         syncPayloadEncoded,
         syncPayloadSchema,
-      }),
+        params,
+      }).pipe(Layer.provide(makeSqliteServicesLayer({ dbState, dbEventlog }))),
     )
 
     return yield* Effect.gen(function* () {
-      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
-        yield* LeaderThreadCtx
+      const { syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } = yield* LeaderThreadCtx
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
@@ -187,7 +191,7 @@ const makeLocalLeaderThread = ({
         {
           events: {
             pull: ({ cursor }) => syncProcessor.pull({ cursor }),
-            push: (batch) => syncProcessor.push(batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item))),
+            push: syncProcessor.push,
             stream: (options) =>
               streamEventsWithSyncState({
                 dbEventlog,

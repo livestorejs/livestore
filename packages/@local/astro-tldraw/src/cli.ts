@@ -2,7 +2,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { type Duration, Effect, FileSystem, type PlatformError, Result, Schema, Stream } from '@livestore/utils/effect'
-import { NodeFileSystemWithWatch } from '@livestore/utils/node'
+import { NodeFileSystem } from '@livestore/utils/node'
 
 import {
   FileSystemError,
@@ -28,13 +28,10 @@ export interface BuildDiagramsOptions {
   verbose?: boolean
 }
 
-export class DiagramDiscoveryError extends Schema.TaggedErrorClass<DiagramDiscoveryError>()(
-  'Tldraw.DiagramDiscoveryError',
-  {
-    path: Schema.String,
-    cause: Schema.Any,
-  },
-) {}
+export class DiagramDiscoveryError extends Schema.TaggedError<DiagramDiscoveryError>()('Tldraw.DiagramDiscoveryError', {
+  path: Schema.String,
+  cause: Schema.Any,
+}) {}
 
 export type BuildDiagramsError = FileSystemError | RenderTimeoutError | RenderInvocationError | DiagramDiscoveryError
 
@@ -192,7 +189,7 @@ export const buildDiagrams = (
         }
       } finally {
         /* Clean up temp directory */
-        yield* fs.remove(tempDir, { recursive: true, force: true }).pipe(Effect.catch(() => Effect.void))
+        yield* fs.remove(tempDir, { recursive: true, force: true }).pipe(Effect.ignore)
       }
     }),
   )
@@ -367,11 +364,7 @@ export const watchDiagrams = (options: WatchDiagramsOptions): Effect.Effect<void
   })
   return watchDiagramsInternal(baseOptions, normalizedWatch).pipe(
     Effect.withSpan('tldraw.watch-diagrams'),
-    /**
-     * Must use NodeFileSystemWithWatch to ensure recursive file watching works correctly.
-     * @see https://github.com/Effect-TS/effect/issues/5913
-     */
-    Effect.provide(NodeFileSystemWithWatch),
+    Effect.provide(NodeFileSystem.layer),
   )
 }
 

@@ -105,15 +105,39 @@ Creates a LiveStore instance inside a Durable Object.
   - `state` – Durable Object state handle (for example `this.ctx`)
   - `env` – Environment bindings for the Durable Object
   - `bindingName` – Name other workers use to reach this Durable Object
-- `syncBackendStub` – Durable Object stub used to reach the sync backend
+- `getSyncBackendStub` – Returns a Durable Object stub for the sync backend (for example `() => env.SYNC_BACKEND_DO.getByName(storeId)`). LiveStore calls it for every sync call, because Cloudflare leaves a stub broken after many exceptions; a temporary failure then retries on a fresh stub
 - `livePull` – Enable real-time updates (default: `false`)
+- `params?` – Advanced per-client runtime tuning, including `stateRebuildBatchSize`
 - `resetPersistence` – Drop LiveStore state/eventlog persistence before booting (development only, default: `false`)
 - `logger?` – Optional Effect logger layer to customize formatting/output
 - `logLevel?` – Optional minimum log level (use `"None"` to disable logs)
 
-### `syncUpdateRpc(payload)`
+### `syncUpdateRpc(payload, storeId)`
 
-Client Durable Objects must implement this method so the sync backend can deliver live updates. `createStoreDoPromise` wires it up automatically—just forward the payload to `handleSyncUpdateRpc` (see the client Durable Object example above).
+Client Durable Objects must implement this method so the sync backend can deliver live updates to them. Forward the DO's `ctx` and the `payload` to `handleSyncUpdateRpc(ctx, payload)` (see the client Durable Object example above).
+
+Cloudflare can evict a Durable Object at any time and start a fresh instance on the next request. Because this call is what wakes the DO, it can arrive at an instance that no longer has your store in memory — and a fresh instance can't tell which `storeId` it belongs to on its own. That's why the sync backend also passes the `storeId`. You choose how to use it:
+
+- **Eager (stay in sync):** load the store before delivering — set `this.storeId = storeId`, then `await this.getStore()` (idempotent, and it catches up on any updates the DO missed while it was gone). The DO stays in sync whenever it is awake and costs nothing while idle.
+- **Reactive (recover lazily):** ignore `storeId` (you can omit the parameter). The DO drops that one live update and picks up the changes the next time your code loads the store (e.g. the next `fetch`). Simpler, but live updates are not applied while the DO is idle.
+
+Pass `storeId` to your store load (`getStore`), not to `handleSyncUpdateRpc` — that function only needs `ctx` and `payload`.
+
+### Live-pull subscription lifecycle
+
+With `livePull: true`, booting a store registers a live-pull subscription on the sync backend so updates can arrive via `syncUpdateRpc`. Shutting the store down (`store.shutdown()`) releases it, and the sync backend stops delivering to — and waking — the Durable Object.
+
+Eviction is deliberately different: Cloudflare discards the isolate without running any cleanup, so an evicted Durable Object keeps its subscription. That retention is what lets the next update wake it and drive recovery (see the options above); the subscription is never dropped on silence, so a hibernating client never loses its place.
+
+### Schema changes and billing
+
+Changing the state schema causes each affected store to open a fresh state database and replay its full eventlog, even if only one table changed. On Durable Objects, rebuilding the state can incur billable storage writes. Plan deployments according to the eventlog size and number of store instances.
+
+Rebuilds use 100 events per batch by default. A Durable Object can set `params: { stateRebuildBatchSize }` on `createStoreDo` or `createStoreDoPromise`; the value must be a positive integer. Lower values can reduce per-batch resource use, but require more queries, savepoints, and storage writes. This limit counts events rather than bytes and does not guarantee that the whole isolate stays within its memory limit, so profile representative data and materializers. Other clients of the same store can use different values.
+
+The adapter tracks state files it opens. After successful boot, it removes older tracked files while preserving the current database, eventlog and untracked files. Failed rebuilds retain previous state. Cleanup failures log a warning and retry on the next successful boot, including when reusing completed state. Files from older releases remain untouched unless subsequently opened and tracked. Returning to a schema whose state was removed rebuilds it from the eventlog.
+
+Cleanup itself consumes row-write quota. It prevents new orphan accumulation, but cannot recover storage that is already too full to complete a rebuild.
 
 ## Resetting LiveStore persistence (development only)
 

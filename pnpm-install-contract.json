@@ -46,7 +46,7 @@
     },
     "packageManager": {
       "name": "pnpm",
-      "version": "11.8.0"
+      "version": "12.15.0"
     }
   },
   "dependencyMaterializationProfile": {
@@ -89,15 +89,16 @@
     "dedupePeerDependents": true,
     "ignoreScripts": true,
     "minimumReleaseAgeExclude": [
-      "@effect/platform",
       "@types/node",
-      "effect",
-      "@effect/opentelemetry@4.0.0-beta.99",
-      "@effect/platform-browser@4.0.0-beta.99",
-      "@effect/platform-bun@4.0.0-beta.99",
-      "@effect/platform-node@4.0.0-beta.99",
-      "@effect/platform-node-shared@4.0.0-beta.99",
-      "@effect/vitest@4.0.0-beta.99"
+      "effect@4.0.3",
+      "@effect/ai-openai@4.0.3",
+      "@effect/opentelemetry@4.0.3",
+      "@effect/platform-browser@4.0.3",
+      "@effect/platform-bun@4.0.3",
+      "@effect/platform-node@4.0.3",
+      "@effect/platform-node-shared@4.0.3",
+      "@effect/sql-sqlite-node@4.0.3",
+      "@effect/vitest@4.0.3"
     ],
     "optimisticRepeatInstall": false,
     "packageImportMethod": {
@@ -108,6 +109,13 @@
       },
       "nixPreparedDependencies": {
         "scope": "independent-builder-policy"
+      }
+    },
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "typescript": ">=6.0.0",
+        "unplugin": ">=3.0.0",
+        "vitest": ">=4.0.0"
       }
     },
     "pmOnFail": "ignore",
@@ -139,7 +147,7 @@
   },
   "packageManager": {
     "name": "pnpm",
-    "version": "11.8.0"
+    "version": "12.15.0"
   },
   "schemaVersion": 2,
   "storeContract": {

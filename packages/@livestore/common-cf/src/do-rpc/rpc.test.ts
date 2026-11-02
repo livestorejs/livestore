@@ -158,7 +158,7 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
       /*
 
 
-      In `node_modules/.pnpm/@effect+rpc@0.68.4_@effect+platform@0.90.0_effect@3.17.7__effect@3.17.7/node_modules/@effect/rpc/dist/esm/RpcClient.js`:
+      In the installed `@effect/rpc` `RpcClient.js`:
       add the console log
       ```
       yield* Scope.addFinalizerExit(scope, exit => {

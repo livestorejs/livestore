@@ -3,7 +3,7 @@ import type { CfTypes, HelperTypes } from '@livestore/common-cf'
 import { createStore, type LiveStoreSchema, provideOtel } from '@livestore/livestore'
 import type * as CfSyncBackend from '@livestore/sync-cf/cf-worker'
 import { makeDoRpcSync } from '@livestore/sync-cf/client'
-import { isDevEnv } from '@livestore/utils'
+import { isDevEnv, omitUndefineds } from '@livestore/utils'
 import { Effect, Layer, References, Scope } from '@livestore/utils/effect'
 
 import { makeAdapter } from './make-adapter.ts'
@@ -21,6 +21,18 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> 
   clientId: string
   /** Identifier for the LiveStore session running inside the Durable Object. */
   sessionId: string
+  /** Advanced per-client runtime tuning parameters. */
+  params?: {
+    /**
+     * Number of events read and committed per batch when rebuilding SQLite state from the event log.
+     * Lower values reduce per-batch resource usage but perform more queries and savepoints.
+     * This setting applies to future rebuilds and does not change schema identity.
+     *
+     * @default 100
+     * @minimum 1
+     */
+    stateRebuildBatchSize?: number
+  }
   /** Runtime details about the Durable Object this store runs inside. Needed for sync backend to call back to this instance. */
   durableObject: {
     /** Durable Object state handle (e.g. `this.ctx`). */
@@ -30,8 +42,11 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> 
     /** Binding name Cloudflare uses to reach this Durable Object from other workers. */
     bindingName: HelperTypes.ExtractDurableObjectKeys<NoInfer<TEnv>>
   }
-  /** RPC stub pointing at the sync backend Durable Object used for replication. */
-  syncBackendStub: CfTypes.DurableObjectStub<CfSyncBackend.SyncBackendRpcInterface>
+  /**
+   * Returns an RPC stub pointing at the sync backend Durable Object used for replication. Called for every sync
+   * call, because Cloudflare leaves a stub broken after many exceptions, so a retry needs a fresh one.
+   */
+  getSyncBackendStub: () => CfTypes.DurableObjectStub<CfSyncBackend.SyncBackendRpcInterface>
   /**
    * Enables live pull mode to receive sync updates via Durable Object RPC callbacks.
    *
@@ -82,7 +97,7 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> 
  *           env: this.env,
  *           bindingName: 'MY_DO',
  *         },
- *         syncBackendStub: this.env.SYNC_BACKEND_DO.get(syncBackendId),
+ *         getSyncBackendStub: () => this.env.SYNC_BACKEND_DO.get(syncBackendId),
  *       }).pipe(Effect.runPromise)
  *     }
  *     // Use this.store...
@@ -103,10 +118,11 @@ export const createStoreDo = <
   clientId,
   sessionId,
   durableObject,
-  syncBackendStub,
+  getSyncBackendStub,
   livePull = false,
   resetPersistence = false,
   initialSyncOptions = { _tag: 'Blocking', timeout: 500 },
+  params,
 }: CreateStoreDoOptions<TSchema, TEnv, TState>) =>
   Effect.gen(function* () {
     const { ctx, bindingName } = durableObject
@@ -121,7 +137,8 @@ export const createStoreDo = <
       resetPersistence,
       syncOptions: {
         backend: makeDoRpcSync({
-          syncBackendStub,
+          getSyncBackendStub,
+          durableObjectState: ctx,
           durableObjectContext: { bindingName, durableObjectId },
         }),
         livePull, // Uses DO RPC callbacks for reactive pull
@@ -129,7 +146,12 @@ export const createStoreDo = <
       },
     })
 
-    return yield* createStore({ schema, adapter, storeId }).pipe(Scope.provide(scope), provideOtel({}))
+    return yield* createStore({
+      schema,
+      adapter,
+      storeId,
+      ...omitUndefineds({ params }),
+    }).pipe(Scope.provide(scope), provideOtel({}))
   })
 
 /**
@@ -150,7 +172,7 @@ export const createStoreDo = <
  *       clientId: this.ctx.id.toString(),
  *       sessionId: 'do-session',
  *       durableObject: { ctx: this.ctx, env: this.env, bindingName: 'MY_DO' },
- *       syncBackendStub: this.env.SYNC_BACKEND_DO.get(syncBackendId),
+ *       getSyncBackendStub: () => this.env.SYNC_BACKEND_DO.get(syncBackendId),
  *     })
  *     // Use store...
  *   }

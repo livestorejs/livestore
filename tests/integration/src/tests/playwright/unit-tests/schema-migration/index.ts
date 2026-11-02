@@ -2,6 +2,7 @@ import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import type { BootStatus } from '@livestore/common'
 import { liveStoreStorageFormatVersion, UnknownError } from '@livestore/common'
+import { STATE_REBUILD_BATCH_SIZE_DEFAULT } from '@livestore/common/leader-thread'
 import { Effect, Layer, Logger, Queue, References, Schedule, Schema, Stream } from '@livestore/utils/effect'
 import { Opfs } from '@livestore/utils/effect/browser'
 
@@ -39,6 +40,7 @@ export const testMultipleMigrations = () =>
         })({
           schema,
           storeId,
+          params: { stateRebuildBatchSize: STATE_REBUILD_BATCH_SIZE_DEFAULT },
           devtoolsEnabled: false,
           bootStatusQueue,
           shutdown: () => Effect.void,

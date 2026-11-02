@@ -227,7 +227,7 @@ export const makeSqliteDb = <
       return {
         changeset: () => {
           const res = sqlite3.session_changeset(sessionPointer)
-          return res.changeset ?? undefined
+          return res.changeset
         },
         finish: () => {
           sqlite3.session_delete(sessionPointer)
@@ -258,7 +258,7 @@ export const makeSqliteDb = <
               return SqliteConstants.SQLITE_CHANGESET_OMIT
             })
             // @ts-expect-error data should be garbage collected after use
-            // oxlint-disable-next-line eslint(no-param-reassign)
+            // oxlint-disable-next-line no-param-reassign -- release the consumed changeset buffer
             data = undefined
           } catch (cause: any) {
             throw new SqliteError({

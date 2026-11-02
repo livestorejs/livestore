@@ -1,8 +1,26 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/adapter-cloudflare",
+      "packages/@livestore/adapter-web",
+      "packages/@livestore/common",
+      "packages/@livestore/common-cf",
+      "packages/@livestore/livestore",
+      "packages/@livestore/sqlite-wasm",
+      "packages/@livestore/sync-cf",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/wa-sqlite",
+      "packages/@livestore/webmesh",
+      "tests/sync-provider"
+    ]
+  },
   "name": "@local/tests-sync-provider",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
+  "private": true,
   "exports": {
     "./prepare-ci": "./src/prepare-ci.ts",
     "./registry": "./src/providers/registry.ts"
@@ -22,37 +40,19 @@
     "@livestore/utils": "workspace:^"
   },
   "devDependencies": {
-    "@effect/opentelemetry": "4.0.0-beta.99",
-    "@effect/platform-browser": "4.0.0-beta.99",
-    "@effect/platform-bun": "4.0.0-beta.99",
-    "@effect/platform-node": "4.0.0-beta.99",
-    "@effect/platform-node-shared": "4.0.0-beta.99",
-    "@effect/vitest": "4.0.0-beta.99",
+    "@effect/opentelemetry": "4.0.3",
+    "@effect/platform-browser": "4.0.3",
+    "@effect/platform-bun": "4.0.3",
+    "@effect/platform-node": "4.0.3",
+    "@effect/platform-node-shared": "4.0.3",
+    "@effect/vitest": "4.0.3",
     "@livestore/devtools-vite": "0.4.0-dev.25",
     "@livestore/utils-dev": "workspace:^",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/resources": "2.2.0",
     "@standard-schema/spec": "1.1.0",
     "@types/node": "25.3.3",
-    "effect": "4.0.0-beta.99",
+    "effect": "4.0.3",
     "vitest": "4.1.9"
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/adapter-cloudflare",
-      "packages/@livestore/adapter-web",
-      "packages/@livestore/common",
-      "packages/@livestore/common-cf",
-      "packages/@livestore/livestore",
-      "packages/@livestore/sqlite-wasm",
-      "packages/@livestore/sync-cf",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/wa-sqlite",
-      "packages/@livestore/webmesh",
-      "tests/sync-provider"
-    ]
   }
 }
