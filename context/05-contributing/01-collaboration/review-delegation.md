@@ -54,8 +54,8 @@ Dependency bumps in published package manifests need Johannes's approval. Root a
 
 ## GitHub projection
 
-[CODEOWNERS](../../../../.github/CODEOWNERS) projects these rules in reverse order because GitHub uses the last matching entry. Johannes-owned and kind-restricted rules use `@schickling`; unrestricted agent paths use ownerless entries to clear the default owner. The PR author is never listed as an approving code owner.
+[CODEOWNERS](../../../.github/CODEOWNERS) projects these rules in reverse order because GitHub uses the last matching entry. Johannes-owned and kind-restricted rules use `@schickling`; unrestricted agent paths use ownerless entries to clear the default owner. The PR author is never listed as an approving code owner.
 
 The `main-branch-rules` ruleset requires code-owner review and otherwise requires zero approvals. GitHub cannot classify change kinds, so restricted rules remain code-owned. Review of this profile itself falls under the default Johannes rule. Repository settings are unchanged.
 
-The existing [collaboration flow](./spec.md) and [changelog guide](../../../../contributor-docs/changelog-guide.md) still apply; delegation does not waive contribution checks or release-ledger requirements.
+The existing [collaboration flow](./spec.md) and [changelog guide](../../../contributor-docs/changelog-guide.md) still apply; delegation does not waive contribution checks or release-ledger requirements.
