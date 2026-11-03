@@ -557,6 +557,28 @@ const verifyArtifact = async (flags: Map<string, string | true>) => {
   return { metadata, tarballPath, chromeZipPath, workDir, manifest }
 }
 
+/** Prepare the same verified UI bytes that LiveStore releases ship for browser integration. */
+export const prepareDevtoolsIntegrationArtifact = async ({
+  manifestPath,
+  outDir,
+}: {
+  readonly manifestPath: string
+  readonly outDir: string
+}): Promise<{ readonly viteEntry: string; readonly chromeDir: string }> => {
+  const { tarballPath, chromeZipPath } = await verifyArtifact(
+    new Map([
+      ['manifest', manifestPath],
+      ['out-dir', outDir],
+    ]),
+  )
+  if (chromeZipPath === undefined) throw new Error('DevTools integration requires a Chrome ZIP in the manifest')
+  const chromeDir = path.join(outDir, 'chrome')
+  mkdirSync(chromeDir, { recursive: true })
+  run(['tar', '-xzf', tarballPath, '-C', outDir])
+  run(['unzip', '-oq', chromeZipPath, '-d', chromeDir])
+  return { viteEntry: path.join(outDir, 'package/dist/plugin.js'), chromeDir }
+}
+
 const readCertification = (flags: Map<string, string | true>) => {
   const certificationPath = readFlag(flags, 'certification')
   if (certificationPath === undefined) return undefined
