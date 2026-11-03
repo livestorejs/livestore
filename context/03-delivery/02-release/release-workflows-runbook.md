@@ -139,18 +139,12 @@ preserve pending Changesets and therefore do not promote that content to an
 exact version heading. The extracted file is committed to the release-plan PR
 so reviewers see exactly what will land on the GitHub Release page.
 
-The DevTools artifact publish step then uses that file when it creates or
-updates the GitHub Release tag:
+The `finalize-release` job uses the staged release notes when it creates or
+updates the GitHub Release tag. It runs after successful npm publication,
+separately from the npm-credentialed job, and uploads the prepared DevTools
+Chrome ZIP when present.
 
-- On `gh release create`, it passes `--notes-file release/release-notes.md`
-  instead of the legacy hardcoded `Release <version>` body.
-- On subsequent reruns (the release already exists), it also calls
-  `gh release edit --notes-file release/release-notes.md` so a corrected
-  `CHANGELOG.md` section actually lands on the GitHub Release page.
-
-If `release/release-notes.md` is missing at publish time, the publish step
-falls back to the legacy `Release <version>` body and logs a warning. To
-refresh it locally for a planned release:
+To refresh release notes locally for a planned release:
 
 ```bash
 mono release extract-release-notes
@@ -173,10 +167,30 @@ The release-plan PR validates the exact work that will run after merge:
 - `release:devtools-artifact:repack-dryrun:no-install` verifies and repacks the
   public DevTools artifact for the same LiveStore version without publishing it.
 
-After merge to `main`, the push-triggered workflow runs:
+After merge to `main`, the push-triggered workflow runs this containment chain:
 
-- `release:stable:publish`
-- `release:devtools-artifact:publish:no-install`
+1. `prepare-release` builds and packs the core release group with
+   `mono release artifact-pack --version "$VERSION" --npm-tag "$TAG" --out-dir "$OUT"`,
+   then certifies and repacks the selected DevTools artifact into the same
+   `release-artifact` directory.
+2. `validate-release`, without secrets or OIDC, validates the manifest, expected
+   package cohort, archive contents, and SHA-512 integrity.
+3. `publish-release`, in the `npm-publish` environment, rechecks the handoff
+   hashes and publishes the prepared tarballs using shell orchestration and
+   `npm publish --ignore-scripts --provenance`. It does not check out source,
+   install dependencies, build, or invoke `mono`.
+4. `finalize-release` creates or updates the GitHub Release and Chrome ZIP asset
+   outside the npm-credentialed job.
+
+Main snapshots follow `prepare-snapshot-version` →
+`validate-snapshot-version` → `publish-snapshot-version` with the same package
+handoff boundary. Pull-request snapshot promotion is unchanged.
+
+The manifest binds the source SHA, release version, npm tag, exact package names,
+filenames, per-package tags, and SHA-512 SRI digests. Retain the original run and
+artifact when investigating a partial publish. Matching hashes establish that
+the same bytes crossed the job boundary, not that preparation or the build was
+benign. A compromised build can produce malicious bytes and matching hashes.
 
 ### npm visibility and staged-publish recovery
 
@@ -193,15 +207,15 @@ the version. Treat that specific conflict as pending visibility, not as a
 successful release or a reason to change the release version. Other publish
 errors are not evidence of staging.
 
-Both publishers make an initial public visibility check followed by up to 60
-retries at five-second intervals, logging each missing-package attempt. This is
-a bounded wait of roughly five minutes plus registry request time, not an
-unbounded approval wait. Already-visible versions are skipped on reruns.
-If any required version is still missing when the attempts are exhausted,
-verification fails and reports the missing package/version and approval
-instructions. Do not mark the release green or advance production promotion
-while verification is failing. Missing visibility alone does not prove that
-a maintainer-approvable stage exists.
+The isolated publishers fail closed if npm publish fails or the public integrity
+or dist-tag does not match immediately afterward. Their short diagnostic points
+to this section; there is no credentialed staging-recovery state machine.
+Already-visible versions are skipped only when both their integrity and requested
+dist-tag match the prepared artifact. Do not mark the release green or advance
+production promotion while verification is failing. Missing visibility alone
+does not prove that a maintainer-approvable stage exists. A staged version does
+not auto-promote: inspect and approve it using the commands below, or ask the npm
+administrator to allow direct publishing in the trusted-publisher configuration.
 
 #### Find and approve the exact staged version
 
@@ -234,10 +248,13 @@ needs approval, including each affected package in a release group. Neither
 the release workflow nor an agent should auto-approve or handle the
 maintainer's OTP.
 
-After approval, rerun the original failed release workflow/job for the same
-commit, version, and npm tag. Do not generate a new release plan, bump the
-version, or rebuild a different candidate to evade the conflict. The publishers
-skip visible versions and finish the remaining publication/verification work.
+After approval, rerun the failed publish job in the original workflow run,
+retaining its immutable prepared artifact, commit, version, and npm tag. Do not
+rerun preparation, dispatch a new run, generate a new release plan, bump the
+version, or rebuild a different candidate to evade the conflict. Rebuilding
+may change bytes (including certification metadata) and must fail the integrity
+comparison against an already-published version. The publishers skip matching
+visible versions and finish the remaining publication/verification work.
 If the stage list is empty, the candidate differs, or the approved version
 remains unavailable, retain the failed state and investigate npm scanning,
 registry/authentication, and the original publish logs. An `E409` can also

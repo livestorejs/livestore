@@ -115,14 +115,6 @@ export default githubWorkflow({
           run: runDevenvTasksBefore('github:rulesets:check'),
           env: { GH_TOKEN: '${{ steps.app-token.outputs.token }}' },
         },
-        {
-          name: 'Check App definition drift',
-          run: runDevenvTasksBefore('github:app:check'),
-          env: {
-            RECONCILE_APP_ID: RECONCILE_APP_ID,
-            RECONCILE_APP_PRIVATE_KEY: '${{ secrets.LIVESTORE_RULESET_APP_KEY }}',
-          },
-        },
       ],
     },
 
