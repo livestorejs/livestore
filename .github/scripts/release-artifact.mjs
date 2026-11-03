@@ -5,6 +5,7 @@ import { lstat, readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
+import { gunzipSync } from 'node:zlib'
 
 const devtoolsName = '@livestore/devtools-vite'
 const namePattern = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/
@@ -96,17 +97,37 @@ export const validateManifest = (manifest, expected) => {
   return manifest
 }
 
-export const parsePackedPackage = (bytes) => {
+export const parsePackedPackage = (bytes, maxOutputLength = 512 * 1024 * 1024) => {
   if (bytes.length > maxTarballBytes) fail('Tarball exceeds size limit')
-  // tar reads stdin and writes only the selected member to stdout; no files are extracted.
-  const entries = execFileSync('tar', ['-tzf', '-'], { input: bytes, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 })
-  if (entries.split('\n').filter((entry) => entry === 'package/package.json').length !== 1)
+  const archive = gunzipSync(bytes, { maxOutputLength })
+  // tar reads bounded plain bytes and writes only the selected member to stdout.
+  const entries = execFileSync('tar', ['-tf', '-'], {
+    input: archive,
+    encoding: 'utf8',
+    maxBuffer: 4 * 1024 * 1024,
+    timeout: 60_000,
+  })
+    .split('\n')
+    .filter((entry) => entry !== '')
+  for (const entry of entries) {
+    const segments = entry.replace(/\/$/, '').split('/')
+    if (
+      !entry.startsWith('package/') ||
+      entry.includes('//') ||
+      entry.includes('\\') ||
+      segments.some((segment) => segment === '.' || segment === '..')
+    ) {
+      fail(`Non-canonical archive entry: ${JSON.stringify(entry)}`)
+    }
+  }
+  if (entries.filter((entry) => entry === 'package/package.json').length !== 1)
     fail('Expected exactly one package/package.json')
   const packed = JSON.parse(
-    execFileSync('tar', ['-xOzf', '-', 'package/package.json'], {
-      input: bytes,
+    execFileSync('tar', ['-xOf', '-', 'package/package.json'], {
+      input: archive,
       encoding: 'utf8',
       maxBuffer: 1024 * 1024,
+      timeout: 60_000,
     }),
   )
   if (packed === undefined || packed === null || typeof packed !== 'object' || Array.isArray(packed))

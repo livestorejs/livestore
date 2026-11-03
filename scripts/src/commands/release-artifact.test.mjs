@@ -225,4 +225,24 @@ describe('packed package inspection', () => {
     expect(() => parsePackedPackage(tarball('@livestore/livestore', '0.5.0', [duplicate]))).toThrow(/exactly one/)
     expect(() => parsePackedPackage(gzipSync(Buffer.alloc(1024)))).toThrow(/exactly one/)
   })
+
+  it.each([
+    'package/./package.json',
+    './package/package.json',
+    'package//package.json',
+    'package/sub/../package.json',
+    '/package/package.json',
+    'package\\package.json',
+    'outside/package.json',
+  ])('rejects non-canonical archive entry %j alongside the real manifest', (alias) => {
+    expect(() =>
+      parsePackedPackage(tarball('@livestore/livestore', '0.5.0', [tarEntry(alias, Buffer.from('{}'))])),
+    ).toThrow(/Non-canonical/)
+  })
+
+  it('bounds decompression before invoking tar', () => {
+    const bytes = tarball('@livestore/livestore')
+    expect(() => parsePackedPackage(bytes, 512)).toThrow(/larger than|size|length/i)
+    expect(parsePackedPackage(bytes, 4096)).toEqual({ name: '@livestore/livestore', version: '0.5.0' })
+  })
 })

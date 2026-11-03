@@ -77,9 +77,11 @@ may also contain the Chrome ZIP and `release-notes.md` for finalization.
 
 Validation runs separately without secrets or OIDC authority. It checks the
 manifest, source identity, expected package cohort, package names and versions,
-tags, digests, and publishConfig policy. System `tar` lists entries and reads only
-the single `package/package.json` member to stdout, without filesystem extraction
-or package-code execution. Publication consumes the validated tarballs
+tags, digests, and publishConfig policy. Decompression is bounded to 512 MiB.
+System `tar` lists canonical entries under `package/` and reads only the single
+`package/package.json` member to stdout, without filesystem extraction or
+package-code execution; each invocation has a 60-second timeout. Aliased paths
+and entries outside `package/` fail validation. Publication consumes the validated tarballs
 without repository checkout, dependency installation, building, `mono`, or
 package lifecycle scripts. The npm-credentialed boundary contains only shell
 orchestration and `npm publish --ignore-scripts --provenance`; it rechecks byte
