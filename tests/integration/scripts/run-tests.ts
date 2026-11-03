@@ -6,9 +6,21 @@ import { Effect, FileSystem, Layer, Logger, OtelTracer, References, Schema } fro
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 
-import { prepareDevtoolsIntegrationArtifact } from '../../../scripts/src/commands/devtools-artifact.ts'
-
 const cwd = path.resolve(import.meta.dirname, '..')
+
+const prepareDevtools = (outDir: string) =>
+  Effect.gen(function* () {
+    yield* cmd([
+      'bun',
+      path.resolve(cwd, '../../scripts/src/commands/devtools-artifact.ts'),
+      'prepare-integration',
+      '--manifest',
+      path.resolve(cwd, '../../release/devtools-artifact.json'),
+      '--out-dir',
+      outDir,
+    ])
+    return { viteEntry: path.join(outDir, 'package/dist/plugin.js'), chromeDir: path.join(outDir, 'chrome') }
+  })
 
 export const modeOption = Cli.Flag.Literals('mode', ['headless', 'ui', 'dev-server']).pipe(
   Cli.Flag.withDefault('headless'),
@@ -121,12 +133,7 @@ export const setupDevtools = Cli.Command.make(
   'setup-devtools',
   {},
   Effect.fn(function* () {
-    yield* Effect.tryPromise(() =>
-      prepareDevtoolsIntegrationArtifact({
-        manifestPath: path.resolve(cwd, '../../release/devtools-artifact.json'),
-        outDir: path.dirname(LIVESTORE_DEVTOOLS_CHROME_DIST_PATH),
-      }),
-    )
+    yield* prepareDevtools(path.dirname(LIVESTORE_DEVTOOLS_CHROME_DIST_PATH))
   }, UnknownError.mapToUnknownError),
 )
 
@@ -142,12 +149,7 @@ export const runDevtoolsTest = Effect.fn('test:devtools')(function* ({
       directory: path.join(cwd, 'node_modules'),
       prefix: '.devtools-',
     })
-    const artifact = yield* Effect.tryPromise(() =>
-      prepareDevtoolsIntegrationArtifact({
-        manifestPath: path.resolve(cwd, '../../release/devtools-artifact.json'),
-        outDir,
-      }),
-    )
+    const artifact = yield* prepareDevtools(outDir)
     const { devPort } = yield* viteDevServer({
       app: 'todomvc',
       useWorkspacePort: mode === 'dev-server',

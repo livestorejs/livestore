@@ -105,6 +105,7 @@ const usage = `Usage:
   bun scripts/src/commands/devtools-artifact.ts verify (--manifest <file> | --metadata <url-or-file> --tarball <url-or-file>)
   bun scripts/src/commands/devtools-artifact.ts certify --manifest <file> --version <version> --out <file> [--evidence <text>]
   bun scripts/src/commands/devtools-artifact.ts repack --manifest <file> --version <version> [--certification <file>|--allow-uncertified] [--out-dir <dir>] [--dry-run|--publish]
+  bun scripts/src/commands/devtools-artifact.ts prepare-integration --manifest <file> --out-dir <dir>
 
 Options:
   --manifest <file>        Checked-in public artifact manifest.
@@ -558,24 +559,14 @@ const verifyArtifact = async (flags: Map<string, string | true>) => {
 }
 
 /** Prepare the same verified UI bytes that LiveStore releases ship for browser integration. */
-export const prepareDevtoolsIntegrationArtifact = async ({
-  manifestPath,
-  outDir,
-}: {
-  readonly manifestPath: string
-  readonly outDir: string
-}): Promise<{ readonly viteEntry: string; readonly chromeDir: string }> => {
-  const { tarballPath, chromeZipPath } = await verifyArtifact(
-    new Map([
-      ['manifest', manifestPath],
-      ['out-dir', outDir],
-    ]),
-  )
+const prepareDevtoolsIntegrationArtifact = async (flags: Map<string, string | true>) => {
+  const { tarballPath, chromeZipPath, workDir: outDir } = await verifyArtifact(flags)
   if (chromeZipPath === undefined) throw new Error('DevTools integration requires a Chrome ZIP in the manifest')
   const chromeDir = path.join(outDir, 'chrome')
   mkdirSync(chromeDir, { recursive: true })
   run(['tar', '-xzf', tarballPath, '-C', outDir])
-  run(['unzip', '-oq', chromeZipPath, '-d', chromeDir])
+  // Public Chrome ZIPs wrap their flat extension files in a release-named directory.
+  run(['unzip', '-oqj', chromeZipPath, '-d', chromeDir])
   return { viteEntry: path.join(outDir, 'package/dist/plugin.js'), chromeDir }
 }
 
@@ -825,6 +816,10 @@ const main = async () => {
   if (command === 'verify') {
     const result = await verifyArtifact(flags)
     console.log(JSON.stringify({ devtoolsBuildId: result.metadata.devtoolsBuildId, workDir: result.workDir }, null, 2))
+    return
+  }
+  if (command === 'prepare-integration') {
+    console.log(JSON.stringify(await prepareDevtoolsIntegrationArtifact(flags), null, 2))
     return
   }
   if (command === 'certify') {
