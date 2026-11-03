@@ -38,10 +38,9 @@ export const CreateConnection = ({ from, port }: typeof WorkerSchema.CreateConne
         yield* Effect.logDebug(`@livestore/webmesh:worker: accepted edge: ${node.nodeName} <- ${from}`)
       }
 
-      // `Stream.callback` exposes a queue-like emitter in Effect v4. Emit the single success value
-      // and then end the stream to preserve the old one-response worker command behavior.
+      // Acknowledge the connection without ending the stream: its scope owns the edge
+      // consumer and MessagePort, which must stay alive until the caller cancels.
       yield* Queue.offer(emit, {})
-      yield* Queue.end(emit)
 
       yield* Effect.spanEvent({ connectedTo: [...node.edgeKeys] })
     }).pipe(Effect.orDie),
