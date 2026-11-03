@@ -123,12 +123,9 @@ suite, but it is not claimed as exact-artifact release proof because that suite
 exercises the current workspace package graph rather than the repacked
 `@livestore/devtools-vite` artifact selected by the LiveStore manifest.
 
-The liveness scenario must also be independent of developer-machine sponsor
-activation state. Public DevTools artifacts enforce the sponsor/license gate
-by default, but release certification runs with the explicit
-`LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false` test override so CI verifies
-connectivity and protocol compatibility rather than a maintainer's local
-license cache.
+DevTools artifacts do not require a sponsor license. Release certification runs
+without a license-enforcement override and verifies connectivity and protocol
+compatibility independently of developer-machine activation state.
 
 ### Durable-State Rule
 

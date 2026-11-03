@@ -241,7 +241,6 @@ let
           dev_server_port="''${LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT:-4444}"
           dev_server_log="$(mktemp)"
           TEST_LIVESTORE_SCHEMA_PATH_JSON='"./devtools/todomvc/livestore/schema.ts"' \
-            LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
             VITE_OTEL_EXPORTER_OTLP_ENDPOINT= \
             ./node_modules/.bin/vite \
               --config src/tests/playwright/fixtures/vite.config.ts \

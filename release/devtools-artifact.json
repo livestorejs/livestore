@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
   "artifact": {
-    "metadataUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260718-51c22feb/release-metadata.json",
-    "tarballUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260718-51c22feb/livestore-devtools-vite.tgz",
-    "sha256": "9cc9f406d88164f892486b6da0eaab11c31920edba8fbf6f2b6b5c3a9d3a26f7",
-    "chromeZipUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260718-51c22feb/livestore-devtools-chrome.zip",
-    "chromeZipSha256": "ba17ece997db086661f281774c01b7d1f00a85efe0ab0841d7a58bfcfa6fef57"
+    "metadataUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20261103-f1ffbcc0/release-metadata.json",
+    "tarballUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20261103-f1ffbcc0/livestore-devtools-vite.tgz",
+    "sha256": "1236bd33e4bc6f6fc630eaf984fbc0b5e4e3f3f1d512634f94e81179a6ea201e",
+    "chromeZipUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20261103-f1ffbcc0/livestore-devtools-chrome.zip",
+    "chromeZipSha256": "1b59b240412b87af9c148e2a29eb82d8de4b945a9021aee48adcd1c86fb8fa58"
   }
 }
