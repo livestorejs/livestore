@@ -48,17 +48,17 @@ DevTools artifact without checking out, building, or publishing from the
 against the LiveStore release candidate and require a new DevTools artifact only
 when compatibility actually fails or DevTools itself changes.
 
-On push to `main` when `release/release-plan.json` changes, the workflow publishes
-the release group and the matching public DevTools artifact package. For stable
-`latest` releases it then deploys the production docs, production examples, and
-production docs search index. In normal operation this happens when the
-supervised release PR is merged.
+On push to `main` when `release/release-plan.json` changes, the workflow prepares,
+validates, and publishes the release group and matching public DevTools artifact
+package. In normal operation this happens when the supervised release PR is merged.
+The stable job chain is `prepare-release` → `validate-release` →
+`publish-release` → `finalize-release`. Finalization handles GitHub Release
+metadata and the optional DevTools Chrome ZIP separately from npm authority.
 
-Manual dispatch with `mode=publish-release` reruns the publish job for the
-checked-in release plan. Use it only after confirming the current `main` release
-plan is still the intended release; the publisher is idempotent for already
-published packages, but production deploys still reflect the checked-in release
-state.
+Manual dispatch with `mode=publish-release` reruns this chain for the checked-in
+release plan. Use it only after confirming the current `main` release plan is
+still the intended release. Already-published packages must match the prepared
+tarball integrity before a retry treats them as complete.
 
 Manual dispatch with `mode=publish-snapshot`, or a successful `ci.yml` run for a
 push to `main`, publishes the matching npm snapshot and DevTools artifact
@@ -69,6 +69,54 @@ remain available for the heavier validation jobs. Do not configure npm write
 tokens for package publish jobs. Each published `@livestore/*` package must
 trust `livestorejs/livestore` with workflow filename `release.yml` in npm
 package settings.
+
+The main-snapshot chain is `prepare-snapshot-version` →
+`validate-snapshot-version` → `publish-snapshot-version`. Both stable and
+main-snapshot preparation build and pack core packages and repack the selected
+`@livestore/devtools-vite` artifact before npm authority exists. Stable preparation
+also preserves release-candidate liveness certification. They stage a
+`release-artifact` directory containing tarballs and `manifest.json`
+(schema version 1, source SHA, version, npm tag, and package
+name/version/filename/SHA-512 SRI/tag records). Stable preparation can also stage
+the Chrome ZIP and `release-notes.md`.
+
+The separate validation jobs have no secrets or OIDC permission. They validate
+the manifest, expected release topology plus `@livestore/devtools-vite`, package
+contents, and integrity before handing the exact bytes to publishing. The
+credentialed publish jobs do not check out the repository, install dependencies,
+build, run `mono`, or execute package lifecycle scripts. Only shell orchestration
+and `npm publish --ignore-scripts --provenance` perform npm publication, with
+hashes rechecked against the validated handoff. Hashes protect byte identity
+between jobs. They do not prove that a compromised prepare/build produced safe
+code, or remove the trust placed in reviewed source and build dependencies.
+
+The stable (`publish-release`) and main-snapshot (`publish-snapshot-version`)
+jobs use the `npm-publish` GitHub environment; PR-snapshot publishing does not.
+Before the first publish, an administrator must configure that environment with
+selected deployment branches restricted to `main`, no deployment tags, and no
+required reviewers. GitHub otherwise auto-creates an unprotected environment
+when a workflow first references it. This workflow has no release-tag trigger.
+An administrator applies this policy out of band; P4 IaC will declare it later.
+Inspect the effective policy before the first publish:
+
+```sh
+gh api repos/livestorejs/livestore/environments/npm-publish
+gh api repos/livestorejs/livestore/environments/npm-publish/deployment-branch-policies --jq '.branch_policies[]|{name,type}'
+```
+
+The result must contain exactly one rule, `{name: main, type: branch}`.
+Delete any other rule, including tag rules, before the first publish.
+
+Only the main-snapshot job condition restricts its source CI run to this
+repository's `main`. The workflow-wide `workflow_run` trigger remains broader
+for PR snapshots, and uses the default-branch ref regardless of the source branch.
+
+The npm trusted-publisher environment field is [optional](https://docs.npmjs.com/trusted-publishers/#for-github-actions).
+When it is unset, adding a GitHub environment does not require changing npm's
+trusted-publisher configuration. Binding npm's trusted publisher to `npm-publish`
+(Q278) would make `publish-pr-snapshot` fail because that job has no environment.
+Q278 must therefore either give the PR-snapshot publisher its own environment
+or leave the npm environment unset.
 
 A successful `ci.yml` run for any pull request packs an immutable candidate for
 the exact head as
@@ -198,8 +246,8 @@ reserve no capacity and apply independently to Linux and macOS pools.
 LiveStore's `namespaceRunner` helper defaults to delivery priority 3. Required
 checks and their prerequisites, main verification, release orchestration,
 docs/examples builds and deployments, and DevTools artifact verification use
-that default. The optional `perf-test`, independent `publish-nix-cache`, and
-advisory `report-pr-preview` jobs use background priority 6. None supplies a
+that default. The optional `perf-test` and independent `publish-nix-cache`
+jobs use background priority 6. Neither supplies a
 required check or a prerequisite for delivery jobs. The source-policy job keeps
 priority 3 wherever it is reused, including release and deployment workflows.
 A scheduled verification job retains delivery priority; its trigger alone does

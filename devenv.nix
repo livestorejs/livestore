@@ -525,6 +525,12 @@ in
     withInstall = false;
   };
 
+  tasks."release:devtools-artifact:pack:no-install" = devtoolsArtifactRepackTask {
+    description = "Repack certified DevTools without registry access";
+    publishFlag = "";
+    withInstall = false;
+  };
+
   tasks."release:devtools-artifact:certify-liveness" = {
     description = "Repack the public DevTools artifact and run the strict Playwright liveness certification";
     exec = devtoolsArtifactCertifyLivenessExec;

@@ -1147,6 +1147,9 @@ importers:
       effect:
         specifier: 4.0.3
         version: 4.0.3
+      vitest:
+        specifier: 4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(jsdom@26.1.0(supports-color@10.2.2))(vite@7.3.6(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))
 
   packages/@livestore/framework-toolkit:
     dependencies:

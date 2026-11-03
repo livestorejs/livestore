@@ -57,6 +57,43 @@ sequenceDiagram
 Manual contrib release dispatch accepts an explicit version but must use a
 version already published by core (LS.DEL.REL-R05).
 
+## Stable and Main-Snapshot Publish Containment
+
+Stable releases use `prepare-release` → `validate-release` → `publish-release`
+→ `finalize-release`. Main snapshots use `prepare-snapshot-version` →
+`validate-snapshot-version` → `publish-snapshot-version`. The pull-request
+snapshot promotion contract below remains separate and unchanged.
+
+Preparation builds and packs core packages and repacks the selected DevTools
+artifact without npm publish authority. Stable preparation also runs the existing
+release-candidate liveness certification. Core packing uses
+`mono release artifact-pack --version "$VERSION" --npm-tag "$TAG" --out-dir "$OUT"`.
+The prepared `release-artifact` directory contains `manifest.json` and the exact
+tarballs for the release topology plus `@livestore/devtools-vite`. The manifest
+has `schemaVersion: 1`, `sourceSha`, `version`, `npmTag`, and `packages` records
+with `name`, `version`, `filename`, `integrity` (SHA-512 SRI), and `tag`. The
+DevTools tag follows its existing `publishTagForVersion` policy. The directory
+may also contain the Chrome ZIP and `release-notes.md` for finalization.
+
+Validation runs separately without secrets or OIDC authority. It checks the
+manifest, source identity, expected package cohort, package names and versions,
+tags, digests, and publishConfig policy. Decompression is bounded to 512 MiB.
+System `tar` lists canonical entries under `package/` and reads only the single
+`package/package.json` member to stdout, without filesystem extraction or
+package-code execution; each invocation has a 60-second timeout. Aliased paths
+and entries outside `package/` fail validation. Publication consumes the validated tarballs
+without repository checkout, dependency installation, building, `mono`, or
+package lifecycle scripts. The npm-credentialed boundary contains only shell
+orchestration and `npm publish --ignore-scripts --provenance`; it rechecks byte
+integrity and accepts an already-published version only when registry integrity
+matches. Stable finalization handles GitHub Release metadata and Chrome assets
+outside the npm-credentialed job.
+
+This is credential containment, not a proof of benign build output. Hashes bind
+the bytes passed between jobs and detect a changed handoff. A malicious prepare
+or build can still create malicious tarballs with matching hashes. Reviewed
+source, build dependencies, and preparation remain trusted inputs to publication.
+
 ## Stable Production Surface Promotion
 
 Package and DevTools artifact publication runs from `main`. Production docs,
@@ -174,14 +211,20 @@ fork-PR contributor approval, apply the desired ruleset, then verify managed
 fields and fail with a diff on residual drift. The admin-token comparison
 includes bypass actors and suppresses GitHub-expanded pull-request defaults.
 No Nix/devenv setup, repository scripts, or PR plan job receives the key or token.
-Local `github:rulesets:{sync,plan,check}` and `github:app:check` tasks remain
-available independently. Ruleset reconciliation does not affect the `ci`
-conclusion or gate snapshot publication.
+Local `github:rulesets:{sync,plan,check}` tasks remain available independently.
+Ruleset reconciliation does not affect the `ci` conclusion or gate snapshot
+publication.
 
 **App-definition drift.** The workflow deliberately omits the App-definition
 drift check, which requires the raw private key and repository TypeScript.
 This gap is deferred to the GitHub IaC cutover tracked in
 [#1701](https://github.com/livestorejs/livestore/issues/1701).
+
+**App-definition review.** The committed manifest remains the manual provisioning
+contract. App permission and event changes are reviewed against the live App
+settings UI. The repository CLI no longer accepts the App private key or mints
+App JWTs to check `GET /app`. Only the dedicated token-minting action receives
+the key; inline ruleset commands receive its scoped installation token instead.
 
 **Ownership.** Each repository owns its `.github/repo-settings.json`; the
 privileged workflow lives under code-owned `.github/`.

@@ -57,9 +57,11 @@ contributing requirements they realize.
 
 ## Review and Merge
 
-Current practice (captured 2026-07-15): merges are maintainer-led under the
-project's BDFL governance (see [../spec.md](../spec.md)); there is no
-required-approval count. External PRs are reviewed by a maintainer before
-merge. Contributor-side tooling conventions (which accounts or automation a
-contributor uses to author changes) are the contributor's own concern and out
-of scope for this layer; repo-level agent conventions live in `AGENTS.md`.
+The repo-owned [review-delegation profile](./review-delegation.md) defines which
+changes allow an independent agent's GO to replace Johannes's code review and
+which require his code review. Merge still follows the repository's integration
+path and any merge authorization Johannes grants. CODEOWNERS projects the path
+rules into GitHub's required code-owner review gate; kind-restricted rules remain
+code-owned. External PRs are reviewed
+by a maintainer before merge. Contributor-side authoring tools remain the
+contributor's concern; repo-level agent conventions live in `AGENTS.md`.

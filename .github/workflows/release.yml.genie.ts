@@ -7,11 +7,10 @@ import {
   githubWorkflow,
   livestoreDefaultRefPolicyJob,
   livestoreSetupSteps,
-  namespaceRunner,
-  otelSetupStep,
   runDevenvTasksBefore,
   nixDiagnosticsArtifactStep,
 } from '../../genie/repo.ts'
+import { releaseArtifactJobs } from '../scripts/release-artifact-jobs.ts'
 
 const withNixDiagnosticsOnFailure = (steps: unknown[]) => [...steps, nixDiagnosticsArtifactStep()]
 
@@ -43,6 +42,9 @@ const releasePlanPaths = [
   'scripts/src/commands/release.ts',
   'scripts/src/commands/devtools-artifact.ts',
   'scripts/src/commands/changesets.ts',
+  '.github/scripts/release-artifact.mjs',
+  'scripts/src/commands/release-artifact.test.mjs',
+  '.github/scripts/release-artifact-jobs.ts',
   'scripts/src/commands/docs.ts',
   'scripts/src/shared/netlify.ts',
 ]
@@ -98,7 +100,6 @@ export default githubWorkflow({
 
   permissions: {
     contents: 'read',
-    'id-token': 'write',
   },
 
   env: {
@@ -121,7 +122,6 @@ export default githubWorkflow({
       permissions: {
         actions: 'write',
         contents: 'write',
-        'id-token': 'write',
         'pull-requests': 'write',
       },
       defaults: bashShellDefaults,
@@ -314,112 +314,20 @@ echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"`,
       ]),
     },
 
-    'publish-release': {
-      if: "github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-release')",
-      'runs-on': 'ubuntu-24.04',
-      permissions: {
-        contents: 'write',
-        'id-token': 'write',
-      },
-      env: {
-        GH_TOKEN: '${{ github.token }}',
-      },
-      defaults: bashShellDefaults,
-      steps: withNixDiagnosticsOnFailure([
-        ...livestoreSetupSteps,
-        {
-          name: 'Read release plan',
-          run: `set -euo pipefail
-release_version="$(jq -r '.version' release/release-plan.json)"
-npm_tag="$(jq -r '.npmTag' release/release-plan.json)"
-: "\${release_version:?Missing release version}"
-: "\${npm_tag:?Missing npm tag}"
-echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
-echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"`,
-        },
-        {
-          name: 'Assert tokenless npm trusted publishing',
-          run: `set -euo pipefail
-if [ -n "\${NODE_AUTH_TOKEN:-}" ] || [ -n "\${NPM_TOKEN:-}" ]; then
-  echo "npm publishing must use trusted publishing; token auth is not allowed in this job." >&2
-  exit 1
-fi`,
-        },
-        otelSetupStep,
-        {
-          name: 'Publish stable package release',
-          run: runDevenvTasksBefore('release:stable:publish'),
-        },
-        {
-          name: 'Certify DevTools artifact liveness',
-          run: runDevenvTasksBefore('release:devtools-artifact:certify-liveness:no-install'),
-        },
-        devtoolsCertificationArtifactsStep,
-        {
-          name: 'Publish DevTools artifact release',
-          run: runDevenvTasksBefore('release:devtools-artifact:publish:no-install'),
-        },
-      ]),
-    },
-
-    /**
-     * Keep npm publishing in release.yml so each package has a single npm
-     * trusted-publisher workflow. The heavy CI matrix remains in ci.yml; this
-     * job runs only after that workflow succeeds on main, or by explicit
-     * workflow_dispatch for operator-controlled recovery.
-     */
-    'publish-snapshot-version': {
-      if: "(github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-snapshot')",
-      'runs-on': 'ubuntu-24.04',
-      permissions: {
-        contents: 'write',
-        'id-token': 'write',
-      },
-      env: {
-        GH_TOKEN: '${{ github.token }}',
-      },
-      defaults: bashShellDefaults,
-      steps: withNixDiagnosticsOnFailure([
-        {
-          name: 'Checkout',
-          uses: 'actions/checkout@v4',
-          with: {
-            ref: RELEASE_HEAD_SHA,
-          },
-        },
-        ...livestoreSetupSteps.slice(1),
-        {
-          name: 'Assert tokenless npm trusted publishing',
-          run: `set -euo pipefail
-if [ -n "\${NODE_AUTH_TOKEN:-}" ] || [ -n "\${NPM_TOKEN:-}" ]; then
-  echo "npm snapshot publishing must use trusted publishing; token auth is not allowed in this job." >&2
-  exit 1
-fi`,
-        },
-        {
-          name: 'Publish snapshot version',
-          run: runDevenvTasksBefore('release:snapshot:git-sha'),
-          env: { GIT_SHA: RELEASE_HEAD_SHA },
-        },
-        {
-          name: 'Publish DevTools artifact snapshot',
-          run: runDevenvTasksBefore('release:devtools-artifact:publish'),
-          env: {
-            LIVESTORE_DEVTOOLS_OUT_DIR: '${{ runner.temp }}/livestore-devtools-snapshot',
-            LIVESTORE_RELEASE_VERSION: `0.0.0-snapshot-${RELEASE_HEAD_SHA}`,
-          },
-        },
-        {
-          name: 'Upload DevTools Chrome snapshot artifact',
-          uses: 'actions/upload-artifact@v4',
-          with: {
-            name: `livestore-devtools-chrome-0.0.0-snapshot-${RELEASE_HEAD_SHA}`,
-            path: '${{ runner.temp }}/livestore-devtools-snapshot/livestore-devtools-chrome-0.0.0-snapshot-${{ github.event.workflow_run.head_sha || github.sha }}.zip',
-            'if-no-files-found': 'error',
-            'retention-days': 14,
-          },
-        },
-      ]),
-    },
+    ...releaseArtifactJobs({
+      suffix: 'release',
+      condition:
+        "github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-release')",
+      stable: true,
+      releaseHeadSha: RELEASE_HEAD_SHA,
+    }),
+    ...releaseArtifactJobs({
+      suffix: 'snapshot-version',
+      // workflow_run's default ref does not constrain its source run; retain the explicit main-only guard.
+      condition:
+        "(github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-snapshot')",
+      stable: false,
+      releaseHeadSha: RELEASE_HEAD_SHA,
+    }),
   },
 })

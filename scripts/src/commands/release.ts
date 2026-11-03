@@ -671,6 +671,94 @@ export const releaseSnapshot = Effect.fn(function* ({
   })
 })
 
+/** Build and pack without consulting npm; generated manifests are restored even on failure. */
+const packReleasePackages = Effect.fn('release.packReleasePackages')(function* ({
+  cwd,
+  version,
+  packages,
+  outDir,
+  tscBin,
+}: {
+  cwd: string
+  version: string
+  packages: ReadonlyArray<string>
+  outDir: string
+  tscBin: string
+}) {
+  const tarballs = yield* Effect.gen(function* () {
+    yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 LIVESTORE_RELEASE_VERSION=${version} genie --writeable`, {
+      shell: true,
+    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+    yield* rewriteSnapshotInternalDependencyRanges({ cwd, snapshotPackages: packages, snapshotVersion: version })
+    yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 ${tscBin} --build tsconfig.dev.json --noCheck`, {
+      shell: true,
+    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+
+    return yield* Effect.forEach(packages, (pkg) => packPackageForPublish({ cwd, pkg, version }), {
+      concurrency: 1,
+    })
+  }).pipe(Effect.ensuring(restoreGeneratedReleaseFiles(cwd)))
+
+  yield* Effect.tryPromise({
+    try: async () => {
+      await mkdir(outDir, { recursive: true })
+      for (const tarball of tarballs) {
+        await copyFile(tarball, path.join(outDir, path.basename(tarball)))
+      }
+    },
+    catch: (cause) => new ReleaseError({ message: `Failed to stage release tarballs in ${outDir}`, cause }),
+  })
+
+  yield* Effect.log(`Packed ${tarballs.length} package(s) as ${version} in ${outDir}`)
+})
+
+export const packReleaseArtifact = Effect.fn('release.packReleaseArtifact')(function* ({
+  cwd,
+  version,
+  npmTag,
+  outDir,
+  tscBin = 'tsc',
+}: {
+  cwd: string
+  version: string
+  npmTag: string
+  outDir: string
+  tscBin?: string
+}) {
+  if (semver.valid(version) !== version) {
+    return yield* new ReleaseError({ message: `Invalid npm semver version: ${version}` })
+  }
+  const packages = yield* listSnapshotPackages(cwd)
+  if (packages.length === 0) {
+    return yield* new ReleaseError({ message: 'Release package topology is empty' })
+  }
+  yield* packReleasePackages({ cwd, version, packages, outDir, tscBin })
+  yield* Effect.log(`Release tarballs prepared for npm tag ${npmTag}; no registry access performed`)
+})
+
+export const packReleaseArtifactCommand = Cli.Command.make(
+  'artifact-pack',
+  {
+    version: Cli.Flag.String('version').pipe(Cli.Flag.withDescription('Exact release or snapshot package version')),
+    npmTag: Cli.Flag.String('npm-tag').pipe(Cli.Flag.withDescription('Release artifact npm tag metadata')),
+    outDir: Cli.Flag.String('out-dir').pipe(Cli.Flag.withDescription('Directory to stage core package tarballs')),
+    cwd: Cli.Flag.String('cwd').pipe(
+      Cli.Flag.withDefault(
+        process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
+      ),
+    ),
+    tscBin: Cli.Flag.String('tsc-bin').pipe(Cli.Flag.optional),
+  },
+  ({ version, npmTag, outDir, cwd, tscBin }) =>
+    packReleaseArtifact({
+      version,
+      npmTag,
+      outDir,
+      cwd,
+      ...(tscBin._tag === 'Some' ? { tscBin: tscBin.value } : {}),
+    }),
+)
+
 export const packSnapshot = Effect.fn(function* ({
   gitSha,
   prNumber,
@@ -708,30 +796,7 @@ export const packSnapshot = Effect.fn(function* ({
     catch: (cause) => new ReleaseError({ message: `Failed to prepare snapshot artifact directory ${outDir}`, cause }),
   })
 
-  const tarballs = yield* Effect.gen(function* () {
-    yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 LIVESTORE_RELEASE_VERSION=${version} genie --writeable`, {
-      shell: true,
-    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-    yield* rewriteSnapshotInternalDependencyRanges({ cwd, snapshotPackages: packages, snapshotVersion: version })
-    yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 ${tscBin} --build tsconfig.dev.json --noCheck`, {
-      shell: true,
-    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-
-    return yield* Effect.forEach(packages, (pkg) => packPackageForPublish({ cwd, pkg, version }), {
-      concurrency: 1,
-    })
-  }).pipe(Effect.ensuring(restoreGeneratedReleaseFiles(cwd)))
-
-  yield* Effect.tryPromise({
-    try: async () => {
-      for (const tarball of tarballs) {
-        await copyFile(tarball, path.join(outDir, path.basename(tarball)))
-      }
-    },
-    catch: (cause) => new ReleaseError({ message: `Failed to stage snapshot tarballs in ${outDir}`, cause }),
-  })
-
-  yield* Effect.log(`Packed ${tarballs.length} package(s) as ${version} in ${outDir}`)
+  yield* packReleasePackages({ cwd, version, packages, outDir, tscBin })
 })
 
 export const packSnapshotCommand = Cli.Command.make(
@@ -809,6 +874,7 @@ export const releaseCommand = Cli.Command.make('release').pipe(
     releaseStableCommand,
     releaseSnapshotCommand,
     packSnapshotCommand,
+    packReleaseArtifactCommand,
     releaseNotesExtractCommand,
   ]),
 )
