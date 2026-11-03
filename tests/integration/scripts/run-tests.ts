@@ -20,7 +20,7 @@ const prepareDevtools = (outDir: string) =>
       outDir,
     ])
     return { viteEntry: path.join(outDir, 'package/dist/plugin.js'), chromeDir: path.join(outDir, 'chrome') }
-  })
+  }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 
 export const modeOption = Cli.Flag.Literals('mode', ['headless', 'ui', 'dev-server']).pipe(
   Cli.Flag.withDefault('headless'),
