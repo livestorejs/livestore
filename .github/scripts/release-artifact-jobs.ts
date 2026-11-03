@@ -71,10 +71,11 @@ export const releaseArtifactJobs = ({
     with: { name: `npm-release-${suffix}`, path: '${{ runner.temp }}/release-artifact' },
   }
   // Emit the same selection in both jobs; validation executes it independently at the source SHA.
-  const selectExpectedMetadata = stable
-    ? `version="$(jq -er '.version' release/release-plan.json)"
+  const selectExpectedMetadata =
+    stable === true
+      ? `version="$(jq -er '.version' release/release-plan.json)"
 npm_tag="$(jq -er '.npmTag' release/release-plan.json)"`
-    : `version="0.0.0-snapshot-$SOURCE_SHA"
+      : `version="0.0.0-snapshot-$SOURCE_SHA"
 npm_tag=snapshot`
   return {
     [prepare]: {
@@ -96,7 +97,7 @@ echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
 echo "RELEASE_ARTIFACT_DIR=$RUNNER_TEMP/release-artifact" >> "$GITHUB_ENV"`,
         },
         { name: 'Build and pack core packages', run: runDevenvTasksBefore('release:artifact:pack') },
-        ...(stable
+        ...(stable === true
           ? [
               {
                 name: 'Certify DevTools artifact liveness',
@@ -126,7 +127,7 @@ cp "$RUNNER_TEMP/devtools-repack/livestore-devtools-vite-$LIVESTORE_RELEASE_VERS
 for file in "$RUNNER_TEMP/devtools-repack"/livestore-devtools-chrome-*.zip; do
   if [ -f "$file" ]; then cp "$file" "$RELEASE_ARTIFACT_DIR/"; fi
 done
-${stable ? 'cp release/release-notes.md "$RELEASE_ARTIFACT_DIR/release-notes.md"' : ''}
+${stable === true ? 'cp release/release-notes.md "$RELEASE_ARTIFACT_DIR/release-notes.md"' : ''}
 node .github/scripts/release-artifact.mjs create --artifact-dir "$RELEASE_ARTIFACT_DIR" --source-sha "$SOURCE_SHA" --version "$LIVESTORE_RELEASE_VERSION" --npm-tag "$LIVESTORE_NPM_TAG" --topology ${releaseTopologyPath}`,
         },
         {
@@ -138,7 +139,7 @@ node .github/scripts/release-artifact.mjs create --artifact-dir "$RELEASE_ARTIFA
             'retention-days': 14,
           },
         },
-        ...(!stable
+        ...(stable === false
           ? [
               {
                 name: 'Upload DevTools Chrome snapshot artifact',
@@ -202,7 +203,7 @@ echo "manifest_sha512=$(openssl dgst -sha512 -binary "$RUNNER_TEMP/release-artif
         },
       ],
     },
-    ...(stable
+    ...(stable === true
       ? {
           'finalize-release': {
             needs: [prepare, validate, publish],

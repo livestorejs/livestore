@@ -24,9 +24,9 @@ const exactKeys = (value, keys, label) => {
   if (
     value === null ||
     typeof value !== 'object' ||
-    Array.isArray(value) ||
+    Array.isArray(value) === true ||
     Object.keys(value).length !== keys.length ||
-    keys.some((key) => !Object.hasOwn(value, key))
+    keys.some((key) => !Object.hasOwn(value, key)) === true
   ) {
     fail(`Invalid ${label} fields`)
   }
@@ -44,23 +44,28 @@ export const publishTagForVersion = (version) => {
 
 export const expectedPackageNames = (topology) => {
   const names = topology?.publishablePackageNames
-  if (!Array.isArray(names) || names.length === 0 || names.some((name) => !matches(namePattern, name))) {
+  if (
+    Array.isArray(names) === false ||
+    names.length === 0 ||
+    names.some((name) => !matches(namePattern, name)) === true
+  ) {
     fail('Invalid topology publishablePackageNames')
   }
-  if (new Set(names).size !== names.length || names.includes(devtoolsName)) fail('Duplicate topology package names')
-  return [...names, devtoolsName].sort()
+  if (new Set(names).size !== names.length || names.includes(devtoolsName) === true)
+    fail('Duplicate topology package names')
+  return [...names, devtoolsName].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 }
 
 const validateExpected = ({ sourceSha, version, npmTag, packageNames }) => {
-  if (!matches(/^[0-9a-f]{40}$/, sourceSha)) fail('Invalid source SHA')
-  if (!matches(versionPattern, version)) fail('Invalid release version')
-  if (!matches(tagPattern, npmTag)) fail('Invalid npm tag')
+  if (matches(/^[0-9a-f]{40}$/, sourceSha) === false) fail('Invalid source SHA')
+  if (matches(versionPattern, version) === false) fail('Invalid release version')
+  if (matches(tagPattern, npmTag) === false) fail('Invalid npm tag')
   if (
-    !Array.isArray(packageNames) ||
+    Array.isArray(packageNames) === false ||
     packageNames.length === 0 ||
-    packageNames.some((name) => !matches(namePattern, name)) ||
+    packageNames.some((name) => !matches(namePattern, name)) === true ||
     new Set(packageNames).size !== packageNames.length ||
-    !packageNames.includes(devtoolsName)
+    packageNames.includes(devtoolsName) === false
   )
     fail('Invalid expected package names')
 }
@@ -72,19 +77,20 @@ export const validateManifest = (manifest, expected) => {
   if (manifest.sourceSha !== expected.sourceSha) fail('Manifest source SHA mismatch')
   if (manifest.version !== expected.version) fail('Manifest version mismatch')
   if (manifest.npmTag !== expected.npmTag) fail('Manifest npm tag mismatch')
-  if (!Array.isArray(manifest.packages)) fail('Manifest packages must be an array')
+  if (Array.isArray(manifest.packages) === false) fail('Manifest packages must be an array')
   const names = new Set()
   const filenames = new Set()
   for (const pkg of manifest.packages) {
     exactKeys(pkg, ['name', 'version', 'filename', 'integrity', 'tag'], 'package')
-    if (!matches(namePattern, pkg.name)) fail('Invalid package name')
-    if (!expected.packageNames.includes(pkg.name)) fail(`Unexpected package: ${pkg.name}`)
-    if (names.has(pkg.name)) fail(`Duplicate package: ${pkg.name}`)
+    if (matches(namePattern, pkg.name) === false) fail('Invalid package name')
+    if (expected.packageNames.includes(pkg.name) === false) fail(`Unexpected package: ${pkg.name}`)
+    if (names.has(pkg.name) === true) fail(`Duplicate package: ${pkg.name}`)
     if (pkg.version !== expected.version) fail(`Package version mismatch: ${pkg.name}`)
-    if (!matches(filenamePattern, pkg.filename) || pkg.filename.includes('..')) fail('Unsafe tarball filename')
-    if (filenames.has(pkg.filename)) fail(`Duplicate tarball filename: ${pkg.filename}`)
+    if (matches(filenamePattern, pkg.filename) === false || pkg.filename.includes('..') === true)
+      fail('Unsafe tarball filename')
+    if (filenames.has(pkg.filename) === true) fail(`Duplicate tarball filename: ${pkg.filename}`)
     if (
-      !matches(/^sha512-[A-Za-z0-9+/]{86}==$/, pkg.integrity) ||
+      matches(/^sha512-[A-Za-z0-9+/]{86}==$/, pkg.integrity) === false ||
       `sha512-${Buffer.from(pkg.integrity.slice(7), 'base64').toString('base64')}` !== pkg.integrity
     )
       fail('Invalid sha512 integrity')
@@ -93,7 +99,7 @@ export const validateManifest = (manifest, expected) => {
     names.add(pkg.name)
     filenames.add(pkg.filename)
   }
-  for (const name of expected.packageNames) if (!names.has(name)) fail(`Missing package: ${name}`)
+  for (const name of expected.packageNames) if (names.has(name) === false) fail(`Missing package: ${name}`)
   return manifest
 }
 
@@ -112,10 +118,10 @@ export const parsePackedPackage = (bytes, maxOutputLength = 512 * 1024 * 1024) =
   for (const entry of entries) {
     const segments = entry.replace(/\/$/, '').split('/')
     if (
-      !entry.startsWith('package/') ||
-      entry.includes('//') ||
-      entry.includes('\\') ||
-      segments.some((segment) => segment === '.' || segment === '..')
+      entry.startsWith('package/') === false ||
+      entry.includes('//') === true ||
+      entry.includes('\\') === true ||
+      segments.some((segment) => segment === '.' || segment === '..') === true
     ) {
       fail(`Non-canonical archive entry: ${JSON.stringify(entry)}`)
     }
@@ -130,10 +136,10 @@ export const parsePackedPackage = (bytes, maxOutputLength = 512 * 1024 * 1024) =
       timeout: 60_000,
     }),
   )
-  if (packed === undefined || packed === null || typeof packed !== 'object' || Array.isArray(packed))
+  if (packed === undefined || packed === null || typeof packed !== 'object' || Array.isArray(packed) === true)
     fail('Missing package/package.json')
-  if (!matches(namePattern, packed.name)) fail('Invalid packed package name')
-  if (!matches(versionPattern, packed.version)) fail('Invalid packed package version')
+  if (matches(namePattern, packed.name) === false) fail('Invalid packed package name')
+  if (matches(versionPattern, packed.version) === false) fail('Invalid packed package version')
   if (packed.publishConfig !== undefined) {
     exactKeys(packed.publishConfig, ['access'], 'packed publishConfig')
     if (packed.publishConfig.access !== 'public') fail('Packed publishConfig must set access to public')
@@ -166,7 +172,7 @@ export const validateArtifact = ({ manifest, tarballs, ...expected }) => {
   validateManifest(manifest, expected)
   const files = new Map()
   for (const tarball of tarballs) {
-    if (files.has(tarball.filename)) fail(`Duplicate tarball: ${tarball.filename}`)
+    if (files.has(tarball.filename) === true) fail(`Duplicate tarball: ${tarball.filename}`)
     files.set(tarball.filename, tarball.bytes)
   }
   if (files.size !== manifest.packages.length) fail('Unexpected or missing tarballs')
@@ -183,7 +189,7 @@ export const validateArtifact = ({ manifest, tarballs, ...expected }) => {
 
 const readRegular = async (filename) => {
   const stat = await lstat(filename)
-  if (!stat.isFile() || stat.isSymbolicLink()) fail(`Expected regular file, no symlinks: ${filename}`)
+  if (stat.isFile() === false || stat.isSymbolicLink() === true) fail(`Expected regular file, no symlinks: ${filename}`)
   return readFile(filename)
 }
 
@@ -201,9 +207,9 @@ export const run = async (args) => {
   })
   if (
     positionals.length !== 1 ||
-    !['create', 'validate'].includes(positionals[0]) ||
+    ['create', 'validate'].includes(positionals[0]) === false ||
     Object.values(values).length !== 5 ||
-    Object.values(values).some((value) => value === '')
+    Object.values(values).some((value) => value === '') === true
   ) {
     fail(
       'Usage: release-artifact.mjs create|validate --artifact-dir DIR --source-sha SHA --version VERSION --npm-tag TAG --topology PATH',
@@ -211,7 +217,8 @@ export const run = async (args) => {
   }
   const artifactDir = values['artifact-dir']
   const stat = await lstat(artifactDir)
-  if (!stat.isDirectory() || stat.isSymbolicLink()) fail('Artifact directory must be a directory, not a symlink')
+  if (stat.isDirectory() === false || stat.isSymbolicLink() === true)
+    fail('Artifact directory must be a directory, not a symlink')
   const expected = {
     sourceSha: values['source-sha'],
     version: values.version,
@@ -222,14 +229,17 @@ export const run = async (args) => {
   for (const filename of (await readdir(artifactDir)).sort()) {
     const fullPath = path.join(artifactDir, filename)
     const fileStat = await lstat(fullPath)
-    if (!fileStat.isFile() || fileStat.isSymbolicLink()) fail(`Artifact contains non-regular file: ${filename}`)
+    if (fileStat.isFile() === false || fileStat.isSymbolicLink() === true)
+      fail(`Artifact contains non-regular file: ${filename}`)
     if (
-      !filename.endsWith('.tgz') &&
-      !['manifest.json', 'release-notes.md', `livestore-devtools-chrome-${expected.version}.zip`].includes(filename)
+      filename.endsWith('.tgz') === false &&
+      ['manifest.json', 'release-notes.md', `livestore-devtools-chrome-${expected.version}.zip`].includes(filename) ===
+        false
     )
       fail(`Unexpected artifact file: ${filename}`)
-    if (filename.endsWith('.tgz')) {
-      if (!matches(filenamePattern, filename) || filename.includes('..')) fail('Unsafe tarball filename')
+    if (filename.endsWith('.tgz') === true) {
+      if (matches(filenamePattern, filename) === false || filename.includes('..') === true)
+        fail('Unsafe tarball filename')
       if (fileStat.size > maxTarballBytes) fail('Tarball exceeds size limit')
       tarballs.push({ filename, bytes: await readRegular(fullPath) })
     }
