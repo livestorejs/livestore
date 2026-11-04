@@ -97,7 +97,7 @@ export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
     }).pipe(Effect.withSpan(`WebChannel:messagePortChannel`)),
   )
 
-const sameThreadChannels = new Map<string, PubSub.PubSub<any>>()
+const sameThreadChannels = new Map<string, { pubSub: PubSub.PubSub<any>; refCount: number }>()
 
 export const sameThreadChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
   schema: inputSchema,
@@ -108,11 +108,25 @@ export const sameThreadChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
 }): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {
-      let pubSub = sameThreadChannels.get(channelName)
-      if (pubSub === undefined) {
-        pubSub = yield* Effect.acquireRelease(PubSub.unbounded<any>(), PubSub.shutdown)
-        sameThreadChannels.set(channelName, pubSub)
+      let entry = sameThreadChannels.get(channelName)
+      if (entry === undefined) {
+        entry = { pubSub: yield* PubSub.unbounded<any>(), refCount: 0 }
+        sameThreadChannels.set(channelName, entry)
       }
+      const channelEntry = entry
+      channelEntry.refCount++
+      // The PubSub is shared by every user of this channel name, so only the last one to close shuts it down
+      yield* Effect.addFinalizer(() =>
+        Effect.suspend(() => {
+          channelEntry.refCount--
+          if (channelEntry.refCount > 0) return Effect.void
+          if (sameThreadChannels.get(channelName) === channelEntry) {
+            sameThreadChannels.delete(channelName)
+          }
+          return PubSub.shutdown(channelEntry.pubSub)
+        }),
+      )
+      const pubSub = channelEntry.pubSub
 
       const schema = mapSchema(inputSchema)
 
