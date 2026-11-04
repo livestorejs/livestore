@@ -196,48 +196,44 @@ policy itself are spec changes to this node.
 
 The `main` branch ruleset is kept converged with its committed desired state
 (`.github/repo-settings.json`, whose required-status-check list Genie generates
-from the CI job list) by an org-owned GitHub App that applies it — closing the
-last IaC gap (automated apply). Decisions and rejected alternatives:
+from the CI job list) by an org-owned GitHub App that applies it.
+Decisions and rejected alternatives:
 [.decisions/0001](./.decisions/0001-ruleset-reconciliation.md); GitHub platform
 limits:
 [.reference/github-app-platform-constraints.md](./.reference/github-app-platform-constraints.md);
 the manual App lifecycle:
 [ruleset-app-provisioning-runbook.md](./ruleset-app-provisioning-runbook.md).
 
-**Identity.** One org-owned App (`livestorejs`), `administration: write` only,
-installed on `livestore` and `livestore-contrib`, used solely to mint short-lived
-installation tokens (no webhook, no events). Its definition is a committed App
-Manifest (the reviewable source of truth); App ID / Client ID are non-secret
-constants in the workflow's Genie source; the App private key is the single
-unavoidable secret — an org Actions secret restricted to the two repos
-(`LIVESTORE_RULESET_APP_KEY`).
+**Identity.** The org-owned reconciler App has `administration: write` and mints
+short-lived installation tokens. Its manifest is committed; its private key
+(`LIVESTORE_RULESET_APP_KEY`) is an environment secret in `github-admin`, whose
+deployment branches are limited to `main`.
 
-**Control flow** — a dedicated `.github/workflows/repo-settings.yml` (sole holder
-of the App secret), with tasks `github:rulesets:{sync,plan,check}`:
+**Control flow.** `.github/workflows/repo-settings.yml` runs its `reconcile` job
+only on `main`, in `github-admin`: on path-filtered pushes, the scheduled
+backstop, or manual dispatch. After checkout without persisted credentials and
+token creation, only inline Bash from the code-owned workflow runs: reconcile
+fork-PR contributor approval, apply the desired ruleset, then verify managed
+fields and fail with a diff on residual drift. The admin-token comparison
+includes bypass actors and suppresses GitHub-expanded pull-request defaults.
+No Nix/devenv setup, repository scripts, or PR plan job receives the key or token.
+Local `github:rulesets:{sync,plan,check}` tasks remain available independently.
+Ruleset reconciliation does not affect the `ci` conclusion or gate snapshot
+publication.
 
-- **Apply on merge:** on push to `main` touching `.github/repo-settings.json`,
-  mint a token, `sync` (apply), then re-run the drift check as a post-apply
-  verify (residual drift is an alertable failure).
-- **Scheduled backstop:** the same apply on a schedule, to correct out-of-band
-  console edits.
-- **PR plan:** on PRs touching `repo-settings.json`, `sync --dry-run` as an
-  informational, non-gating check.
-- **Gate removal:** the former `ruleset-drift-check` job is removed from `ci.yml`
-  — it was never a required check, but its failure set the whole `ci` conclusion
-  to `failure`, which wedged snapshot releases (LS.DEL.REL-R07). With no ruleset
-  job in `ci`, drift can no longer affect the `ci` conclusion; live drift is
-  reconciled by the merge, not policed before it.
+**App-definition drift.** The workflow deliberately omits the App-definition
+drift check, which requires the raw private key and repository TypeScript.
+This gap is deferred to the GitHub IaC cutover tracked in
+[#1701](https://github.com/livestorejs/livestore/issues/1701).
 
 **App-definition review.** The committed manifest remains the manual provisioning
 contract. App permission and event changes are reviewed against the live App
 settings UI. The repository CLI no longer accepts the App private key or mints
 App JWTs to check `GET /app`. Only the dedicated token-minting action receives
-the key; ruleset commands receive its scoped installation token instead.
+the key; inline ruleset commands receive its scoped installation token instead.
 
-**Ownership.** Per repo-architecture R17, the manifest, workflow, tasks, and
-ruleset drift-checks are authored once as shared helpers in `livestore` (core);
-`livestore-contrib` enrolls by installing the same App and adding the generated
-workflow. Each repo owns its own `.github/repo-settings.json`.
+**Ownership.** Each repository owns its `.github/repo-settings.json`; the
+privileged workflow lives under code-owned `.github/`.
 
 ## Open Design Questions
 
