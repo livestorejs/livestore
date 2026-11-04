@@ -19,55 +19,51 @@ rules:
       - context/03-delivery/02-release/**
       - release/**
       - .changeset/**
-      - scripts/src/commands/changesets.ts
-      - scripts/src/commands/github.ts
-      - scripts/src/commands/release*
-      - scripts/src/commands/devtools-artifact*
-      - scripts/src/shared/npm-publish*
-      - scripts/src/generated/release-topology*
-      - genie/release-topology.ts
-      - packages/@livestore/*/package.json
-      - packages/@livestore/*/package.json.genie.ts
+      - scripts/**
+      - genie/**
+      - nix/**
+      - devenv.*
+      - docs/**
+      - examples/**
+      - tests/integration/**
+      - tests/sync-provider/src/providers/**
+      - tests/sync-provider/src/prepare-ci.ts
+      - tests/sync-provider/src/types.ts
+      - packages/@livestore/common/src/**
+      - packages/@livestore/common-cf/src/**
+      - packages/@livestore/effect-playwright/src/**
+      - packages/@livestore/utils/src/**
+      - packages/@livestore/utils-dev/src/**
+      - packages/@livestore/webmesh/src/**
+      - packages/@livestore/sync-cf/src/client/**
+      - packages/@livestore/sync-cf/src/common/**
+      - packages/@local/astro-tldraw/src/**
+      - packages/@local/astro-twoslash-code/src/**
+      - packages/@local/shared/src/**
+      - '**/package.json'
+      - '**/tsconfig*.json'
+      - '**/tsconfig*.ts'
+      - pnpm*
+      - megarepo.*
+      - '**/*.genie.ts'
       - '**/.npmrc'
       - '**/.env*'
       - '**/secrets/**'
       - '**/credentials/**'
       - .infra/**
-      - scripts/src/meetings/google-calendar.ts
-      - scripts/src/meetings/publish.ts
-      - scripts/src/shared/netlify.ts
       - .github/CODEOWNERS
       - .github/repo-settings.json
       - .github/reconcile-app-manifest.json
       - .github/workflows/**
       - .github/scripts/**
       - .github/actions/**
-      - .github/**/*.genie.ts
-      - genie/ci.ts
-      - genie/ci-scripts/**
-      - genie/repo.ts
-      - genie/pr-snapshot-paths.ts
-      - genie/external.ts
-      - genie/repo-topology.ts
-      - nix/devenv-modules/tasks/local/**
     owner: johannes
   - paths: ['**/*.test.ts', '**/*.test.tsx', '**/*.test.js', '**/__tests__/**']
     owner: agent
   - paths:
       - .github/**
-      - nix/**
-      - devenv.*
-      - genie/**
-      - scripts/**
-      - docs/**
-      - examples/**
       - tests/**
       - contributor-docs/**
-      - pnpm-lock.yaml
-      - pnpm-workspace.yaml
-      - package.json
-      - package.json.genie.ts
-      - pnpm-workspace.yaml.genie.ts
       - packages/**
       - context/**
       - CHANGELOG.md
@@ -76,14 +72,18 @@ rules:
     owner: johannes
 ```
 
-Package source, tests, and changelogs are delegated. Published package manifests and their generators retain Johannes's approval because they define publishing configuration. Root and tooling manifests and lockfiles remain delegated, subject to the no-added-dependency invariant. `contributor-docs/` contains contributor documentation and RFCs; a document does not authorize the implementation it proposes.
+Package source outside credentialed runtime trees, ordinary tests, and changelogs are delegated. Install manifests, locks, generators, aliases, dynamic deployment surfaces, and runtime imports reachable from credentialed jobs retain Johannes's approval. `contributor-docs/` contains contributor documentation and RFCs; a document does not authorize the implementation it proposes.
 
 ## GitHub projection
 
 [CODEOWNERS](../../../.github/CODEOWNERS) is a manually maintained projection of this profile, not a genie output. It lists the broad agent paths first and human gates last because GitHub uses the last matching entry. Agent paths use ownerless entries to clear the default owner: naming `@schickling-assistant` would require an approval that the agent PR author cannot provide.
 
-The `main-branch-rules` ruleset requires code-owner review and otherwise requires zero approvals. Ownerless-only changes therefore need no GitHub approval; required checks, resolved review threads, independent agent review, and merge authorization still apply. Vision, requirements, decisions, release and publishing tooling, credential consumers, workflows and their shared generators, repository security configuration, and this profile stay with Johannes. The workflow's transitive tooling trust boundary is tracked in [#1701](https://github.com/livestorejs/livestore/issues/1701); retaining the directly identified generators and credential consumers does not claim to close it. Repository settings are unchanged.
+The `main-branch-rules` ruleset requires code-owner review and otherwise requires zero approvals. Ownerless-only changes therefore need no GitHub approval; required checks, resolved review threads, independent agent review, and merge authorization still apply. Human gates include the conservative executable closure of deployment, meeting/service-account, GitHub-write-token, npm/release, and App-key jobs. Re-owning the launcher, setup inputs, and imported tooling also contains part of the existing [#1701](https://github.com/livestorejs/livestore/issues/1701) gap; it is not full job isolation. Repository settings are unchanged.
 
-Run `node .github/scripts/check-codeowners.mjs` to check representative delegated and retained paths, including synthetic collisions with delegated test paths.
+Grafana OTLP telemetry auth is explicitly excluded from that closure: ordinary test code can read and misuse the write-only token exported through `GITHUB_ENV`. This accepted low-impact exception does not apply to Netlify trace uploads: their same-job Playwright predecessors and runtime imports are retained. Published source outside the credential closure may change without Johannes reviewing each source PR; his release approval controls publication of the accumulated artifact, not per-change source review.
+
+Root `CHANGELOG.md` remains delegated despite Astro importing it as Markdown: frontmatter could select an existing layout module. This content risk is accepted to avoid gating nearly every agent PR; docs and dependency/lockfile authority stay retained. A frontmatter-rejection lint can further restrict this boundary without changing changelog ownership.
+
+Run `node .github/scripts/check-codeowners.mjs` for sample precedence and `bun .github/scripts/check-credential-closure.mjs` for the credentialed-job inventory and transitive runtime import audit. The latter parses workflow YAML and JS/TS (including Astro/MDX module blocks), erases type-only imports, and resolves workspace exports without executing source. It combines that graph with conservative dynamic discovery surfaces (Nix, setup generators, docs/MDX/plugins, example builds, and Playwright job predecessors). Markdown/snippet assets and verified npm tarballs are data, not executable imports. External member code is bounded by protected pins. New dynamic execution mechanisms require review of the audit roots.
 
 The existing [collaboration flow](./spec.md) and [changelog guide](../../../contributor-docs/changelog-guide.md) still apply; delegation does not waive contribution checks or release-ledger requirements.
