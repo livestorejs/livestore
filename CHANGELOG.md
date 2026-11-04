@@ -26,6 +26,10 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 For maintainers and contributors:
 
+- **Review delegation:** Package source, changelogs, and implementation context
+  allow independent agent review without a required Johannes code-owner approval.
+  Vision, requirements, decisions, releases, publishing configuration, credentials,
+  and CI policy retain his approval gate.
 - **Test tooling:** Extension-backed Playwright launches preserve caller-supplied
   Chromium arguments alongside extension flags. The DevTools undock locator
   selects the native button by role instead of matching its presentation host.

@@ -1,5 +1,5 @@
-# Projection of context/05-contributing/01-collaboration/review-delegation.md.
-# Reverse profile order: last match wins; ownerless entries clear the default.
+# Manual projection of context/05-contributing/01-collaboration/review-delegation.md.
+# Last match wins. Ownerless paths delegate review, not merge authorization.
 * @schickling
 /.github/
 /nix/
@@ -15,28 +15,50 @@
 /package.json
 /package.json.genie.ts
 /pnpm-workspace.yaml.genie.ts
-/packages/ @schickling
-/packages/@local/*/package.json
-/packages/@local/*/package.json.genie.ts
+/packages/
+/context/
+/CHANGELOG.md
 **/*.test.ts
 **/*.test.tsx
 **/*.test.js
 **/__tests__/
+# Human gates override every delegation above, including test-file patterns.
+**/vision.md @schickling
+**/requirements.md @schickling
+**/decisions/ @schickling
+**/.decisions/ @schickling
+/context/05-contributing/01-collaboration/review-delegation.md @schickling
+/context/03-delivery/02-release/ @schickling
 /release/ @schickling
-/.github/workflows/release.yml @schickling
+/.changeset/ @schickling
 /scripts/src/commands/changesets.ts @schickling
-/scripts/src/commands/release.ts @schickling
-/scripts/src/commands/devtools-artifact.ts @schickling
-/.changeset/*.md @schickling
-/CHANGELOG.md @schickling
-/packages/@livestore/wa-sqlite/CHANGELOG.md @schickling
+/scripts/src/commands/github.ts @schickling
+/scripts/src/commands/release* @schickling
+/scripts/src/commands/devtools-artifact* @schickling
+/scripts/src/shared/npm-publish* @schickling
+/scripts/src/generated/release-topology* @schickling
+/genie/release-topology.ts @schickling
+/packages/@livestore/*/package.json @schickling
+/packages/@livestore/*/package.json.genie.ts @schickling
+**/.npmrc @schickling
+**/.env* @schickling
+**/secrets/ @schickling
+**/credentials/ @schickling
+/.infra/ @schickling
+/scripts/src/meetings/google-calendar.ts @schickling
+/scripts/src/meetings/publish.ts @schickling
+/scripts/src/shared/netlify.ts @schickling
 /.github/CODEOWNERS @schickling
 /.github/repo-settings.json @schickling
-/.github/repo-settings.json.genie.ts @schickling
-/.github/workflows/repo-settings.yml @schickling
-/.github/workflows/repo-settings.yml.genie.ts @schickling
-/nix/devenv-modules/tasks/local/github-rulesets.nix @schickling
+/.github/reconcile-app-manifest.json @schickling
 /.github/workflows/ @schickling
 /.github/scripts/ @schickling
 /.github/actions/ @schickling
 /.github/**/*.genie.ts @schickling
+/genie/ci.ts @schickling
+/genie/ci-scripts/ @schickling
+/genie/repo.ts @schickling
+/genie/pr-snapshot-paths.ts @schickling
+/genie/external.ts @schickling
+/genie/repo-topology.ts @schickling
+/nix/devenv-modules/tasks/local/ @schickling
