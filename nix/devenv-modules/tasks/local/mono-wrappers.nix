@@ -570,8 +570,8 @@ in
       exec = ''
         set -euo pipefail
         mono release artifact-pack \
-          --version "''${LIVESTORE_RELEASE_VERSION:?}" \
-          --npm-tag "''${LIVESTORE_NPM_TAG:?}" \
+          --version "''${RELEASE_CANDIDATE_VERSION:?}" \
+          --npm-tag "''${RELEASE_CANDIDATE_NPM_TAG:?}" \
           --out-dir "''${RELEASE_ARTIFACT_DIR:?}"
       '';
       after = [ "setup:strict" ];

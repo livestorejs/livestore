@@ -68,6 +68,12 @@ Preparation builds and packs core packages and repacks the selected DevTools
 artifact without npm publish authority. Stable preparation also runs the existing
 release-candidate liveness certification. Core packing uses
 `mono release artifact-pack --version "$VERSION" --npm-tag "$TAG" --out-dir "$OUT"`.
+The prepare job carries its selection as `RELEASE_CANDIDATE_VERSION` and
+`RELEASE_CANDIDATE_NPM_TAG` until core packing finishes. Core setup must not
+inherit `LIVESTORE_RELEASE_VERSION`: setup generates read-only default manifests,
+and packing then sets that override only for its writable Genie invocation.
+Only the later DevTools steps inherit the selected `LIVESTORE_RELEASE_VERSION`.
+
 The prepared `release-artifact` directory contains `manifest.json` and the exact
 tarballs for the release topology plus `@livestore/devtools-vite`. The manifest
 has `schemaVersion: 1`, `sourceSha`, `version`, `npmTag`, and `packages` records

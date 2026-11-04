@@ -92,11 +92,18 @@ npm_tag=snapshot`
           run: `set -euo pipefail
 test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
 ${selectExpectedMetadata}
-echo "LIVESTORE_RELEASE_VERSION=$version" >> "$GITHUB_ENV"
-echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
+echo "RELEASE_CANDIDATE_VERSION=$version" >> "$GITHUB_ENV"
+echo "RELEASE_CANDIDATE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
 echo "RELEASE_ARTIFACT_DIR=$RUNNER_TEMP/release-artifact" >> "$GITHUB_ENV"`,
         },
         { name: 'Build and pack core packages', run: runDevenvTasksBefore('release:artifact:pack') },
+        {
+          // Core setup must generate the default version first. Its pack command owns
+          // the writable version override; DevTools selects its version only afterward.
+          name: 'Select DevTools release candidate',
+          run: `echo "LIVESTORE_RELEASE_VERSION=$RELEASE_CANDIDATE_VERSION" >> "$GITHUB_ENV"
+echo "LIVESTORE_NPM_TAG=$RELEASE_CANDIDATE_NPM_TAG" >> "$GITHUB_ENV"`,
+        },
         ...(stable === true
           ? [
               {
