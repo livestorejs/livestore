@@ -16,6 +16,8 @@
  * `Uint8Array<ArrayBuffer>`
  */
 type SQLiteCompatibleType = number | string | Uint8Array<ArrayBuffer> | Array<number> | bigint | null
+type SQLiteBindValue = SQLiteCompatibleType | boolean
+type SQLiteResultValue = Exclude<SQLiteCompatibleType, Array<number>>
 
 /** https://sqlite.org/session/c_changeset_conflict.html */
 type SQLiteChangesetConflictType =
@@ -200,7 +202,7 @@ interface SQLiteAPI {
    */
   bind_collection(
     stmt: number,
-    bindings: { [index: string]: SQLiteCompatibleType | null } | Array<SQLiteCompatibleType | null>,
+    bindings: { [index: string]: SQLiteBindValue } | Array<SQLiteBindValue>,
   ): number
 
   /**
@@ -213,7 +215,7 @@ interface SQLiteAPI {
    * @param value
    * @returns `SQLITE_OK` (throws exception on error)
    */
-  bind(stmt: number, i: number, value: SQLiteCompatibleType | null): number
+  bind(stmt: number, i: number, value: SQLiteBindValue): number
 
   /**
    * Bind blob to prepared statement parameter
@@ -403,7 +405,7 @@ interface SQLiteAPI {
    * @param i column index
    * @returns column value
    */
-  column(stmt: number, i: number): SQLiteCompatibleType
+  column(stmt: number, i: number): SQLiteResultValue
 
   /**
    * Extract a column value from a row after a prepared statment {@link step}
@@ -564,7 +566,7 @@ interface SQLiteAPI {
   exec(
     db: number,
     zSQL: string,
-    callback?: (row: Array<SQLiteCompatibleType | null>, columns: string[]) => void,
+    callback?: (row: Array<SQLiteResultValue>, columns: string[]) => void,
     // ): Promise<number>;
   ): number
 
@@ -719,7 +721,7 @@ interface SQLiteAPI {
    * @param stmt prepared statement pointer
    * @returns row data
    */
-  row(stmt: number): Array<SQLiteCompatibleType | null>
+  row(stmt: number): Array<SQLiteResultValue>
 
   /**
    * Register a callback function that is invoked to authorize certain SQL statement actions.
@@ -833,7 +835,7 @@ interface SQLiteAPI {
    * @param pValue `sqlite3_value` pointer
    * @returns value
    */
-  value(pValue: number): SQLiteCompatibleType
+  value(pValue: number): SQLiteResultValue
 
   /**
    * Extract a value from `sqlite3_value`
