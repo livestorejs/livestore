@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "@astrojs/check": "0.9.9",
+    "@astrojs/markdown-remark": "7.2.0",
     "@astrojs/netlify": "7.0.13",
     "@astrojs/react": "5.0.7",
     "@astrojs/starlight": "0.40.0",

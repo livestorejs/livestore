@@ -50,6 +50,9 @@ importers:
       '@astrojs/check':
         specifier: 0.9.9
         version: 0.9.9(prettier@3.8.3)(typescript@6.0.3)
+      '@astrojs/markdown-remark':
+        specifier: 7.2.0
+        version: 7.2.0(supports-color@10.2.2)
       '@astrojs/netlify':
         specifier: 7.0.13
         version: 7.0.13(@types/node@25.3.3)(astro@6.4.6(@netlify/blobs@10.7.8(supports-color@10.2.2))(@types/node@25.3.3)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.49.0)(supports-color@10.2.2)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.49.0)(supports-color@10.2.2)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)

@@ -30,7 +30,9 @@ For maintainers and contributors:
   changelogs, and implementation context allow independent agent review without
   a required Johannes code-owner approval. Vision, requirements, decisions,
   releases, install inputs, and credentialed workflow execution retain his gate,
-  including previously ownerless launchers and transitive tooling
+  including previously ownerless launchers and transitive tooling. The docs
+  changelog renders raw Markdown rather than compiling delegated frontmatter
+  as an executable Astro module
   ([#1711](https://github.com/livestorejs/livestore/pull/1711),
   [#1701](https://github.com/livestorejs/livestore/issues/1701)).
 - **Test tooling:** Extension-backed Playwright launches preserve caller-supplied

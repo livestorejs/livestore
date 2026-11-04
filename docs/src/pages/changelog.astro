@@ -1,12 +1,17 @@
 ---
+import { createMarkdownProcessor } from '@astrojs/markdown-remark'
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro'
-import { Content, getHeadings } from '../../../CHANGELOG.md'
+
+import changelog from '../../../CHANGELOG.md?raw'
+import { markdownOptions } from '../utils/markdown-config.ts'
+
+// Render text only: Astro must never compile delegated changelog frontmatter as a module.
+const processor = await createMarkdownProcessor(markdownOptions)
+const { code, metadata: { headings } } = await processor.render(changelog)
 ---
 
-<StarlightPage frontmatter={{ title: 'Changelog' }} headings={getHeadings()}>
-	<div class="changelog-content">
-		<Content />
-	</div>
+<StarlightPage frontmatter={{ title: 'Changelog' }} headings={headings}>
+	<div class="changelog-content" set:html={code} />
 </StarlightPage>
 
 <style>

@@ -142,6 +142,19 @@ const closure = new Map(seeds)
 const edges = []
 const pending = [...scanSeeds]
 const scanned = new Set()
+function assertMarkdownDataImport(specifier, importer) {
+  if (/\.(?:md|markdown)(?:\?|$)/i.test(specifier)) {
+    assert(/(?:\?|&)raw(?:&|$)/.test(specifier),
+      `Executable Markdown import ${specifier} in ${importer}: use ?raw and the protected text renderer; frontmatter can select arbitrary layout code`)
+  }
+}
+// Regression: a plain Markdown edge can select a new ownerless package layout;
+// checking only its present frontmatter or selected module's existence is unsafe.
+assert.throws(() => assertMarkdownDataImport('../../../CHANGELOG.md', 'docs/src/pages/changelog.astro'),
+  /Executable Markdown import/)
+assert.throws(() => assertMarkdownDataImport('new.markdown?url', 'docs/example.ts'),
+  /Executable Markdown import/)
+assert.doesNotThrow(() => assertMarkdownDataImport('../../../CHANGELOG.md?raw', 'docs/src/pages/changelog.astro'))
 for (const path of pending) {
   if (scanned.has(path)) continue
   scanned.add(path)
@@ -151,6 +164,7 @@ for (const path of pending) {
   // Native scanning omits explicit type-only imports but preserves value imports,
   // including unused bindings whose module initialization can still run in Node.
   for (const entry of parser.scanImports(moduleText(path))) {
+    assertMarkdownDataImport(entry.path, path)
     for (const target of resolveImport(entry.path, path)) {
       edges.push([path, target])
       if (!source.test(target) && !seeds.has(target)) continue // inert imported assets, not code
