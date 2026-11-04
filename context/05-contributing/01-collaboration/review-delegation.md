@@ -1,6 +1,6 @@
 # Review delegation
 
-A delegation rule has `paths`, optional `kinds`, and an `owner` (`agent` or `johannes`); rules are ordered, first match wins, and the final `**` rule is the default. An independent agent's GO replaces Johannes's code review only when every changed file matches an agent rule without `kinds`; all other PRs require Johannes's code review. Merge still follows the repository's integration path and any merge authorization Johannes grants.
+A delegation rule has `paths` and an `owner` (`agent` or `johannes`); rules are ordered, first match wins, and the final `**` rule is the default. An independent agent's GO replaces Johannes's code review only when every changed file matches an agent rule; all other PRs require Johannes's code review. Merge still follows the repository's integration path and any merge authorization Johannes grants.
 
 Delegated changes must add no complexity: no new abstraction, dependency, module boundary, or public surface. When classification or complexity is uncertain, escalate to Johannes.
 
@@ -11,63 +11,79 @@ Paths are repository-relative globs. Multiple paths in a rule are alternatives.
 ```yaml
 rules:
   - paths:
+      - '**/vision.md'
+      - '**/requirements.md'
+      - '**/decisions/**'
+      - '**/.decisions/**'
+      - context/05-contributing/01-collaboration/review-delegation.md
+      - context/03-delivery/02-release/**
+      - release/**
+      - .changeset/**
+      - scripts/**
+      - genie/**
+      - nix/**
+      - devenv.*
+      - docs/**
+      - examples/**
+      - tests/integration/**
+      - tests/sync-provider/src/providers/**
+      - tests/sync-provider/src/prepare-ci.ts
+      - tests/sync-provider/src/types.ts
+      - packages/@livestore/common/src/**
+      - packages/@livestore/common-cf/src/**
+      - packages/@livestore/effect-playwright/src/**
+      - packages/@livestore/utils/src/**
+      - packages/@livestore/utils-dev/src/**
+      - packages/@livestore/webmesh/src/**
+      - packages/@livestore/sync-cf/src/client/**
+      - packages/@livestore/sync-cf/src/common/**
+      - packages/@local/astro-tldraw/src/**
+      - packages/@local/astro-twoslash-code/src/**
+      - packages/@local/shared/src/**
+      - '**/package.json'
+      - '**/tsconfig*.json'
+      - '**/tsconfig*.ts'
+      - pnpm*
+      - megarepo.*
+      - '**/*.genie.ts'
+      - '**/.npmrc'
+      - '**/.env*'
+      - '**/secrets/**'
+      - '**/credentials/**'
+      - .infra/**
+      - .github/CODEOWNERS
+      - .github/repo-settings.json
+      - .github/reconcile-app-manifest.json
       - .github/workflows/**
       - .github/scripts/**
       - .github/actions/**
-      - .github/**/*.genie.ts
-      - .github/CODEOWNERS
-      - .github/repo-settings.json
-      - .github/repo-settings.json.genie.ts
-      - .github/workflows/repo-settings.yml
-      - .github/workflows/repo-settings.yml.genie.ts
-      - nix/devenv-modules/tasks/local/github-rulesets.nix
     owner: johannes
-  - paths:
-      - release/**
-      - .github/workflows/release.yml
-      - scripts/src/commands/changesets.ts
-      - scripts/src/commands/release.ts
-      - scripts/src/commands/devtools-artifact.ts
-      - .changeset/*.md
-      - CHANGELOG.md
-      - packages/@livestore/wa-sqlite/CHANGELOG.md
-    kinds: [changelog, release-patch]
-    owner: agent
   - paths: ['**/*.test.ts', '**/*.test.tsx', '**/*.test.js', '**/__tests__/**']
-    owner: agent
-  - paths: ['packages/@local/*/package.json', 'packages/@local/*/package.json.genie.ts']
-    owner: agent
-  - paths: [packages/**]
-    kinds: [type-only, bugfix-with-test, deprecation]
     owner: agent
   - paths:
       - .github/**
-      - nix/**
-      - devenv.*
-      - genie/**
-      - scripts/**
-      - docs/**
-      - examples/**
       - tests/**
       - contributor-docs/**
-      - pnpm-lock.yaml
-      - pnpm-workspace.yaml
-      - package.json
-      - package.json.genie.ts
-      - pnpm-workspace.yaml.genie.ts
+      - packages/**
+      - context/**
+      - CHANGELOG.md
     owner: agent
   - paths: ['**']
     owner: johannes
 ```
 
-`type-only` changes affect types only. `bugfix-with-test` requires no public API change and a regression test in the same PR. `deprecation` marks existing functionality as deprecated; `changelog` covers release-note material; `release-patch` is a patch or development release through the existing release tooling. Kind-restricted rules retain Johannes's approval gate rather than granting path-wide delegation.
-
-Dependency bumps in published package manifests need Johannes's approval. Root and tooling manifests and lockfiles are delegated, subject to the no-added-dependency invariant. `contributor-docs/` contains contributor documentation and RFCs; a document does not authorize the implementation it proposes.
+Package source outside credentialed runtime trees, ordinary tests, and changelogs are delegated. Install manifests, locks, generators, aliases, dynamic deployment surfaces, and runtime imports reachable from credentialed jobs retain Johannes's approval. `contributor-docs/` contains contributor documentation and RFCs; a document does not authorize the implementation it proposes.
 
 ## GitHub projection
 
-[CODEOWNERS](../../../.github/CODEOWNERS) projects these rules in reverse order because GitHub uses the last matching entry. Johannes-owned and kind-restricted rules use `@schickling`; unrestricted agent paths use ownerless entries to clear the default owner. The PR author is never listed as an approving code owner.
+[CODEOWNERS](../../../.github/CODEOWNERS) is a manually maintained projection of this profile, not a genie output. It lists the broad agent paths first and human gates last because GitHub uses the last matching entry. Agent paths use ownerless entries to clear the default owner: naming `@schickling-assistant` would require an approval that the agent PR author cannot provide.
 
-The `main-branch-rules` ruleset requires code-owner review and otherwise requires zero approvals. GitHub cannot classify change kinds, so restricted rules remain code-owned. The profile document under `context/` stays with Johannes under the default rule, and the files that define and apply the code-owner gate stay with Johannes under the first rule. The reconcile job still runs tooling without a code owner; [#1701](https://github.com/livestorejs/livestore/issues/1701) tracks that. Workflows, the scripts and actions they run, and the genie generators in `.github/` stay with Johannes because they run with repository secrets, including the ruleset App key. Repository settings are unchanged.
+The `main-branch-rules` ruleset requires code-owner review and otherwise requires zero approvals. Ownerless-only changes therefore need no GitHub approval; required checks, resolved review threads, independent agent review, and merge authorization still apply. Human gates include the conservative executable closure of deployment, meeting/service-account, GitHub-write-token, npm/release, and App-key jobs. Re-owning the launcher, setup inputs, and imported tooling also contains part of the existing [#1701](https://github.com/livestorejs/livestore/issues/1701) gap; it is not full job isolation. Repository settings are unchanged.
+
+Grafana OTLP telemetry auth is explicitly excluded from that closure: ordinary test code can read and misuse the write-only token exported through `GITHUB_ENV`. This accepted low-impact exception does not apply to Netlify trace uploads: their same-job Playwright predecessors and runtime imports are retained. Published source outside the credential closure may change without Johannes reviewing each source PR; his release approval controls publication of the accumulated artifact, not per-change source review.
+
+Root `CHANGELOG.md` stays delegated without an executable Markdown exception. The protected changelog page imports it with `?raw` and renders text through the same Markdown processor configuration as the docs, using the processor's heading metadata for the table of contents. Frontmatter is never compiled as an Astro module or used to select a layout. The closure audit rejects non-`?raw` Markdown imports from credentialed build roots.
+
+Run `node .github/scripts/check-codeowners.mjs` for sample precedence and `bun .github/scripts/check-credential-closure.mjs` for the credentialed-job inventory and transitive runtime import audit. The latter parses workflow YAML and JS/TS (including Astro/MDX module blocks), omits explicit type-only imports, and resolves workspace exports without executing source. It combines that graph with conservative dynamic discovery surfaces (Nix, setup generators, docs/MDX/plugins, example builds, and Playwright job predecessors). Raw Markdown/snippet assets and verified npm tarballs are data; ordinary Markdown module imports are rejected because their frontmatter can import executable layouts. External member code is bounded by protected pins. New dynamic execution mechanisms require review of the audit roots.
 
 The existing [collaboration flow](./spec.md) and [changelog guide](../../../contributor-docs/changelog-guide.md) still apply; delegation does not waive contribution checks or release-ledger requirements.
