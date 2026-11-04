@@ -2,13 +2,25 @@ import path from 'node:path'
 
 import { UnknownError } from '@livestore/common'
 import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
-import { Effect, FetchHttpClient, Layer, Logger, OtelTracer, References, Schema } from '@livestore/utils/effect'
+import { Effect, FileSystem, Layer, Logger, OtelTracer, References, Schema } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 
-import { downloadChromeExtension } from './download-chrome-extension.ts'
-
 const cwd = path.resolve(import.meta.dirname, '..')
+
+const prepareDevtools = (outDir: string) =>
+  Effect.gen(function* () {
+    yield* cmd([
+      'bun',
+      path.resolve(cwd, '../../scripts/src/commands/devtools-artifact.ts'),
+      'prepare-integration',
+      '--manifest',
+      path.resolve(cwd, '../../release/devtools-artifact.json'),
+      '--out-dir',
+      outDir,
+    ])
+    return { viteEntry: path.join(outDir, 'package/dist/plugin.js'), chromeDir: path.join(outDir, 'chrome') }
+  }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 
 export const modeOption = Cli.Flag.Literals('mode', ['headless', 'ui', 'dev-server']).pipe(
   Cli.Flag.withDefault('headless'),
@@ -24,10 +36,12 @@ type IntegrationTestOptions = {
 const viteDevServer = ({
   useWorkspacePort,
   useDevtoolsLocalPreview,
+  devtoolsViteEntry,
 }: {
   app: 'todomvc'
   useWorkspacePort: boolean
   useDevtoolsLocalPreview: boolean
+  devtoolsViteEntry?: string
 }) =>
   Effect.gen(function* () {
     const devPort =
@@ -40,6 +54,7 @@ const viteDevServer = ({
           './devtools/todomvc/livestore/schema.ts',
         ).pipe(Effect.orDie),
         LSD_DEVTOOLS_LOCAL_PREVIEW: useDevtoolsLocalPreview === true ? '1' : undefined,
+        LIVESTORE_DEVTOOLS_VITE_ENTRY: devtoolsViteEntry,
       },
     }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)), Effect.forkScoped)
 
@@ -118,13 +133,7 @@ export const setupDevtools = Cli.Command.make(
   'setup-devtools',
   {},
   Effect.fn(function* () {
-    const targetDir = LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
-
-    yield* downloadChromeExtension({
-      targetDir,
-    }).pipe(Effect.provide(Layer.mergeAll(FetchHttpClient.layer, PlatformNode.NodeServices.layer)))
-
-    yield* Effect.logInfo(`Chrome extension downloaded to ${targetDir}`)
+    yield* prepareDevtools(path.dirname(LIVESTORE_DEVTOOLS_CHROME_DIST_PATH))
   }, UnknownError.mapToUnknownError),
 )
 
@@ -133,10 +142,19 @@ export const runDevtoolsTest = Effect.fn('test:devtools')(function* ({
   localDevtoolsPreview,
 }: IntegrationTestOptions) {
   yield* Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    // Keep the extracted plugin beneath this workspace's node_modules so its external
+    // dependencies resolve through the same graph as the browser fixture.
+    const outDir = yield* fs.makeTempDirectoryScoped({
+      directory: path.join(cwd, 'node_modules'),
+      prefix: '.devtools-',
+    })
+    const artifact = yield* prepareDevtools(outDir)
     const { devPort } = yield* viteDevServer({
       app: 'todomvc',
       useWorkspacePort: mode === 'dev-server',
       useDevtoolsLocalPreview: localDevtoolsPreview,
+      devtoolsViteEntry: artifact.viteEntry,
     })
 
     const spanContext = yield* OtelTracer.currentOtelSpan.pipe(
@@ -157,6 +175,7 @@ export const runDevtoolsTest = Effect.fn('test:devtools')(function* ({
             PLAYWRIGHT_UI: mode === 'ui' ? '1' : '0',
             LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
             SPAN_CONTEXT_JSON: spanContext,
+            LIVESTORE_DEVTOOLS_CHROME_DIST_PATH: artifact.chromeDir,
           },
         },
       ).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))

@@ -21,6 +21,10 @@ Draft.
 | Perf (eventlog)           | Event-streaming measurements                                                    | `tests/perf-eventlog/`   | Playwright                | package `test` script                 | —                                                                     |
 | Examples-as-tests         | Examples still build and run                                                    | `examples/`              | per-example `test` script | `mono examples test`                  | not a required gate                                                   |
 
+The DevTools browser cell is blocking. It exercises the workspace runtime against
+the manifest-selected Vite tarball and Chrome ZIP, verified through the release
+artifact verifier rather than independently selected published package versions.
+
 ## Lane / CI Correspondence
 
 Each lane maps 1:1 to its CI job (LS.SYS.VER.LANE-R03); the table above matches
