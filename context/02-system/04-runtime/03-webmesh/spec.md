@@ -40,8 +40,8 @@ The delivery contracts below are stable per kind (LS.SYS.RT.MESH-R01):
   (`remainingHops`). Afterwards the two nodes talk over the acknowledged
   port; the mesh is out of the loop. The port buffers incoming events eagerly.
   An internal ping/pong exchange establishes readiness, awaiting acknowledgements
-  without a short probe deadline or duplicate sends. Channel creation remains
-  bounded by the caller's timeout and scope. Internal ping/pong messages are
+  without a short probe deadline or duplicate sends. A non-answering peer waits
+  until caller interruption or scope closure. Internal ping/pong messages are
   consumed by the transport and never reach application listeners, including
   messages arriving after readiness. Used session ⇄ leader where the platform allows.
 - **Proxy** — hop-routed `ProxyChannelPayload` packets; each payload is

@@ -274,7 +274,7 @@ export const makeDirectChannelInternal = ({
             // MessagePort events are buffered eagerly and sends wait for an ack. A slow peer
             // is not a lost ping: retrying on a short deadline duplicates protocol messages
             // and can fail an otherwise healthy handshake (https://github.com/livestorejs/livestore/issues/262).
-            // The caller's channel-creation timeout/scope bounds this wait.
+            // This wait ends on peer readiness, caller interruption, or scope closure, not a local deadline.
             yield* channel.send(MeshSchema.DirectChannelPing.make({}))
 
             yield* Fiber.join(waitForPongFiber)
