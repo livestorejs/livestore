@@ -28,17 +28,22 @@ consumers above still see at-least-once delivery per channel kind below.
 
 The delivery contracts below are stable per kind (LS.SYS.RT.MESH-R01):
 
-| Kind | Negotiation | Delivery | Transferables |
-| --- | --- | --- | --- |
-| Direct | request flooded, `MessagePort` returned via reverse route | raw port, no per-message ack | yes |
-| Proxy | request/response handshake → `combinedChannelId` | every payload individually acked | no |
-| Broadcast | none (`target: '-'`) | fire-and-forget, no ack, no buffering for late joiners | no |
+| Kind      | Negotiation                                               | Delivery                                               | Transferables |
+| --------- | --------------------------------------------------------- | ------------------------------------------------------ | ------------- |
+| Direct    | request flooded, `MessagePort` returned via reverse route | acknowledged port messages                             | yes           |
+| Proxy     | request/response handshake → `combinedChannelId`          | every payload individually acked                       | no            |
+| Broadcast | none (`target: '-'`)                                      | fire-and-forget, no ack, no buffering for late joiners | no            |
 
 - **Direct** — a `DirectChannelRequest` floods across existing edges; the
   target answers with a `DirectChannelResponseSuccess` carrying the actual
   `MessagePort`, which travels back along the exact reverse route
-  (`remainingHops`). Afterwards the two nodes talk over the raw port; the
-  mesh is out of the loop. Used session ⇄ leader where the platform allows.
+  (`remainingHops`). Afterwards the two nodes talk over the acknowledged
+  port; the mesh is out of the loop. The port buffers incoming events eagerly.
+  An internal ping/pong exchange establishes readiness, awaiting acknowledgements
+  without a short probe deadline or duplicate sends. Channel creation remains
+  bounded by the caller's timeout and scope. Internal ping/pong messages are
+  consumed by the transport and never reach application listeners, including
+  messages arriving after readiness. Used session ⇄ leader where the platform allows.
 - **Proxy** — hop-routed `ProxyChannelPayload` packets; each payload is
   individually acked (`ProxyChannelPayloadAck`). The receiver forks the ack
   send (fire-and-forget) so a slow ack cannot block delivery to the listen
