@@ -2,7 +2,7 @@ import { expect } from 'vitest'
 
 import { IS_CI, omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Deferred, Effect, Exit, Fiber, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
+import { Deferred, Effect, Exit, Fiber, Queue, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
 
 import { DirectChannelRequest, Packet } from './mesh-schema.ts'
 import type { MeshNode } from './node.ts'
@@ -1289,67 +1289,44 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(Vitest.withTestCtx(test)),
     )
 
-    // TODO provide a way to allow for reconnecting in the `listenForChannel` case
-    Vitest.live.skip('reconnect', (test) =>
+    Vitest.live('re-register a listener after graceful channel shutdown and frame reload', (test) =>
       Effect.gen(function* () {
-        const nodeA = yield* makeMeshNode('A')
-
-        const mode = 'direct' as 'proxy' | 'direct'
-        const connect = mode === 'direct' ? connectNodesViaMessageChannel : connectNodesViaBroadcastChannel
-
-        const nodeACode = Effect.gen(function* () {
-          const channelAToB = yield* createChannel(nodeA, 'B', { channelName: 'test', mode })
-          yield* channelAToB.send({ message: 'A1' })
-          expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'B1' })
-        })
-
-        const nodeBCode = Effect.gen(function* () {
-          const nodeB = yield* makeMeshNode('B')
-          yield* connect(nodeA, nodeB)
-
-          yield* nodeB.listenForChannel.pipe(
-            Stream.filter((_) => _.channelName === 'test' && _.source === 'A' && _.mode === mode),
-            Stream.tap(
-              Effect.fn(function* (channelInfo) {
-                const channel = yield* createChannel(nodeB, channelInfo.source, {
-                  channelName: channelInfo.channelName,
-                  mode,
-                })
-                yield* channel.send({ message: 'B1' })
-                expect(yield* getFirstMessage(channel)).toEqual({ message: 'A1' })
-              }),
-            ),
-            Stream.take(1),
-            Stream.runDrain,
-          )
-        }).pipe(
-          Effect.withSpan('nodeBCode:gen1'),
-          Effect.andThen(
-            Effect.gen(function* () {
-              const nodeB = yield* makeMeshNode('B')
-              yield* connect(nodeA, nodeB, { replaceIfExists: true })
-
-              yield* nodeB.listenForChannel.pipe(
-                Stream.filter((_) => _.channelName === 'test' && _.source === 'A' && _.mode === mode),
-                Stream.tap(
-                  Effect.fn(function* (channelInfo) {
-                    const channel = yield* createChannel(nodeB, channelInfo.source, {
-                      channelName: channelInfo.channelName,
-                      mode,
-                    })
-                    console.log('recreated channel', channel)
-                    // yield* channel.send({ message: 'B1' })
-                    // expect(yield* getFirstMessage(channel)).toEqual({ message: 'A1' })
-                  }),
-                ),
-                Stream.take(1),
-                Stream.runDrain,
-              )
-            }).pipe(Effect.withSpan('nodeBCode:gen2')),
-          ),
+        const app = yield* makeMeshNode('app-session')
+        const worker = yield* makeMeshNode('extension-worker')
+        yield* connectNodesViaMessageChannel(app, worker)
+        const accepted = yield* Queue.unbounded<WebChannel.WebChannel<typeof ExampleSchema.Type, typeof ExampleSchema.Type>>()
+        yield* app.listenForChannel.pipe(
+          Stream.tap(({ source }) => createChannel(app, source).pipe(
+            Effect.tap((channel) => Queue.offer(accepted, channel)),
+            Effect.forkScoped,
+          )),
+          Stream.runDrain,
+          Effect.forkScoped,
         )
+        const oldFrameScope = yield* Scope.make()
+        const oldFrame = yield* makeMeshNode('devtools-frame').pipe(Scope.provide(oldFrameScope))
+        yield* connectNodesViaMessageChannel(worker, oldFrame).pipe(Scope.provide(oldFrameScope))
+        yield* createChannel(oldFrame, app.nodeName).pipe(Scope.provide(oldFrameScope))
+        const oldAppChannel = yield* Queue.take(accepted)
 
-        yield* Effect.all([nodeACode, nodeBCode], { concurrency: 'unbounded' })
+        // DevTools sends Disconnect before unloading. The app shuts down this wrapper,
+        // but keeps the mesh node and the inbound channel listener alive.
+        yield* oldAppChannel.shutdown
+        expect(app.hasChannel({ target: oldFrame.nodeName, channelName: 'test' })).toBe(false)
+        yield* oldAppChannel.listen.pipe(Stream.runDrain)
+        yield* Scope.close(oldFrameScope, Exit.void)
+
+        const frame = yield* makeMeshNode('devtools-frame')
+        yield* connectNodesViaMessageChannel(worker, frame, { replaceIfExists: true })
+        const frameChannel = yield* createChannel(frame, app.nodeName).pipe(
+          Effect.timeout(500),
+          Effect.retry({ times: 1 }),
+        )
+        const appChannel = yield* Queue.take(accepted)
+        yield* frameChannel.send({ message: 'after reload' })
+        expect(yield* getFirstMessage(appChannel)).toEqual({ message: 'after reload' })
+        yield* appChannel.send({ message: 'responder re-registered' })
+        expect(yield* getFirstMessage(frameChannel)).toEqual({ message: 'responder re-registered' })
       }).pipe(Vitest.withTestCtx(test)),
     )
 

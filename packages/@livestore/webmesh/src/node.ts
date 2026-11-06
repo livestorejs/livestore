@@ -164,6 +164,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
     >()
 
     const channelRequestsQueue = yield* Effect.acquireRelease(Queue.unbounded<ListenForChannelResult>(), Queue.shutdown)
+    const seenChannelRequests = new Set<string>()
 
     type RequestId = string
     const topologyRequestsMap = new Map<RequestId, Map<MeshNodeName, Set<MeshNodeName>>>()
@@ -484,7 +485,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       closeExisting = false,
       simulation,
     }) =>
-      Effect.gen(function* () {
+      Effect.scopeWithCloseable((scope) => Effect.gen(function* () {
         const schema = WebChannel.mapSchema(inputSchema)
         const channelKey = `target:${target}, channelName:${channelName}` satisfies ChannelKey
 
@@ -493,7 +494,6 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           if (existingChannel !== undefined) {
             if (closeExisting === true) {
               yield* existingChannel.shutdown
-              channelMap.delete(channelKey)
             } else {
               shouldNeverHappen(`Channel ${channelKey} already exists`, existingChannel)
             }
@@ -510,7 +510,12 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
         const channelQueue = channelMap.get(channelKey)!.queue as Queue.Queue<any>
 
-        yield* Effect.addFinalizer(() => Effect.sync(() => channelMap.delete(channelKey)))
+        yield* Effect.addFinalizer(() => Effect.sync(() => {
+          if (channelMap.get(channelKey)?.queue === channelQueue) {
+            channelMap.delete(channelKey)
+            seenChannelRequests.delete(`${channelName}:${target}:${mode}`)
+          }
+        }).pipe(Effect.andThen(Queue.shutdown(channelQueue))))
 
         if (mode === 'direct') {
           const incomingPacketsQueue = yield* Effect.acquireRelease(Queue.unbounded<any>(), Queue.shutdown)
@@ -539,11 +544,12 @@ export const makeMeshNode = <TName extends MeshNodeName>(
             checkTransferableEdges,
           })
 
-          channelMap.set(channelKey, { queue: channelQueue, debugInfo: { channel: webChannel, target } })
+          const channel = { ...webChannel, shutdown: Scope.close(scope, Exit.void) }
+          channelMap.set(channelKey, { queue: channelQueue, debugInfo: { channel, target } })
 
           yield* Deferred.await(initialEdgeDeferred)
 
-          return webChannel
+          return channel
         } else {
           const channel = yield* makeProxyChannel({
             nodeName,
@@ -556,11 +562,12 @@ export const makeMeshNode = <TName extends MeshNodeName>(
             ...(simulation !== undefined ? { simulation } : {}),
           })
 
-          channelMap.set(channelKey, { queue: channelQueue, debugInfo: { channel, target } })
+          const ownedChannel = { ...channel, shutdown: Scope.close(scope, Exit.void) }
+          channelMap.set(channelKey, { queue: channelQueue, debugInfo: { channel: ownedChannel, target } })
 
-          return channel
+          return ownedChannel
         }
-      }).pipe(
+      }).pipe(Effect.onExit((exit) => Exit.isFailure(exit) ? Scope.close(scope, exit) : Effect.void))).pipe(
         // Effect.timeout(timeout),
         Effect.withSpanScoped(`makeChannel:${nodeName}→${target}(${channelName})`, {
           attributes: { target, channelName, mode, timeout },
@@ -569,7 +576,6 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       )
 
     // TODO consider supporting multiple listeners
-    // TODO also provide a way to allow for reconnects
     let listenAlreadyStarted = false
     const listenForChannel: MeshNode['listenForChannel'] = Stream.suspend(() => {
       if (listenAlreadyStarted === true) {
@@ -578,16 +584,14 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       listenAlreadyStarted = true
 
       const hash = (res: ListenForChannelResult) => `${res.channelName}:${res.source}:${res.mode}`
-      type HashedListenForChannelResult = string
-      const seen = new Set<HashedListenForChannelResult>()
 
       return Stream.fromQueue(channelRequestsQueue).pipe(
         Stream.filter((res) => {
           const hashed = hash(res)
-          if (seen.has(hashed) === true) {
+          if (seenChannelRequests.has(hashed) === true) {
             return false
           }
-          seen.add(hashed)
+          seenChannelRequests.add(hashed)
           return true
         }),
       )

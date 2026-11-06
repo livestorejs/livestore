@@ -52,7 +52,7 @@ export const makeDirectChannel = ({
       let previousChannelVersion = 0
       let minimumChannelVersion = 1
 
-      const listenQueue = yield* Queue.unbounded<any>()
+      const listenQueue = yield* Effect.acquireRelease(Queue.unbounded<any>(), Queue.shutdown)
       const sendQueue = yield* TxQueue.unbounded<[msg: any, deferred: Deferred.Deferred<void>]>()
 
       const initialEdgeDeferred = yield* Deferred.make<void>()

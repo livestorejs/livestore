@@ -15,6 +15,7 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 - **DevTools:** Direct-channel startup now waits for slow peers without failing a session after short ping retries. A non-answering peer waits until caller interruption or scope closure. Internal handshake messages no longer reach application listeners ([#262](https://github.com/livestorejs/livestore/issues/262)).
 - **DevTools:** Direct-channel handshakes keep processing mesh control requests while waiting for port readiness, so reloading a peer can replace an abandoned handshake instead of leaving the panel stuck connecting. Reconnecting instances align directly with the peer's channel version instead of rebuilding every skipped generation.
+- **DevTools:** Gracefully closed session channels release their responder registration, allowing a reloaded panel to connect again without restarting the app.
 - **DevTools:** DevTools no longer requires a sponsor license ([#1511](https://github.com/livestorejs/livestore/issues/1511)).
 - **DevTools:** Fixed web sessions getting stuck at "Connecting to session" by keeping worker connections alive until the session disconnects ([#1709](https://github.com/livestorejs/livestore/pull/1709)).
 - **State storage:** Rebases roll back state through a materialization journal table instead of SQLite changesets carried in event metadata. Because the state system tables changed, existing state databases are rebuilt from the eventlog once after upgrading ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
