@@ -31,7 +31,7 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 For maintainers and contributors:
 
 - **DevTools tests:** Persisted multi-tab fixtures use the adapter's shared client identity,
-  while in-memory fixtures assert independent databases and leaders. The TodoMVC
+  while in-memory fixtures assert independent databases and reload behavior. The TodoMVC
   fixture keeps one store registry per document so aborted route renders cannot
   boot duplicate stores with the same DevTools mesh node IDs.
 - **Test tooling:** Extension-backed Playwright launches preserve caller-supplied

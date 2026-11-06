@@ -109,8 +109,6 @@ const makeTabPair = (
     usedPages.add(devtools)
 
     const liveStoreDevtools = yield* getLiveStoreDevtoolsFrame(devtools, `${tabName}-devtools`)
-    // Finish booting this app before a subsequent tab participates in leader election.
-    yield* Effect.tryPromise(() => page.locator('.new-todo').waitFor({ timeout: 10_000 }))
 
     return {
       page,
@@ -312,6 +310,9 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
           'tab-1',
           adapter,
         )
+        // Finish the first fixture boot before the second tab participates in leader election.
+        // Keep this fixture-specific wait out of makeTabPair, which also opens pages without LiveStore.
+        yield* Effect.tryPromise(() => tab1.page.locator('.new-todo').waitFor({ timeout: 10_000 }))
         const tab2 = yield* makeTabPair(
           `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
           'tab-2',
