@@ -44,7 +44,7 @@ const makeTabPair = (
   url: string,
   tabName: string,
   adapter: AdapterKind,
-  options?: { appVersionOverride?: string; appDevtoolsProtocolVersionOverride?: number },
+  options?: { appVersionOverride?: string; appDevtoolsProtocolVersionOverride?: number; expectLiveStore?: boolean },
 ) =>
   Effect.gen(function* () {
     const { browserContext } = yield* Playwright.BrowserContext
@@ -109,6 +109,11 @@ const makeTabPair = (
     usedPages.add(devtools)
 
     const liveStoreDevtools = yield* getLiveStoreDevtoolsFrame(devtools, `${tabName}-devtools`)
+    // Each fixture must finish booting before callers inspect its store identity.
+    // Pages intentionally lacking LiveStore opt out explicitly.
+    if (options?.expectLiveStore !== false) {
+      yield* Effect.tryPromise(() => page.locator('.new-todo').waitFor({ timeout: 10_000 }))
+    }
 
     return {
       page,
@@ -310,9 +315,6 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
           'tab-1',
           adapter,
         )
-        // Finish the first fixture boot before the second tab participates in leader election.
-        // Keep this fixture-specific wait out of makeTabPair, which also opens pages without LiveStore.
-        yield* Effect.tryPromise(() => tab1.page.locator('.new-todo').waitFor({ timeout: 10_000 }))
         const tab2 = yield* makeTabPair(
           `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
           'tab-2',
@@ -517,6 +519,7 @@ test(
         `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/no-livestore`,
         'tab-1',
         'inmemory',
+        { expectLiveStore: false },
       )
 
       yield* Effect.tryPromise(async () => {
