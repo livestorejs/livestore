@@ -1,7 +1,7 @@
 import React from 'react'
 
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import type { RegistryStoreOptions, Store, SyncStatus } from '@livestore/livestore'
+import type { RegistryStoreOptions, Store, StoreRegistry, SyncStatus } from '@livestore/livestore'
 import type { Schema } from '@livestore/utils/effect'
 
 import { useStoreRegistry } from './StoreRegistryContext.tsx'
@@ -63,20 +63,26 @@ export const useStore = <
 ): Store<TSchema, TContext> & ReactApi => {
   const storeRegistry = useStoreRegistry()
 
-  // Called on every render (intentionally not memoized). For already-loaded stores this returns
-  // the Store synchronously, so React.use() is skipped entirely. Caching the initial Promise via
-  // useMemo would cause React.use() to be called with a resolved Promise on subsequent renders,
-  // which blocks React transitions from committing.
-  const storeOrPromise = storeRegistry.getOrLoadPromise(options)
+  const pending = React.useRef<
+    { registry: StoreRegistry; storeId: string; promise: Promise<Store<TSchema, TContext>> } | undefined
+  >(undefined)
+  const previous = pending.current
+  const storeOrPromise =
+    previous?.registry === storeRegistry && previous.storeId === options.storeId
+      ? previous.promise
+      : storeRegistry.getOrLoadPromise(options)
 
+  if (storeOrPromise instanceof Promise && previous?.promise !== storeOrPromise) {
+    pending.current = { registry: storeRegistry, storeId: options.storeId, promise: storeOrPromise }
+  }
+  // A suspended component can be replayed after the registry already has a synchronous Store.
+  // Still unwrap its original Promise: React.use restores the mount dispatcher for later hooks.
   const store = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
+  // Only the suspended attempt needs the Promise. Keeping it after a successful render would
+  // make React.use run on mounted transitions, preventing useActionState updates from committing.
+  pending.current = undefined
 
-  // NOTE: retain() must be declared AFTER the React.use() call above. When React.use() suspends
-  // the component, any hooks declared before it get committed while hooks after the suspension
-  // point (including those in the caller) don't. On re-render when the store resolves synchronously,
-  // those late hooks appear for the first time, causing a hook-order violation in strict mode.
-  // By placing useEffect after React.use(), no effect hooks are committed during suspension,
-  // so React treats all effects as fresh mounts on the first successful render.
+  // Retain only after the suspension point, once this render has obtained the store.
   //
   // retain() is called in useEffect (after render), while getOrLoadPromise() is called during
   // render. This creates a timing gap where with very short unusedCacheTime values (e.g., 0),

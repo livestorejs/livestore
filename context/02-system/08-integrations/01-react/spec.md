@@ -11,13 +11,13 @@ Draft.
 
 ## Surface
 
-| Hook / export | File | Purpose |
-| --- | --- | --- |
-| `useStore` | `useStore.ts` | Acquire a store from the registry (suspense-aware boot) |
-| `useQuery` | `useQuery.ts` | Subscribe to any queryable; synchronous first read |
-| `useClientDocument` | `useClientDocument.ts` | Read/update a client document like local state |
-| `useSyncStatus` | `useSyncStatus.ts` | Observe sync/network status |
-| `StoreRegistryContext` | `StoreRegistryContext.tsx` | Scope store resolution per subtree |
+| Hook / export          | File                       | Purpose                                                 |
+| ---------------------- | -------------------------- | ------------------------------------------------------- |
+| `useStore`             | `useStore.ts`              | Acquire a store from the registry (suspense-aware boot) |
+| `useQuery`             | `useQuery.ts`              | Subscribe to any queryable; synchronous first read      |
+| `useClientDocument`    | `useClientDocument.ts`     | Read/update a client document like local state          |
+| `useSyncStatus`        | `useSyncStatus.ts`         | Observe sync/network status                             |
+| `StoreRegistryContext` | `StoreRegistryContext.tsx` | Scope store resolution per subtree                      |
 
 `useRcResource` (`useRcResource.ts`) implements the reference-counted
 resource pattern behind LS.SYS.INT.REACT-R03: caches are bucketed in a
@@ -53,22 +53,25 @@ during render (`client-document-get-query.ts:47-53`; LS.SYS.INT-R06).
 
 ## Store Acquisition
 
-`useStore` calls `storeRegistry.getOrLoadPromise` on every render,
-deliberately un-memoized so React transitions stay committable; `retain()`
-runs in `useEffect` *after* `React.use` to keep hook order stable across
-suspensions, accepting a documented timing-gap race when `unusedCacheTime`
-is below ~100ms (issue #916). The returned store is wrapped by
+`useStore` requests the store from the registry on mounted renders rather
+than memoizing its initial promise, so React transitions stay committable.
+`retain()` runs in `useEffect` _after_ the suspension point, accepting a
+documented timing-gap race when `unusedCacheTime` is below ~100ms (issue
+#916). The returned store is wrapped by
 `withReactApi`, which attaches `useQuery`/`useClientDocument`/
 `useSyncStatus` as store methods.
 
 ## Suspense Contract
 
-Only store loading suspends. `useStore` calls
-`storeRegistry.getOrLoadPromise` on every render: an unloaded store returns
-a promise consumed via `React.use` (suspending the component); a cached
-store returns synchronously and `React.use` is skipped entirely (this also
-keeps React transitions committable). Store loading errors and calling
-outside `<StoreRegistryProvider>` throw (error-boundary path). Query hooks
+Only store loading suspends. An unloaded store returns a promise consumed
+via `React.use`. A ref keyed by registry and store ID keeps that promise
+through suspended component replay, even if the registry has finished
+loading: consuming it lets React restore the mount dispatcher before later
+hooks run. A successful render clears the ref. Subsequent mounted renders
+use the synchronous cached store without `React.use`, keeping transitions
+committable. Changing the registry or store ID does not reuse another
+store's pending promise. Loading errors and calling outside
+`<StoreRegistryProvider>` throw (error-boundary path). Query hooks
 (`useQuery`, `useClientDocument`, `useSyncStatus`) never suspend: they
 compute the initial result synchronously against the loaded store and
 subscribe for updates.

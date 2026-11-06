@@ -24,6 +24,7 @@ import { PlatformNode } from '@livestore/utils/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 
 import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.ts'
+import { makeDevtoolsFixtureUrl } from './fixture-url.ts'
 import { checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
 
 const appStoreId = 'app-root'
@@ -92,8 +93,7 @@ const makeTabPair = (
 
     usedPages.add(page)
 
-    const sep = url.includes('?') === true ? '&' : '?'
-    yield* Effect.tryPromise(() => page.goto(`${url}${sep}sessionId=${tabName}&clientId=${tabName}&adapter=${adapter}`))
+    yield* Effect.tryPromise(() => page.goto(makeDevtoolsFixtureUrl(url, tabName, adapter)))
 
     const openPages = browserContext.pages().map((_) => _.url())
     const devtools =
@@ -109,6 +109,8 @@ const makeTabPair = (
     usedPages.add(devtools)
 
     const liveStoreDevtools = yield* getLiveStoreDevtoolsFrame(devtools, `${tabName}-devtools`)
+    // Finish booting this app before a subsequent tab participates in leader election.
+    yield* Effect.tryPromise(() => page.locator('.new-todo').waitFor({ timeout: 10_000 }))
 
     return {
       page,
@@ -317,6 +319,26 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
         )
 
         yield* Effect.tryPromise(async () => {
+          const identities = await Promise.all(
+            [tab1, tab2].map((tab) =>
+              tab.page.evaluate((storeId) => {
+                const store = globalThis.__debugLiveStore![storeId]!
+                return { clientId: store.clientId, sessionId: store.sessionId }
+              }, appStoreId),
+            ),
+          )
+          expect(identities[0]!.clientId === identities[1]!.clientId).toBe(adapter === 'persisted')
+          expect(identities[0]!.sessionId).not.toBe(identities[1]!.sessionId)
+
+          // Autoconnect chooses the first discovered origin-wide session, not necessarily this tab.
+          for (const [index, tab] of [tab1, tab2].entries()) {
+            const { clientId, sessionId } = identities[index]!
+            await tab.liveStoreDevtools.getByRole('button', { name: /Client session selector/ }).click()
+            await tab.liveStoreDevtools
+              .getByRole('option', { name: `${appStoreId}:${clientId}:${sessionId}:default`, exact: true })
+              .click()
+          }
+
           await tab1.page.focus('body')
 
           const el = tab1.page.locator('.new-todo').describe('tab-1:new-todo')
@@ -326,9 +348,18 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
           await el.press('Enter')
 
           await tab1.page.locator('.todo-list li label:text("Buy milk")').describe('tab-1:Buy milk').waitFor()
-          await tab2.page.locator('.todo-list li label:text("Buy milk")').describe('tab-2:Buy milk').waitFor()
+          if (adapter === 'persisted') {
+            await tab2.page.locator('.todo-list li label:text("Buy milk")').describe('tab-2:Buy milk').waitFor()
+          } else {
+            // In-memory tabs have separate databases and leaders, with no sync backend.
+            await expect(tab2.page.locator('.todo-list li')).toHaveCount(0)
+            await tab2.page.locator('.new-todo').fill('Buy eggs')
+            await tab2.page.locator('.new-todo').press('Enter')
+            await tab2.page.locator('.todo-list li label:text("Buy eggs")').waitFor()
+            await expect(tab1.page.locator('.todo-list li label:text("Buy eggs")')).toHaveCount(0)
+          }
 
-          const tables = ['uiState (2)', 'todos (1)']
+          const tables = [adapter === 'persisted' ? 'uiState (2)' : 'uiState (1)', 'todos (1)']
 
           await checkDevtoolsState({
             devtools: tab1.liveStoreDevtools,
@@ -338,14 +369,23 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
           await checkDevtoolsState({
             devtools: tab2.liveStoreDevtools,
             label: 'devtools-tab-2',
-            expect: { leader: false, alreadyLoaded: false, tables },
+            expect: { leader: adapter === 'inmemory', alreadyLoaded: false, tables },
           })
 
           await test.step('tab-1:reload', async () => {
             await tab1.page.reload()
           })
 
-          await tab1.page.locator('.todo-list li label:text("Buy milk")').describe('tab-1:Buy milk').waitFor()
+          if (adapter === 'persisted') {
+            await tab1.page.locator('.todo-list li label:text("Buy milk")').describe('tab-1:Buy milk').waitFor()
+          } else {
+            await tab1.page.locator('.new-todo').waitFor({ timeout: 10_000 })
+            await expect(tab1.page.locator('.todo-list li')).toHaveCount(0)
+            await tab1.page.locator('.new-todo').fill('Buy bread')
+            await tab1.page.locator('.new-todo').press('Enter')
+            await tab1.page.locator('.todo-list li label:text("Buy bread")').waitFor()
+            await tab2.page.locator('.todo-list li label:text("Buy eggs")').waitFor()
+          }
 
           await test.step('devtools-tab-2:reload', async () => {
             await tab2.devtools.reload()
@@ -354,11 +394,18 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
           tab2.liveStoreDevtools = await getLiveStoreDevtoolsFrame(tab2.devtools, 'devtools-tab-2').pipe(
             Effect.runPromise,
           )
+          await tab2.liveStoreDevtools.getByRole('button', { name: /Client session selector/ }).click()
+          await tab2.liveStoreDevtools
+            .getByRole('option', {
+              name: `${appStoreId}:${identities[1]!.clientId}:${identities[1]!.sessionId}:default`,
+              exact: true,
+            })
+            .click()
 
           await checkDevtoolsState({
             devtools: tab1.liveStoreDevtools,
             label: 'devtools-tab-1',
-            expect: { leader: false, alreadyLoaded: false, tables },
+            expect: { leader: adapter === 'inmemory', alreadyLoaded: false, tables },
           })
           await checkDevtoolsState({
             devtools: tab2.liveStoreDevtools,

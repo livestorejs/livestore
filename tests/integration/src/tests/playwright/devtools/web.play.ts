@@ -10,6 +10,7 @@ import * as Playwright from '@livestore/effect-playwright'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { type Scope, Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
 
+import { makeDevtoolsFixtureUrl } from './fixture-url.ts'
 import { checkConnectionRemainsActive, checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
 
 const usedPages = new Set<PW.Page>()
@@ -87,9 +88,7 @@ const makeTabPair = (
     usedPages.add(page)
     yield* Effect.addFinalizer(() => Effect.sync(() => usedPages.delete(page)))
 
-    yield* Effect.tryPromise(() =>
-      page.goto(`${url}/devtools/todomvc?sessionId=${tabName}&clientId=${tabName}&adapter=${adapter}`),
-    )
+    yield* Effect.tryPromise(() => page.goto(makeDevtoolsFixtureUrl(`${url}/devtools/todomvc`, tabName, adapter)))
 
     // Skip OTel span linking when testing DevTools protocol mismatch (app may not initialize properly)
     if (options?.appDevtoolsProtocolVersionOverride == null && options?.skipOtelSpanLink !== true) {
