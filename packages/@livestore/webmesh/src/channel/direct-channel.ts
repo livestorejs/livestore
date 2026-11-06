@@ -44,13 +44,15 @@ export const makeDirectChannel = ({
   incomingPacketsQueue,
   target,
   sendPacket,
-}: MakeDirectChannelArgs) =>
+  onReconnect,
+}: MakeDirectChannelArgs & { onReconnect?: Effect.Effect<void> }) =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {
       /** Only used to identify whether a source is the same instance to know when to reconnect */
       const sourceId = nanoid()
       let previousChannelVersion = 0
       let minimumChannelVersion = 1
+      let hasConnected = false
 
       const listenQueue = yield* Effect.acquireRelease(Queue.unbounded<any>(), Queue.shutdown)
       const sendQueue = yield* TxQueue.unbounded<[msg: any, deferred: Deferred.Deferred<void>]>()
@@ -163,6 +165,28 @@ export const makeDirectChannel = ({
         yield* Effect.spanEvent(`Connected#${channelVersion}`)
         debugInfo.isConnected = true
         debugInfo.innerChannelRef.current = channel
+        if (hasConnected === true && onReconnect !== undefined) yield* onReconnect
+        hasConnected = true
+
+        // MessagePorts do not notify us when a remote page/worker disappears.
+        // Probe newly available routes even while the old port looks connected:
+        // a same-name replacement must receive a request to register a responder.
+        yield* Stream.fromPubSub(newEdgeAvailablePubSub).pipe(
+          Stream.runForEach(() =>
+            sendPacket(
+              WebmeshSchema.DirectChannelRequest.make({
+                source: nodeName,
+                sourceId,
+                target,
+                channelName,
+                channelVersion,
+                hops: [],
+                reqId: undefined,
+              }),
+            ),
+          ),
+          Effect.forkIn(makeDirectChannelScope),
+        )
 
         yield* Deferred.succeed(initialEdgeDeferred, void 0)
 
