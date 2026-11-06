@@ -43,7 +43,9 @@ The delivery contracts below are stable per kind (LS.SYS.RT.MESH-R01):
   without a short probe deadline or duplicate sends. Port readiness waits run
   within the attempt scope without blocking the mesh control queue. A request
   from a replacement peer (`sourceId` changed) closes the abandoned attempt
-  even before establishment. Otherwise a non-answering peer waits until caller
+  even before establishment or version alignment. A higher peer version sets the
+  minimum version for the next attempt directly, rather than rebuilding each
+  skipped generation. Otherwise a non-answering peer waits until caller
   interruption or scope closure. Internal ping/pong messages are consumed by
   the transport and never reach application listeners, including messages
   arriving after readiness. Used session ⇄ leader where the platform allows.

@@ -51,11 +51,13 @@ export const makeDirectChannelInternal = ({
   channelVersion,
   scope,
   sourceId,
+  onHigherVersion,
 }: MakeDirectChannelArgs & {
   channelVersion: number
   /** We're passing in the closeable scope from the wrapping direct channel */
   scope: Scope.Closeable
   sourceId: string
+  onHigherVersion: (version: number) => void
 }): Effect.Effect<
   WebChannel.WebChannel<any, any>,
   typeof MeshSchema.DirectChannelResponseNoTransferables.Type,
@@ -125,12 +127,22 @@ export const makeDirectChannelInternal = ({
           return 'close'
         }
 
+        if (
+          packet._tag === 'DirectChannelRequest' &&
+          'otherSourceId' in channelState &&
+          packet.sourceId !== channelState.otherSourceId
+        ) {
+          // A peer can disappear before establishment, leaving an abandoned MessagePort.
+          yield* Effect.spanEvent(`force-new-channel`)
+          yield* Scope.close(scope, Exit.succeed('force-new-channel'))
+          return 'close'
+        }
         // If the other side has a higher version, we need to close this channel and
         // recreate it with the new version
         if (packet.channelVersion > channelVersion) {
           yield* Effect.spanEvent(`incoming packet has higher version (${packet.channelVersion}), closing channel`)
+          onHigherVersion(packet.channelVersion)
           yield* Scope.close(scope, Exit.succeed('higher-version-expected'))
-          // TODO include expected version in the error so the channel gets recreated with the new version
           return 'close'
         }
 
@@ -154,17 +166,6 @@ export const makeDirectChannelInternal = ({
           yield* sendPacket(newPacket)
 
           return
-        }
-
-        if (
-          packet._tag === 'DirectChannelRequest' &&
-          'otherSourceId' in channelState &&
-          packet.sourceId !== channelState.otherSourceId
-        ) {
-          // A peer can disappear before establishment, leaving an abandoned MessagePort.
-          yield* Effect.spanEvent(`force-new-channel`)
-          yield* Scope.close(scope, Exit.succeed('force-new-channel'))
-          return 'close'
         }
 
         switch (packet._tag) {

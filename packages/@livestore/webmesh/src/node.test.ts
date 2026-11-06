@@ -286,6 +286,38 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         { arbitrary: { runs: 20 } },
       )
 
+      Vitest.live('reconnect directly at the peer channel version', (test) =>
+        Effect.gen(function* () {
+          const nodeB = yield* makeMeshNode('B')
+          const ports = new MessageChannel()
+          const peer = yield* WebChannel.messagePortChannel({ port: ports.port1, schema: Packet })
+          const edge = yield* WebChannel.messagePortChannel({ port: ports.port2, schema: Packet })
+          yield* nodeB.addEdge({ target: 'A', edgeChannel: edge })
+          yield* createChannel(nodeB, 'A').pipe(Effect.forkScoped)
+          const nextRequest = peer.listen.pipe(
+            Stream.mapEffect(Effect.fromResult),
+            Stream.filter(Schema.is(DirectChannelRequest)),
+            Stream.take(1),
+            Stream.runCollect,
+            Effect.map(([request]) => request!),
+          )
+          expect((yield* nextRequest).channelVersion).toBe(1)
+          yield* peer.send(
+            DirectChannelRequest.make({
+              source: 'A',
+              sourceId: 'existing-peer',
+              target: 'B',
+              channelName: 'test',
+              channelVersion: 10000,
+              hops: [],
+              reqId: undefined,
+            }),
+          )
+          // A reloaded instance must align in one attempt, not rebuild every old generation.
+          expect((yield* nextRequest).channelVersion).toBe(10000)
+        }).pipe(Vitest.withTestCtx(test)),
+      )
+
       Vitest.live('reconnect when a peer reloads before completing the direct handshake', (test) =>
         Effect.gen(function* () {
           const nodeB = yield* makeMeshNode('B')

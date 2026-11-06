@@ -49,6 +49,8 @@ export const makeDirectChannel = ({
     Effect.gen(function* () {
       /** Only used to identify whether a source is the same instance to know when to reconnect */
       const sourceId = nanoid()
+      let previousChannelVersion = 0
+      let minimumChannelVersion = 1
 
       const listenQueue = yield* Queue.unbounded<any>()
       const sendQueue = yield* TxQueue.unbounded<[msg: any, deferred: Deferred.Deferred<void>]>()
@@ -73,7 +75,8 @@ export const makeDirectChannel = ({
 
         while (true) {
           debugInfo.connectCounter++
-          const channelVersion = debugInfo.connectCounter
+          const channelVersion = Math.max(previousChannelVersion + 1, minimumChannelVersion)
+          previousChannelVersion = channelVersion
 
           yield* Effect.spanEvent(`Connecting#${channelVersion}`)
 
@@ -116,6 +119,9 @@ export const makeDirectChannel = ({
             newEdgeAvailablePubSub,
             sendPacket,
             scope: makeDirectChannelScope,
+            onHigherVersion: (version) => {
+              minimumChannelVersion = Math.max(minimumChannelVersion, version)
+            },
           }).pipe(
             Scope.provide(makeDirectChannelScope),
             Effect.forkIn(makeDirectChannelScope),
