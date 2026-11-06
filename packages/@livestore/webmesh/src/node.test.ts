@@ -364,7 +364,10 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           const oldFrame = yield* makeMeshNode('devtools-frame').pipe(Scope.provide(oldFrameScope))
           yield* connectNodesViaMessageChannel(worker, oldFrame).pipe(Scope.provide(oldFrameScope))
           const [appChannel] = yield* Effect.all(
-            [createChannel(app, oldFrame.nodeName), createChannel(oldFrame, app.nodeName).pipe(Scope.provide(oldFrameScope))],
+            [
+              createChannel(app, oldFrame.nodeName),
+              createChannel(oldFrame, app.nodeName).pipe(Scope.provide(oldFrameScope)),
+            ],
             { concurrency: 'unbounded' },
           )
           yield* Scope.close(oldFrameScope, Exit.void)
@@ -381,14 +384,17 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             replaceIfExists: true,
             edgeChannel: {
               ...workerEdge,
-              send: (packet) => Effect.gen(function* () {
-                transitions.push(`worker→frame ${packet._tag} ${'channelVersion' in packet ? packet.channelVersion : ''}`)
-                if (delayFirstRequest && packet._tag === 'DirectChannelRequest') {
-                  delayFirstRequest = false
-                  yield* Deferred.await(timedOut)
-                }
-                yield* workerEdge.send(packet)
-              }),
+              send: (packet) =>
+                Effect.gen(function* () {
+                  transitions.push(
+                    `worker→frame ${packet._tag} ${'channelVersion' in packet ? packet.channelVersion : ''}`,
+                  )
+                  if (delayFirstRequest === true && packet._tag === 'DirectChannelRequest') {
+                    delayFirstRequest = false
+                    yield* Deferred.await(timedOut)
+                  }
+                  yield* workerEdge.send(packet)
+                }),
             },
           })
           const firstRequestSent = yield* Deferred.make<void>()
@@ -396,32 +402,41 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             target: worker.nodeName,
             edgeChannel: {
               ...frameEdge,
-              send: (packet) => frameEdge.send(packet).pipe(
-                Effect.tap(() => packet._tag === 'DirectChannelRequest' ? Deferred.succeed(firstRequestSent, void 0) : Effect.void),
-              ),
+              send: (packet) =>
+                frameEdge
+                  .send(packet)
+                  .pipe(
+                    Effect.tap(() =>
+                      packet._tag === 'DirectChannelRequest' ? Deferred.succeed(firstRequestSent, void 0) : Effect.void,
+                    ),
+                  ),
             },
           })
-          const abandonedConnect = yield* frame.makeChannel({
-            target: app.nodeName,
-            channelName: 'test',
-            schema: ExampleSchema,
-            mode: 'direct',
-            closeExisting: true,
-          }).pipe(Effect.timeout(500), Effect.retry({}), Effect.scoped, Effect.forkScoped)
+          const abandonedConnect = yield* frame
+            .makeChannel({
+              target: app.nodeName,
+              channelName: 'test',
+              schema: ExampleSchema,
+              mode: 'direct',
+              closeExisting: true,
+            })
+            .pipe(Effect.timeout(500), Effect.retry({}), Effect.scoped, Effect.forkScoped)
           yield* Deferred.await(firstRequestSent)
           yield* Fiber.interrupt(abandonedConnect)
-          const frameChannel = yield* frame.makeChannel({
-            target: app.nodeName,
-            channelName: 'test',
-            schema: ExampleSchema,
-            mode: 'direct',
-            closeExisting: true,
-          }).pipe(
-            Effect.timeout(500),
-            Effect.tapError(() => Deferred.succeed(timedOut, void 0)),
-            Effect.retry({ times: 1 }),
-            Effect.tapCause(() => Effect.log(transitions)),
-          )
+          const frameChannel = yield* frame
+            .makeChannel({
+              target: app.nodeName,
+              channelName: 'test',
+              schema: ExampleSchema,
+              mode: 'direct',
+              closeExisting: true,
+            })
+            .pipe(
+              Effect.timeout(500),
+              Effect.tapError(() => Deferred.succeed(timedOut, void 0)),
+              Effect.retry({ times: 1 }),
+              Effect.tapCause(() => Effect.log(transitions)),
+            )
           yield* frameChannel.send({ message: 'reloaded' })
           expect(yield* getFirstMessage(appChannel)).toEqual({ message: 'reloaded' })
           yield* appChannel.send({ message: 'connected' })
@@ -1294,12 +1309,15 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         const app = yield* makeMeshNode('app-session')
         const worker = yield* makeMeshNode('extension-worker')
         yield* connectNodesViaMessageChannel(app, worker)
-        const accepted = yield* Queue.unbounded<WebChannel.WebChannel<typeof ExampleSchema.Type, typeof ExampleSchema.Type>>()
+        const accepted =
+          yield* Queue.unbounded<WebChannel.WebChannel<typeof ExampleSchema.Type, typeof ExampleSchema.Type>>()
         yield* app.listenForChannel.pipe(
-          Stream.tap(({ source }) => createChannel(app, source).pipe(
-            Effect.tap((channel) => Queue.offer(accepted, channel)),
-            Effect.forkScoped,
-          )),
+          Stream.tap(({ source }) =>
+            createChannel(app, source).pipe(
+              Effect.tap((channel) => Queue.offer(accepted, channel)),
+              Effect.forkScoped,
+            ),
+          ),
           Stream.runDrain,
           Effect.forkScoped,
         )

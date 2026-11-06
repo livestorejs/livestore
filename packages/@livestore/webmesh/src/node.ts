@@ -485,89 +485,93 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       closeExisting = false,
       simulation,
     }) =>
-      Effect.scopeWithCloseable((scope) => Effect.gen(function* () {
-        const schema = WebChannel.mapSchema(inputSchema)
-        const channelKey = `target:${target}, channelName:${channelName}` satisfies ChannelKey
+      Effect.scopeWithCloseable((scope) =>
+        Effect.gen(function* () {
+          const schema = WebChannel.mapSchema(inputSchema)
+          const channelKey = `target:${target}, channelName:${channelName}` satisfies ChannelKey
 
-        if (channelMap.has(channelKey) === true) {
-          const existingChannel = channelMap.get(channelKey)!.debugInfo?.channel
-          if (existingChannel !== undefined) {
-            if (closeExisting === true) {
-              yield* existingChannel.shutdown
-            } else {
-              shouldNeverHappen(`Channel ${channelKey} already exists`, existingChannel)
+          if (channelMap.has(channelKey) === true) {
+            const existingChannel = channelMap.get(channelKey)!.debugInfo?.channel
+            if (existingChannel !== undefined) {
+              if (closeExisting === true) {
+                yield* existingChannel.shutdown
+              } else {
+                shouldNeverHappen(`Channel ${channelKey} already exists`, existingChannel)
+              }
             }
           }
-        }
 
-        if (channelMap.has(channelKey) === false) {
-          const channelQueue = yield* Effect.acquireRelease(
-            Queue.unbounded<MessageQueueItem | ProxyQueueItem>(),
-            Queue.shutdown,
-          )
-          channelMap.set(channelKey, { queue: channelQueue, debugInfo: undefined })
-        }
-
-        const channelQueue = channelMap.get(channelKey)!.queue as Queue.Queue<any>
-
-        yield* Effect.addFinalizer(() => Effect.sync(() => {
-          if (channelMap.get(channelKey)?.queue === channelQueue) {
-            channelMap.delete(channelKey)
-            seenChannelRequests.delete(`${channelName}:${target}:${mode}`)
+          if (channelMap.has(channelKey) === false) {
+            const channelQueue = yield* Effect.acquireRelease(
+              Queue.unbounded<MessageQueueItem | ProxyQueueItem>(),
+              Queue.shutdown,
+            )
+            channelMap.set(channelKey, { queue: channelQueue, debugInfo: undefined })
           }
-        }).pipe(Effect.andThen(Queue.shutdown(channelQueue))))
 
-        if (mode === 'direct') {
-          const incomingPacketsQueue = yield* Effect.acquireRelease(Queue.unbounded<any>(), Queue.shutdown)
+          const channelQueue = channelMap.get(channelKey)!.queue as Queue.Queue<any>
 
-          // We're we're draining the queue into another new queue.
-          // It's a bit of a mystery why this is needed, since the unit tests also work without it.
-          // But for the LiveStore devtools to actually work, we need to do this.
-          // We should figure out some day why this is needed and further simplify if possible.
-          yield* Queue.takeBetween(channelQueue, 1, 10).pipe(
-            Effect.tap((_) => Queue.offerAll(incomingPacketsQueue, _)),
-            Effect.forever,
-            Effect.interruptible,
-            Effect.tapCauseLogPretty,
-            Effect.forkScoped,
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              if (channelMap.get(channelKey)?.queue === channelQueue) {
+                channelMap.delete(channelKey)
+                seenChannelRequests.delete(`${channelName}:${target}:${mode}`)
+              }
+            }).pipe(Effect.andThen(Queue.shutdown(channelQueue))),
           )
 
-          // NOTE already retries internally when transferables are required
-          const { webChannel, initialEdgeDeferred } = yield* makeDirectChannel({
-            nodeName,
-            incomingPacketsQueue,
-            newEdgeAvailablePubSub,
-            target,
-            channelName,
-            schema,
-            sendPacket,
-            checkTransferableEdges,
-          })
+          if (mode === 'direct') {
+            const incomingPacketsQueue = yield* Effect.acquireRelease(Queue.unbounded<any>(), Queue.shutdown)
 
-          const channel = { ...webChannel, shutdown: Scope.close(scope, Exit.void) }
-          channelMap.set(channelKey, { queue: channelQueue, debugInfo: { channel, target } })
+            // We're we're draining the queue into another new queue.
+            // It's a bit of a mystery why this is needed, since the unit tests also work without it.
+            // But for the LiveStore devtools to actually work, we need to do this.
+            // We should figure out some day why this is needed and further simplify if possible.
+            yield* Queue.takeBetween(channelQueue, 1, 10).pipe(
+              Effect.tap((_) => Queue.offerAll(incomingPacketsQueue, _)),
+              Effect.forever,
+              Effect.interruptible,
+              Effect.tapCauseLogPretty,
+              Effect.forkScoped,
+            )
 
-          yield* Deferred.await(initialEdgeDeferred)
+            // NOTE already retries internally when transferables are required
+            const { webChannel, initialEdgeDeferred } = yield* makeDirectChannel({
+              nodeName,
+              incomingPacketsQueue,
+              newEdgeAvailablePubSub,
+              target,
+              channelName,
+              schema,
+              sendPacket,
+              checkTransferableEdges,
+            })
 
-          return channel
-        } else {
-          const channel = yield* makeProxyChannel({
-            nodeName,
-            newEdgeAvailablePubSub,
-            target,
-            channelName,
-            schema,
-            queue: channelQueue,
-            sendPacket,
-            ...(simulation !== undefined ? { simulation } : {}),
-          })
+            const channel = { ...webChannel, shutdown: Scope.close(scope, Exit.void) }
+            channelMap.set(channelKey, { queue: channelQueue, debugInfo: { channel, target } })
 
-          const ownedChannel = { ...channel, shutdown: Scope.close(scope, Exit.void) }
-          channelMap.set(channelKey, { queue: channelQueue, debugInfo: { channel: ownedChannel, target } })
+            yield* Deferred.await(initialEdgeDeferred)
 
-          return ownedChannel
-        }
-      }).pipe(Effect.onExit((exit) => Exit.isFailure(exit) ? Scope.close(scope, exit) : Effect.void))).pipe(
+            return channel
+          } else {
+            const channel = yield* makeProxyChannel({
+              nodeName,
+              newEdgeAvailablePubSub,
+              target,
+              channelName,
+              schema,
+              queue: channelQueue,
+              sendPacket,
+              ...(simulation !== undefined ? { simulation } : {}),
+            })
+
+            const ownedChannel = { ...channel, shutdown: Scope.close(scope, Exit.void) }
+            channelMap.set(channelKey, { queue: channelQueue, debugInfo: { channel: ownedChannel, target } })
+
+            return ownedChannel
+          }
+        }).pipe(Effect.onExit((exit) => (Exit.isFailure(exit) === true ? Scope.close(scope, exit) : Effect.void))),
+      ).pipe(
         // Effect.timeout(timeout),
         Effect.withSpanScoped(`makeChannel:${nodeName}→${target}(${channelName})`, {
           attributes: { target, channelName, mode, timeout },
