@@ -100,6 +100,9 @@ export const makeDirectChannelInternal = ({
     const channelStateRef: { current: ChannelState } = {
       current: { _tag: 'Initial' },
     }
+    // Request IDs are unique to this negotiation attempt. The shared input queue
+    // can still contain responses to older generations or established probes.
+    const pendingRequestIds = new Set<string>()
 
     const processMessagePacket = ({ packet, respondToSender }: MessageQueueItem) =>
       Effect.gen(function* () {
@@ -121,12 +124,13 @@ export const makeDirectChannelInternal = ({
         // )
 
         if (channelState._tag === 'Initial') return shouldNeverHappen()
+        if (packet._tag !== 'DirectChannelRequest' && pendingRequestIds.has(packet.reqId) === false) {
+          // We own a transferred response port even when its request is obsolete.
+          if (packet._tag === 'DirectChannelResponseSuccess') yield* Effect.sync(() => packet.port.close())
+          return
+        }
 
         if (packet._tag === 'DirectChannelResponseNoTransferables') {
-          // A topology probe can explore an unavailable route while the current
-          // MessagePort is healthy. Keep consuming control packets so a later
-          // valid replacement can still supersede this generation.
-          if (channelState._tag === 'Established') return
           yield* Deferred.fail(deferred, packet)
           return 'close'
         }
@@ -167,6 +171,7 @@ export const makeDirectChannelInternal = ({
             `incoming packet has lower version (${packet.channelVersion}), sending request to reconnect (${newPacket.id})`,
           )
 
+          if (channelState._tag !== 'Established') pendingRequestIds.add(newPacket.id)
           yield* sendPacket(newPacket)
 
           return
@@ -197,6 +202,7 @@ export const makeDirectChannelInternal = ({
                 `Re-sending new request (${newRequestPacket.id}) for incoming request (${packet.id})`,
               )
 
+              pendingRequestIds.add(newRequestPacket.id)
               yield* sendPacket(newRequestPacket)
             }
 
@@ -245,6 +251,7 @@ export const makeDirectChannelInternal = ({
 
                 yield* Effect.spanEvent(`winner side: established`)
                 channelStateRef.current = { _tag: 'Established', otherSourceId: packet.sourceId }
+                pendingRequestIds.clear()
                 yield* Deferred.succeed(deferred, channel)
               }).pipe(Effect.forkIn(scope))
             } else {
@@ -261,6 +268,9 @@ export const makeDirectChannelInternal = ({
                 `Expected to find direct channel response from ${target}, but was in ${channelState._tag} state`,
               )
             }
+            // The first correlated port owns this attempt. Late responses from
+            // alternate routes must not create a second readiness handshake.
+            pendingRequestIds.clear()
 
             // See direct-channel notes above
             const channel = yield* WebChannel.messagePortChannelWithAck({
@@ -285,6 +295,7 @@ export const makeDirectChannelInternal = ({
 
               yield* Effect.spanEvent(`loser side: established`)
               channelStateRef.current = { _tag: 'Established', otherSourceId: channelState.otherSourceId }
+              pendingRequestIds.clear()
               yield* Deferred.succeed(deferred, channel)
             }).pipe(Effect.forkIn(scope))
 
@@ -327,6 +338,7 @@ export const makeDirectChannelInternal = ({
         return yield* Effect.fail(noTransferableResponse)
       }
 
+      pendingRequestIds.add(packet.id)
       yield* sendPacket(packet)
       yield* Effect.spanEvent(`initial edge request sent (${packet.id})`)
     })
