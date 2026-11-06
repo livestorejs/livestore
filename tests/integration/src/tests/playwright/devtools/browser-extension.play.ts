@@ -25,7 +25,12 @@ import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 
 import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.ts'
 import { makeDevtoolsFixtureUrl } from './fixture-url.ts'
-import { checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
+import {
+  addPostReloadTodos,
+  checkDevtoolsState,
+  checkProtocolMismatchOverlay,
+  reloadAppAndWaitForStore,
+} from './shared.ts'
 
 const appStoreId = 'app-root'
 
@@ -376,7 +381,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
           })
 
           await test.step('tab-1:reload', async () => {
-            await tab1.page.reload()
+            await reloadAppAndWaitForStore(tab1.page, appStoreId)
           })
 
           if (adapter === 'persisted') {
@@ -389,6 +394,14 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
             await tab1.page.locator('.todo-list li label:text("Buy bread")').waitFor()
             await tab2.page.locator('.todo-list li label:text("Buy eggs")').waitFor()
           }
+          await addPostReloadTodos(tab1.page)
+          const tablesAfterReload = [adapter === 'persisted' ? 'uiState (2)' : 'uiState (1)', 'todos (3)']
+          // Keep this panel open: only an automatically reconnected session can show the new count.
+          await checkDevtoolsState({
+            devtools: tab1.liveStoreDevtools,
+            label: 'devtools-tab-1:replacement-session',
+            expect: { leader: adapter === 'inmemory', alreadyLoaded: true, tables: tablesAfterReload },
+          })
 
           await test.step('devtools-tab-2:reload', async () => {
             await tab2.devtools.reload()
@@ -408,12 +421,16 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
           await checkDevtoolsState({
             devtools: tab1.liveStoreDevtools,
             label: 'devtools-tab-1',
-            expect: { leader: adapter === 'inmemory', alreadyLoaded: false, tables },
+            expect: { leader: adapter === 'inmemory', alreadyLoaded: false, tables: tablesAfterReload },
           })
           await checkDevtoolsState({
             devtools: tab2.liveStoreDevtools,
             label: 'devtools-tab-2',
-            expect: { leader: true, alreadyLoaded: false, tables },
+            expect: {
+              leader: true,
+              alreadyLoaded: false,
+              tables: adapter === 'persisted' ? tablesAfterReload : tables,
+            },
           })
         }).pipe(
           process.env.CI !== undefined
