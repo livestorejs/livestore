@@ -24,4 +24,3 @@ This additive bootstrap message does not change DevTools protocol version 1.
 Legacy window channels ignore the unknown announcement, and request/response
 messages are unchanged. The protocol-mismatch overlay remains driven by the
 leader/session Ping protocol version, not extension bootstrap messages.
-
