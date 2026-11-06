@@ -1,6 +1,22 @@
 import type * as PW from '@playwright/test'
 import { errors, expect } from '@playwright/test'
 
+/** Reload creates a new document; wait for its replacement store and fixture UI, not navigation alone. */
+export const reloadAppAndWaitForStore = async (page: PW.Page, storeId: string) => {
+  await page.reload()
+  await page.waitForFunction((id) => globalThis.__debugLiveStore?.[id] !== undefined, storeId)
+  await page.locator('.new-todo').waitFor()
+}
+
+/** Counts must differ from the pre-reload single todo even when in-memory state was cleared. */
+export const addPostReloadTodos = async (page: PW.Page) => {
+  for (const text of ['Created after reload: first', 'Created after reload: second']) {
+    await page.locator('.new-todo').fill(text)
+    await page.locator('.new-todo').press('Enter')
+    await page.locator('.todo-list li label').filter({ hasText: text }).waitFor()
+  }
+}
+
 /**
  * Checks that the DevTools compatibility overlay is displayed with correct content.
  */

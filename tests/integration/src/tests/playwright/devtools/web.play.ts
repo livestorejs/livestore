@@ -11,7 +11,13 @@ import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { type Scope, Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
 
 import { makeDevtoolsFixtureUrl } from './fixture-url.ts'
-import { checkConnectionRemainsActive, checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
+import {
+  addPostReloadTodos,
+  checkConnectionRemainsActive,
+  checkDevtoolsState,
+  checkProtocolMismatchOverlay,
+  reloadAppAndWaitForStore,
+} from './shared.ts'
 
 const usedPages = new Set<PW.Page>()
 const appStoreId = 'app-root'
@@ -206,11 +212,12 @@ const runTest =
             })
 
             await test.step('devtools-tab-1:reload', async () => {
-              await tab1.page.reload()
+              await reloadAppAndWaitForStore(tab1.page, appStoreId)
+              await addPostReloadTodos(tab1.page)
             })
 
-            // Why: In-memory adapter is volatile; events aren’t persisted, so after reload the eventlog is empty and todos reset to 0.
-            const tablesAfterReload = adapter === 'inmemory' ? ['uiState (1)', 'todos (0)'] : tables
+            // Only the replacement app can create these two todos; stale pre-reload UI has one.
+            const tablesAfterReload = ['uiState (1)', adapter === 'inmemory' ? 'todos (2)' : 'todos (3)']
 
             await checkDevtoolsState({
               devtools: tab1.devtools,
@@ -308,19 +315,21 @@ const runTest =
                   ),
               ])
 
-              await tab1.page.reload()
+              await reloadAppAndWaitForStore(tab1.page, appStoreId)
+              await addPostReloadTodos(tab1.page)
+              const tablesAfterReload = ['uiState (2)', 'todos (3)']
 
               await Promise.all([
                 tab1.page.locator('.todo-list li label:text("Buy milk")').describe('tab-1:Buy milk').waitFor(),
                 checkDevtoolsState({
                   devtools: tab1.devtools,
                   label: 'devtools-tab-1',
-                  expect: { leader: false, alreadyLoaded: true, tables },
+                  expect: { leader: false, alreadyLoaded: true, tables: tablesAfterReload },
                 }),
                 checkDevtoolsState({
                   devtools: tab2.devtools,
                   label: 'devtools-tab-2',
-                  expect: { leader: true, alreadyLoaded: true, tables },
+                  expect: { leader: true, alreadyLoaded: true, tables: tablesAfterReload },
                 }),
               ])
             })
