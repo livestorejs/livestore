@@ -1,5 +1,5 @@
 import { Devtools } from '@livestore/common'
-import { type Scope, type WebChannel, Effect, Schema } from '@livestore/utils/effect'
+import { type Scope, type WebChannel, Effect, Schema, Stream } from '@livestore/utils/effect'
 import { WebChannelBrowser } from '@livestore/utils/effect/browser'
 
 export const makeSessionInfoBroadcastChannel: Effect.Effect<
@@ -26,14 +26,36 @@ export const ClientSessionContentscriptMainRes = Schema.TaggedStruct('ClientSess
   tabId: Schema.Finite,
 })
 
+/** Announces listener availability, not a response to a particular session's request. */
+export const ContentscriptMainReady = Schema.TaggedStruct('ContentscriptMainReady', {})
+export const ContentscriptMainMessage = Schema.Union([ClientSessionContentscriptMainRes, ContentscriptMainReady])
+
+/**
+ * Either endpoint can start first. The initial request also supports older extensions
+ * that do not announce readiness; the announcement recovers a request sent before injection.
+ */
+export const requestContentscriptMain = Effect.fn(function* (
+  channel: WebChannel.WebChannel<typeof ContentscriptMainMessage.Type, typeof ClientSessionContentscriptMainReq.Type>,
+  session: typeof ClientSessionContentscriptMainReq.Type,
+) {
+  yield* channel.send(session)
+  return yield* channel.listen.pipe(
+    Stream.mapEffect(Effect.fromResult),
+    Stream.tap((message) => (message._tag === 'ContentscriptMainReady' ? channel.send(session) : Effect.void)),
+    Stream.filter(Schema.is(ClientSessionContentscriptMainRes)),
+    Stream.runHead,
+    Effect.flatMap(Effect.fromOption),
+  )
+})
+
 export const makeStaticClientSessionChannel: {
   contentscriptMain: Effect.Effect<
-    WebChannel.WebChannel<typeof ClientSessionContentscriptMainReq.Type, typeof ClientSessionContentscriptMainRes.Type>,
+    WebChannel.WebChannel<typeof ClientSessionContentscriptMainReq.Type, typeof ContentscriptMainMessage.Type>,
     never,
     Scope.Scope
   >
   clientSession: Effect.Effect<
-    WebChannel.WebChannel<typeof ClientSessionContentscriptMainRes.Type, typeof ClientSessionContentscriptMainReq.Type>,
+    WebChannel.WebChannel<typeof ContentscriptMainMessage.Type, typeof ClientSessionContentscriptMainReq.Type>,
     never,
     Scope.Scope
   >
@@ -42,7 +64,7 @@ export const makeStaticClientSessionChannel: {
     WebChannelBrowser.windowChannel({
       listenWindow: window,
       sendWindow: window,
-      schema: { listen: ClientSessionContentscriptMainReq, send: ClientSessionContentscriptMainRes },
+      schema: { listen: ClientSessionContentscriptMainReq, send: ContentscriptMainMessage },
       ids: { own: 'contentscript-main-static', other: 'client-session-static' },
     }),
   ),
@@ -50,7 +72,7 @@ export const makeStaticClientSessionChannel: {
     WebChannelBrowser.windowChannel({
       listenWindow: window,
       sendWindow: window,
-      schema: { listen: ClientSessionContentscriptMainRes, send: ClientSessionContentscriptMainReq },
+      schema: { listen: ContentscriptMainMessage, send: ClientSessionContentscriptMainReq },
       ids: { own: 'client-session-static', other: 'contentscript-main-static' },
     }),
   ),
