@@ -124,7 +124,10 @@ export const makeDirectChannelInternal = ({
         // )
 
         if (channelState._tag === 'Initial') return shouldNeverHappen()
-        if (packet._tag !== 'DirectChannelRequest' && pendingRequestIds.has(packet.reqId) === false) {
+        if (
+          packet._tag !== 'DirectChannelRequest' &&
+          (channelState._tag === 'Established' || pendingRequestIds.has(packet.reqId) === false)
+        ) {
           // We own a transferred response port even when its request is obsolete.
           if (packet._tag === 'DirectChannelResponseSuccess') yield* Effect.sync(() => packet.port.close())
           return
