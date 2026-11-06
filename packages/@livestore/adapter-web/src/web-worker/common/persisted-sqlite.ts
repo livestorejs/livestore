@@ -61,7 +61,8 @@ export const readPersistedStateDbFromClientSession = Effect.fn(
             // Keep read failures recoverable so adapter boot can request a leader snapshot.
             const fileName = yield* Effect.tryPromise({
               try: () => decodeAccessHandlePoolFilename(file),
-              catch: (cause) => new PersistedSqliteError({ message: 'Could not read persisted state file header', cause }),
+              catch: (cause) =>
+                new PersistedSqliteError({ message: 'Could not read persisted state file header', cause }),
             })
             return { file, fileName }
           }),
