@@ -40,10 +40,13 @@ The delivery contracts below are stable per kind (LS.SYS.RT.MESH-R01):
   (`remainingHops`). Afterwards the two nodes talk over the acknowledged
   port; the mesh is out of the loop. The port buffers incoming events eagerly.
   An internal ping/pong exchange establishes readiness, awaiting acknowledgements
-  without a short probe deadline or duplicate sends. A non-answering peer waits
-  until caller interruption or scope closure. Internal ping/pong messages are
-  consumed by the transport and never reach application listeners, including
-  messages arriving after readiness. Used session ⇄ leader where the platform allows.
+  without a short probe deadline or duplicate sends. Port readiness waits run
+  within the attempt scope without blocking the mesh control queue. A request
+  from a replacement peer (`sourceId` changed) closes the abandoned attempt
+  even before establishment. Otherwise a non-answering peer waits until caller
+  interruption or scope closure. Internal ping/pong messages are consumed by
+  the transport and never reach application listeners, including messages
+  arriving after readiness. Used session ⇄ leader where the platform allows.
 - **Proxy** — hop-routed `ProxyChannelPayload` packets; each payload is
   individually acked (`ProxyChannelPayloadAck`). The receiver forks the ack
   send (fire-and-forget) so a slow ack cannot block delivery to the listen
