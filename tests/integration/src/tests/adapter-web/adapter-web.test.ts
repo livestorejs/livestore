@@ -73,6 +73,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
         result: {
           incomplete: 'PersistedSqliteError',
           missingMarkerTable: 'PersistedSqliteError',
+          staleFileFailure: { tag: 'PersistedSqliteError', cause: 'NotReadableError' },
           complete: 'accepted',
           rows: [{ id: 'complete' }, { id: 'partial' }],
           closeCountsBeforeScopeExit: [1, 1, 0],

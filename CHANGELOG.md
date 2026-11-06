@@ -13,6 +13,8 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 ### Changed
 
+- **Web adapter:** Concurrent writes that invalidate an OPFS snapshot during tab reload
+  fall back to a leader-provided snapshot instead of failing store boot.
 - **React:** Suspended store consumers retain their initial promise through React's
   component replay, avoiding hook-order errors and duplicate store boots that can
   leave extension DevTools at "Connecting to session". Mounted renders still use

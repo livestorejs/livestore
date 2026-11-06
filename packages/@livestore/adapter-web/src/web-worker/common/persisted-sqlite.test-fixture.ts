@@ -51,9 +51,30 @@ const run = Effect.gen(function* () {
   persisted.execute(todos.insert({ id: 'complete' }))
   persisted.execute(`INSERT INTO ${SystemTables.REBUILD_META_TABLE} (id) VALUES (1)`)
   const { sqliteDb } = yield* read
+  // Deterministically reproduce a leader write invalidating a File between getFile and read.
+  // Use a separate file because the live VFS owns exclusive access to its pool files.
+  const opfs = yield* Opfs.Opfs
+  const staleDirectory = `${storeId}-stale`
+  const directory = yield* Opfs.getDirectoryHandleByPath(staleDirectory, { create: true })
+  yield* Effect.addFinalizer(() => Opfs.remove(staleDirectory, { recursive: true }).pipe(Effect.orDie))
+  const fileHandle = yield* opfs.getFileHandle(directory, 'snapshot', { create: true })
+  yield* opfs.writeFile(fileHandle, new Uint8Array(4096))
+  const staleFile = yield* opfs.getFile(fileHandle)
+  yield* opfs.writeFile(fileHandle, new Uint8Array(8192))
+  const staleFileFailure = yield* read.pipe(
+    Effect.provideService(Opfs.Opfs, { ...opfs, getFile: () => Effect.succeed(staleFile) }),
+    Effect.match({
+      onSuccess: () => ({ tag: 'accepted', cause: '' }),
+      onFailure: (error) => ({
+        tag: error._tag,
+        cause: error._tag === 'PersistedSqliteError' && error.cause instanceof DOMException ? error.cause.name : '',
+      }),
+    }),
+  )
   return {
     incomplete,
     missingMarkerTable,
+    staleFileFailure,
     complete: 'accepted',
     rows: sqliteDb.select(todos.orderBy('id', 'asc')),
     // Check before the outer scope closes: rejection must release memory immediately.

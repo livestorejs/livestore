@@ -57,7 +57,13 @@ export const readPersistedStateDbFromClientSession = Effect.fn(
         (fileHandle) =>
           Effect.gen(function* () {
             const file = yield* opfs.getFile(fileHandle)
-            const fileName = yield* Effect.promise(() => decodeAccessHandlePoolFilename(file))
+            // A leader can change the backing file after getFile(), invalidating this File.
+            // Keep read failures recoverable so adapter boot can request a leader snapshot.
+            const fileName = yield* Effect.tryPromise({
+              try: () => decodeAccessHandlePoolFilename(file),
+              catch: (cause) =>
+                new PersistedSqliteError({ message: 'Could not read persisted state file header', cause }),
+            })
             return { file, fileName }
           }),
         { concurrency: 'unbounded' },
@@ -72,9 +78,10 @@ export const readPersistedStateDbFromClientSession = Effect.fn(
       })
     }
 
-    const stateDbBuffer = yield* Effect.promise(() =>
-      stateDbFileOption.value.file.slice(HEADER_OFFSET_DATA).arrayBuffer(),
-    )
+    const stateDbBuffer = yield* Effect.tryPromise({
+      try: () => stateDbFileOption.value.file.slice(HEADER_OFFSET_DATA).arrayBuffer(),
+      catch: (cause) => new PersistedSqliteError({ message: 'Could not read persisted state snapshot', cause }),
+    })
 
     // Given the access handle pool always eagerly creates files with empty non-header data,
     // we want to return undefined if the file exists but is empty
