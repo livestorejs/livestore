@@ -1312,8 +1312,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         // DevTools sends Disconnect before unloading. The app shuts down this wrapper,
         // but keeps the mesh node and the inbound channel listener alive.
         yield* oldAppChannel.shutdown
-        expect(app.hasChannel({ target: oldFrame.nodeName, channelName: 'test' })).toBe(false)
-        yield* oldAppChannel.listen.pipe(Stream.runDrain)
+        expect(yield* app.hasChannel({ target: oldFrame.nodeName, channelName: 'test' })).toBe(false)
         yield* Scope.close(oldFrameScope, Exit.void)
 
         const frame = yield* makeMeshNode('devtools-frame')

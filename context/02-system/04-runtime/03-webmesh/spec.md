@@ -64,7 +64,7 @@ to open; `listenForChannel` is a single-listener stream of incoming channel
 requests. A channel's shutdown closes its registration scope, removes its packet
 queue, and releases the listener's deduplication claim. A later request for the
 same peer and channel name can register a new responder without recreating the
-mesh node. Closing a direct channel also completes its application listen stream.
+mesh node. Closing a direct channel also terminates its application listen stream.
 
 ## Edges and Routing
 
