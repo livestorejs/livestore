@@ -355,6 +355,80 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         }).pipe(Vitest.withTestCtx(test)),
       )
 
+      Vitest.live('reconnect a reloaded frame through a worker after API channel timeout', (test) =>
+        Effect.gen(function* () {
+          const app = yield* makeMeshNode('app-session')
+          const worker = yield* makeMeshNode('extension-worker')
+          yield* connectNodesViaMessageChannel(app, worker)
+          const oldFrameScope = yield* Scope.make()
+          const oldFrame = yield* makeMeshNode('devtools-frame').pipe(Scope.provide(oldFrameScope))
+          yield* connectNodesViaMessageChannel(worker, oldFrame).pipe(Scope.provide(oldFrameScope))
+          const [appChannel] = yield* Effect.all(
+            [createChannel(app, oldFrame.nodeName), createChannel(oldFrame, app.nodeName).pipe(Scope.provide(oldFrameScope))],
+            { concurrency: 'unbounded' },
+          )
+          yield* Scope.close(oldFrameScope, Exit.void)
+
+          const frame = yield* makeMeshNode('devtools-frame')
+          const ports = new MessageChannel()
+          const workerEdge = yield* WebChannel.messagePortChannel({ port: ports.port1, schema: Packet })
+          const frameEdge = yield* WebChannel.messagePortChannel({ port: ports.port2, schema: Packet })
+          const timedOut = yield* Deferred.make<void>()
+          let delayFirstRequest = true
+          const transitions: string[] = []
+          yield* worker.addEdge({
+            target: frame.nodeName,
+            replaceIfExists: true,
+            edgeChannel: {
+              ...workerEdge,
+              send: (packet) => Effect.gen(function* () {
+                transitions.push(`worker→frame ${packet._tag} ${'channelVersion' in packet ? packet.channelVersion : ''}`)
+                if (delayFirstRequest && packet._tag === 'DirectChannelRequest') {
+                  delayFirstRequest = false
+                  yield* Deferred.await(timedOut)
+                }
+                yield* workerEdge.send(packet)
+              }),
+            },
+          })
+          const firstRequestSent = yield* Deferred.make<void>()
+          yield* frame.addEdge({
+            target: worker.nodeName,
+            edgeChannel: {
+              ...frameEdge,
+              send: (packet) => frameEdge.send(packet).pipe(
+                Effect.tap(() => packet._tag === 'DirectChannelRequest' ? Deferred.succeed(firstRequestSent, void 0) : Effect.void),
+              ),
+            },
+          })
+          const abandonedConnect = yield* frame.makeChannel({
+            target: app.nodeName,
+            channelName: 'test',
+            schema: ExampleSchema,
+            mode: 'direct',
+            closeExisting: true,
+          }).pipe(Effect.timeout(500), Effect.retry({}), Effect.scoped, Effect.forkScoped)
+          yield* Deferred.await(firstRequestSent)
+          yield* Fiber.interrupt(abandonedConnect)
+          const frameChannel = yield* frame.makeChannel({
+            target: app.nodeName,
+            channelName: 'test',
+            schema: ExampleSchema,
+            mode: 'direct',
+            closeExisting: true,
+          }).pipe(
+            Effect.timeout(500),
+            Effect.tapError(() => Deferred.succeed(timedOut, void 0)),
+            Effect.retry({ times: 1 }),
+            Effect.tapCause(() => Effect.log(transitions)),
+          )
+          yield* frameChannel.send({ message: 'reloaded' })
+          expect(yield* getFirstMessage(appChannel)).toEqual({ message: 'reloaded' })
+          yield* appChannel.send({ message: 'connected' })
+          expect(yield* getFirstMessage(frameChannel)).toEqual({ message: 'connected' })
+        }).pipe(Vitest.withTestCtx(test)),
+      )
+
       Vitest.live('reconnect with re-created node', (test) =>
         Effect.gen(function* () {
           const nodeBgen1Scope = yield* Scope.make()
