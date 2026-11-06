@@ -14,6 +14,7 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 ### Changed
 
 - **DevTools:** Direct-channel startup now waits for slow peers without failing a session after short ping retries. A non-answering peer waits until caller interruption or scope closure. Internal handshake messages no longer reach application listeners ([#262](https://github.com/livestorejs/livestore/issues/262)).
+- **DevTools:** Direct-channel handshakes keep processing mesh control requests while waiting for port readiness, so reloading a peer can replace an abandoned handshake instead of leaving the panel stuck connecting.
 - **React:** Suspended store consumers retain their initial promise through React's
   component replay, avoiding hook-order errors and duplicate store boots that can
   leave extension DevTools at "Connecting to session". Mounted renders still use

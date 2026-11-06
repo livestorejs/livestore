@@ -4,7 +4,7 @@ import { IS_CI, omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Deferred, Effect, Exit, Fiber, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
 
-import { Packet } from './mesh-schema.ts'
+import { DirectChannelRequest, Packet } from './mesh-schema.ts'
 import type { MeshNode } from './node.ts'
 import { makeMeshNode } from './node.ts'
 
@@ -284,6 +284,43 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             }),
           ),
         { arbitrary: { runs: 20 } },
+      )
+
+      Vitest.live('reconnect when a peer reloads before completing the direct handshake', (test) =>
+        Effect.gen(function* () {
+          const nodeB = yield* makeMeshNode('B')
+          const abandonedEdge = new MessageChannel()
+          const peer = yield* WebChannel.messagePortChannel({ port: abandonedEdge.port1, schema: Packet })
+          const edge = yield* WebChannel.messagePortChannel({ port: abandonedEdge.port2, schema: Packet })
+          yield* nodeB.addEdge({ target: 'A', edgeChannel: edge })
+          const channelBFiber = yield* createChannel(nodeB, 'A').pipe(Effect.forkScoped)
+
+          yield* peer.send(
+            DirectChannelRequest.make({
+              source: 'A',
+              sourceId: 'abandoned-instance',
+              target: 'B',
+              channelName: 'test',
+              channelVersion: 1,
+              hops: [],
+              reqId: undefined,
+            }),
+          )
+          // The old peer disappears after receiving its port, before sending the handshake ping.
+          yield* peer.listen.pipe(
+            Stream.mapEffect(Effect.fromResult),
+            Stream.filter((packet) => packet._tag === 'DirectChannelResponseSuccess'),
+            Stream.take(1),
+            Stream.runDrain,
+          )
+
+          const nodeA = yield* makeMeshNode('A')
+          yield* connectNodesViaMessageChannel(nodeA, nodeB, { replaceIfExists: true })
+          const channelA = yield* createChannel(nodeA, 'B')
+          const channelB = yield* Fiber.join(channelBFiber)
+          yield* channelA.send({ message: 'after reload' })
+          expect(yield* getFirstMessage(channelB)).toEqual({ message: 'after reload' })
+        }).pipe(Vitest.withTestCtx(test)),
       )
 
       Vitest.live('reconnect with re-created node', (test) =>

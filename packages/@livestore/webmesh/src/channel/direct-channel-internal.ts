@@ -156,16 +156,15 @@ export const makeDirectChannelInternal = ({
           return
         }
 
-        if (channelState._tag === 'Established' && packet._tag === 'DirectChannelRequest') {
-          if (packet.sourceId === channelState.otherSourceId) {
-            return
-          } else {
-            // In case the instance of the source has changed, we need to close the channel
-            // and reconnect with a new channel
-            yield* Effect.spanEvent(`force-new-channel`)
-            yield* Scope.close(scope, Exit.succeed('force-new-channel'))
-            return 'close'
-          }
+        if (
+          packet._tag === 'DirectChannelRequest' &&
+          'otherSourceId' in channelState &&
+          packet.sourceId !== channelState.otherSourceId
+        ) {
+          // A peer can disappear before establishment, leaving an abandoned MessagePort.
+          yield* Effect.spanEvent(`force-new-channel`)
+          yield* Scope.close(scope, Exit.succeed('force-new-channel'))
+          return 'close'
         }
 
         switch (packet._tag) {
@@ -227,20 +226,22 @@ export const makeDirectChannelInternal = ({
 
               channelStateRef.current = { _tag: 'winner:ResponseSent', channel, otherSourceId: packet.sourceId }
 
-              // Now we wait for the other side to respond via the channel
-              yield* channel.listen.pipe(
-                Stream.mapEffect(Effect.fromResult),
-                Stream.filter(Schema.is(MeshSchema.DirectChannelPing)),
-                Stream.take(1),
-                Stream.runDrain,
-              )
+              // Keep processing mesh requests while waiting on the port: a replacement peer
+              // must be able to cancel this handshake without sending on the abandoned port.
+              yield* Effect.gen(function* () {
+                yield* channel.listen.pipe(
+                  Stream.mapEffect(Effect.fromResult),
+                  Stream.filter(Schema.is(MeshSchema.DirectChannelPing)),
+                  Stream.take(1),
+                  Stream.runDrain,
+                )
 
-              yield* channel.send(MeshSchema.DirectChannelPong.make({}))
+                yield* channel.send(MeshSchema.DirectChannelPong.make({}))
 
-              yield* Effect.spanEvent(`winner side: established`)
-              channelStateRef.current = { _tag: 'Established', otherSourceId: packet.sourceId }
-
-              yield* Deferred.succeed(deferred, channel)
+                yield* Effect.spanEvent(`winner side: established`)
+                channelStateRef.current = { _tag: 'Established', otherSourceId: packet.sourceId }
+                yield* Deferred.succeed(deferred, channel)
+              }).pipe(Effect.forkIn(scope))
             } else {
               yield* Effect.spanEvent(`loser side: waiting for response`)
               // Wait for `DirectChannelResponseSuccess` packet
@@ -263,26 +264,24 @@ export const makeDirectChannelInternal = ({
               debugId: channelVersion,
             }).pipe(Effect.andThen(WebChannel.toOpenChannel))
 
-            const waitForPongFiber = yield* channel.listen.pipe(
-              Stream.mapEffect(Effect.fromResult),
-              Stream.filter(Schema.is(MeshSchema.DirectChannelPong)),
-              Stream.take(1),
-              Stream.runDrain,
-              Effect.forkChild,
-            )
+            yield* Effect.gen(function* () {
+              const waitForPongFiber = yield* channel.listen.pipe(
+                Stream.mapEffect(Effect.fromResult),
+                Stream.filter(Schema.is(MeshSchema.DirectChannelPong)),
+                Stream.take(1),
+                Stream.runDrain,
+                Effect.forkChild,
+              )
 
-            // MessagePort events are buffered eagerly and sends wait for an ack. A slow peer
-            // is not a lost ping: retrying on a short deadline duplicates protocol messages
-            // and can fail an otherwise healthy handshake (https://github.com/livestorejs/livestore/issues/262).
-            // This wait ends on peer readiness, caller interruption, or scope closure, not a local deadline.
-            yield* channel.send(MeshSchema.DirectChannelPing.make({}))
+              // Port readiness is not a deadline: only scope closure or a replacement peer
+              // cancels this handshake. The mesh control queue remains available meanwhile.
+              yield* channel.send(MeshSchema.DirectChannelPing.make({}))
+              yield* Fiber.join(waitForPongFiber)
 
-            yield* Fiber.join(waitForPongFiber)
-
-            yield* Effect.spanEvent(`loser side: established`)
-            channelStateRef.current = { _tag: 'Established', otherSourceId: channelState.otherSourceId }
-
-            yield* Deferred.succeed(deferred, channel)
+              yield* Effect.spanEvent(`loser side: established`)
+              channelStateRef.current = { _tag: 'Established', otherSourceId: channelState.otherSourceId }
+              yield* Deferred.succeed(deferred, channel)
+            }).pipe(Effect.forkIn(scope))
 
             return
           }
