@@ -15,6 +15,10 @@ ProxyChannels and DirectChannels have the following properties (similar to TCP):
 - Ordered messages
 - Reliable (buffers messages and acks each message)
 
+Direct channels probe newly available routes even while the old transport appears connected, so a replacement node with the same name can register its responder. `makeChannel({ onReconnect })` notifies stateful applications after replacing an established direct transport, before delivering replacement messages. The initial connection does not invoke this effect. Use it to renew snapshots/subscriptions: reconnecting a transport does not restore remote application state.
+The reconnect effect may await outgoing subscription sends: replacement outbound processing starts first. Replacement incoming messages are withheld until the effect completes, so it must not wait for a response from `listen`. Negative topology-probe responses do not invalidate an already established transport or stop its control processing.
+Responses are accepted only for negotiation request IDs owned by the current internal attempt, before any version handling. Establishment or accepting the first response port retires those IDs. Delayed responses from old generations and established probes are ignored; discarded success-response ports are closed.
+
 ## Available edge connection implementations
 
 - `MessageChannel`
