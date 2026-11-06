@@ -62,7 +62,9 @@ The delivery contracts below are stable per kind (LS.SYS.RT.MESH-R01):
 Both ends must call `makeChannel` with the same `channelName` for a channel
 to open; `listenForChannel` is a single-listener stream of incoming channel
 requests. A channel's shutdown closes its registration scope, removes its packet
-queue, and releases the listener's deduplication claim. A later request for the
+queue, and releases the listener's deduplication claim before interrupting its
+consumers. Requests arriving during consumer teardown therefore route to a new
+pending registration rather than the discarded queue. A later request for the
 same peer and channel name can register a new responder without recreating the
 mesh node. Closing a direct channel also terminates its application listen stream.
 

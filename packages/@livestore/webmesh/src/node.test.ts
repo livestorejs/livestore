@@ -1347,6 +1347,104 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(Vitest.withTestCtx(test)),
     )
 
+    Vitest.live('hand a replacement request to a new registration while old consumers are shutting down', (test) =>
+      Effect.gen(function* () {
+        const app = yield* makeMeshNode('app-session')
+        const oldFrameScope = yield* Scope.make()
+        const oldFrame = yield* makeMeshNode('devtools-frame').pipe(Scope.provide(oldFrameScope))
+        const ports = new MessageChannel()
+        const appEdge = yield* WebChannel.messagePortChannel({ port: ports.port1, schema: Packet })
+        const frameEdge = yield* WebChannel.messagePortChannel({ port: ports.port2, schema: Packet })
+        const oldPeerSourceId = yield* Deferred.make<string>()
+        const oldSendBlocked = yield* Deferred.make<void>()
+        const teardownPaused = yield* Deferred.make<void>()
+        const releaseTeardown = yield* Deferred.make<void>()
+        let blockNextRequest = false
+        yield* app.addEdge({
+          target: oldFrame.nodeName,
+          edgeChannel: {
+            ...appEdge,
+            send: (packet) =>
+              Effect.gen(function* () {
+                if (blockNextRequest === true && packet._tag === 'DirectChannelRequest') {
+                  blockNextRequest = false
+                  yield* Deferred.succeed(oldSendBlocked, void 0)
+                  // Hold a real control-processor send, then pause its interruption cleanup.
+                  // This keeps shutdown in progress while the replacement request arrives.
+                  return yield* Effect.never.pipe(
+                    Effect.onInterrupt(() =>
+                      Deferred.succeed(teardownPaused, void 0).pipe(Effect.andThen(Deferred.await(releaseTeardown))),
+                    ),
+                  )
+                }
+                yield* appEdge.send(packet)
+              }),
+          },
+        })
+        yield* oldFrame
+          .addEdge({
+            target: app.nodeName,
+            edgeChannel: {
+              ...frameEdge,
+              send: (packet) =>
+                frameEdge
+                  .send(packet)
+                  .pipe(
+                    Effect.tap(() =>
+                      packet._tag === 'DirectChannelRequest'
+                        ? Deferred.succeed(oldPeerSourceId, packet.sourceId)
+                        : Effect.void,
+                    ),
+                  ),
+            },
+          })
+          .pipe(Scope.provide(oldFrameScope))
+        const accepted =
+          yield* Queue.unbounded<WebChannel.WebChannel<typeof ExampleSchema.Type, typeof ExampleSchema.Type>>()
+        yield* app.listenForChannel.pipe(
+          Stream.tap(({ source }) =>
+            createChannel(app, source).pipe(
+              Effect.tap((channel) => Queue.offer(accepted, channel)),
+              Effect.forkScoped,
+            ),
+          ),
+          Stream.runDrain,
+          Effect.forkScoped,
+        )
+        yield* createChannel(oldFrame, app.nodeName).pipe(Scope.provide(oldFrameScope))
+        const oldAppChannel = yield* Queue.take(accepted)
+
+        blockNextRequest = true
+        yield* frameEdge.send(
+          DirectChannelRequest.make({
+            source: oldFrame.nodeName,
+            sourceId: yield* Deferred.await(oldPeerSourceId),
+            target: app.nodeName,
+            channelName: 'test',
+            channelVersion: 0,
+            hops: [],
+            reqId: undefined,
+          }),
+        )
+        yield* Deferred.await(oldSendBlocked)
+        const shuttingDown = yield* oldAppChannel.shutdown.pipe(Effect.forkScoped)
+        yield* Effect.gen(function* () {
+          yield* Deferred.await(teardownPaused)
+          yield* Scope.close(oldFrameScope, Exit.void)
+          // Reuse the live mesh edge with a fresh peer instance of the same name.
+          const frame = yield* makeMeshNode('devtools-frame')
+          yield* frame.addEdge({ target: app.nodeName, edgeChannel: frameEdge })
+          const replacement = yield* createChannel(frame, app.nodeName).pipe(Effect.timeout(500))
+          const responder = yield* Queue.take(accepted)
+          yield* replacement.send({ message: 'during shutdown' })
+          expect(yield* getFirstMessage(responder)).toEqual({ message: 'during shutdown' })
+          yield* responder.send({ message: 'new registration' })
+          expect(yield* getFirstMessage(replacement)).toEqual({ message: 'new registration' })
+        }).pipe(Effect.ensuring(Deferred.succeed(releaseTeardown, void 0)))
+        yield* Fiber.join(shuttingDown)
+      }).pipe(Vitest.withTestCtx(test)),
+    )
+
     Vitest.describe('prop tests', { timeout: propTestTimeout }, () => {
       Vitest.live.prop(
         'listenForChannel A <> B <> C',
