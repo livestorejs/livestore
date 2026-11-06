@@ -1313,6 +1313,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         const oldLeader = yield* makeMeshNode('leader').pipe(Scope.provide(oldLeaderScope))
         yield* connectNodesViaMessageChannel(worker, oldLeader).pipe(Scope.provide(oldLeaderScope))
         let reconnects = 0
+        let activeChannel: WebChannel.WebChannel<typeof ExampleSchema.Type, typeof ExampleSchema.Type> | undefined
         const [frameChannel] = yield* Effect.all(
           [
             frame.makeChannel({
@@ -1320,12 +1321,17 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               channelName: 'test',
               schema: ExampleSchema,
               mode: 'direct',
-              onReconnect: Effect.sync(() => reconnects++),
+              onReconnect: Effect.gen(function* () {
+                reconnects++
+                expect(activeChannel).toBeDefined()
+                yield* activeChannel!.send({ message: 'renew subscription' }).pipe(Effect.orDie)
+              }),
             }),
             createChannel(oldLeader, frame.nodeName).pipe(Scope.provide(oldLeaderScope)),
           ],
           { concurrency: 'unbounded' },
         )
+        activeChannel = frameChannel
         expect(reconnects).toBe(0)
         yield* Scope.close(oldLeaderScope, Exit.void)
 
@@ -1342,6 +1348,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         )
         yield* connectNodesViaMessageChannel(worker, leader, { replaceIfExists: true })
         const leaderChannel = yield* Deferred.await(accepted)
+        expect(yield* getFirstMessage(leaderChannel)).toEqual({ message: 'renew subscription' })
         yield* leaderChannel.send({ message: 'replacement state' })
         expect(yield* getFirstMessage(frameChannel)).toEqual({ message: 'replacement state' })
         expect(reconnects).toBe(1)

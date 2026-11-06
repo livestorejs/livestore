@@ -165,6 +165,17 @@ export const makeDirectChannel = ({
         yield* Effect.spanEvent(`Connected#${channelVersion}`)
         debugInfo.isConnected = true
         debugInfo.innerChannelRef.current = channel
+        yield* Effect.gen(function* () {
+          while (true) {
+            const [msg, deferred] = yield* TxQueue.peek(sendQueue)
+            // NOTE we don't need an explicit retry flow here since in case of the channel being closed,
+            // the send will never succeed. Meanwhile the send-loop fiber will be interrupted and
+            // given we only peeked at the queue, the message to send is still there.
+            yield* channel.send(msg)
+            yield* Deferred.succeed(deferred, void 0)
+            yield* TxQueue.take(sendQueue) // Remove the message from the queue
+          }
+        }).pipe(Effect.forkIn(makeDirectChannelScope))
         if (hasConnected === true && onReconnect !== undefined) yield* onReconnect
         hasConnected = true
 
@@ -199,18 +210,6 @@ export const makeDirectChannel = ({
           Effect.tapCauseLogPretty,
           Effect.forkIn(makeDirectChannelScope),
         )
-
-        yield* Effect.gen(function* () {
-          while (true) {
-            const [msg, deferred] = yield* TxQueue.peek(sendQueue)
-            // NOTE we don't need an explicit retry flow here since in case of the channel being closed,
-            // the send will never succeed. Meanwhile the send-loop fiber will be interrupted and
-            // given we only peeked at the queue, the message to send is still there.
-            yield* channel.send(msg)
-            yield* Deferred.succeed(deferred, void 0)
-            yield* TxQueue.take(sendQueue) // Remove the message from the queue
-          }
-        }).pipe(Effect.forkIn(makeDirectChannelScope))
 
         // Wait until the channel is closed and then try to reconnect
         yield* Deferred.await(channel.closedDeferred)

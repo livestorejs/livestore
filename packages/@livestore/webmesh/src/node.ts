@@ -117,6 +117,9 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
      * Runs after an established direct transport is replaced, before delivering
      * application messages from its replacement. Stateful protocols must renew
      * subscriptions or snapshots; transport reconnection cannot replay them.
+     * Outbound processing is ready, so the effect may await subscription sends.
+     * Incoming replacement messages wait until it completes: it must not await
+     * a response from `listen`.
      * Not called for initial establishment or stateless proxy channels.
      */
     onReconnect?: Effect.Effect<void>

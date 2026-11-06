@@ -92,7 +92,7 @@ Vitest.describe('direct channel handshake', () => {
     }),
   )
 
-  Vitest.effect('keeps late ping and pong messages out of application listeners', () =>
+  Vitest.effect('keeps application delivery and control processing alive after a negative established probe', () =>
     Effect.gen(function* () {
       const incomingPacketsQueue = yield* Queue.unbounded<MessageQueueItem>()
       const scope = yield* Scope.make()
@@ -135,7 +135,7 @@ Vitest.describe('direct channel handshake', () => {
                 }).pipe(Scope.provide(scope)),
             })
           }),
-      }).pipe(Effect.forkScoped)
+      }).pipe(Scope.provide(scope), Effect.forkScoped)
       const winnerPeer = yield* Deferred.await(peerDeferred)
       yield* winnerPeer.send(MeshSchema.DirectChannelPing.make({}))
       const channel = yield* Fiber.join(channelFiber)
@@ -144,6 +144,36 @@ Vitest.describe('direct channel handshake', () => {
       yield* winnerPeer.send({ message: 'payload only' })
       const messages = yield* channel.listen.pipe(Stream.take(1), Stream.runCollect)
       expect(messages).toEqual([Result.succeed({ message: 'payload only' })])
+      yield* Queue.offer(incomingPacketsQueue, {
+        packet: MeshSchema.DirectChannelResponseNoTransferables.make({
+          source: 'A',
+          target: 'B',
+          channelName: 'test',
+          hops: [],
+          remainingHops: [],
+          reqId: 'topology-probe',
+        }),
+        respondToSender: () => Effect.void,
+      })
+      yield* winnerPeer.send({ message: 'still connected' })
+      expect(yield* channel.listen.pipe(Stream.take(1), Stream.runCollect)).toEqual([
+        Result.succeed({ message: 'still connected' }),
+      ])
+      // A subsequent replacement must still reach the control processor. If the
+      // negative probe ended that loop, this old generation never closes.
+      yield* Queue.offer(incomingPacketsQueue, {
+        packet: MeshSchema.DirectChannelRequest.make({
+          source: 'A',
+          target: 'B',
+          sourceId: 'replacement-A',
+          channelName: 'test',
+          channelVersion: 1,
+          hops: [],
+          reqId: undefined,
+        }),
+        respondToSender: () => Effect.void,
+      })
+      yield* Deferred.await(channel.closedDeferred)
     }),
   )
 })

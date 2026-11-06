@@ -123,6 +123,10 @@ export const makeDirectChannelInternal = ({
         if (channelState._tag === 'Initial') return shouldNeverHappen()
 
         if (packet._tag === 'DirectChannelResponseNoTransferables') {
+          // A topology probe can explore an unavailable route while the current
+          // MessagePort is healthy. Keep consuming control packets so a later
+          // valid replacement can still supersede this generation.
+          if (channelState._tag === 'Established') return
           yield* Deferred.fail(deferred, packet)
           return 'close'
         }
