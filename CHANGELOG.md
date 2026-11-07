@@ -47,6 +47,10 @@ For maintainers and contributors:
 - **Events:** `LiveStoreEvent.Client.EncodedWithMeta` is removed and events are plain values. Sync metadata travels beside events, and leader materializer hashes travel in `PullItem.materializerHashes`. Custom adapters that wrapped pushed events must pass them through unchanged ([#1660](https://github.com/livestorejs/livestore/pull/1660)).
 - **Leader persistence:** A `LeaderPersistence` service makes each leader transition durable as a whole (rollback, materialization, journal, state and backend heads, eventlog inserts) and returns a receipt that the processor publishes ([#1661](https://github.com/livestorejs/livestore/pull/1661)).
 - **Sync processors:** The leader and client-session sync processors are serialized single-owner state machines, as described in [RFC 0004](./contributor-docs/rfcs/0004-serialized-sync-processors.md) ([#1663](https://github.com/livestorejs/livestore/pull/1663)).
+- **Integration testing:** Scope temporary Chromium profiles to each Playwright
+  test and remove them after the browser closes, including launch and test
+  failures. Teardown asserts profile removal; trace evidence remains in
+  `test-results` ([#1722](https://github.com/livestorejs/livestore/pull/1722)).
 
 ## 0.5.0
 
@@ -278,11 +282,6 @@ For maintainers and contributors:
   Package output streams directly to the terminal instead of being buffered
   ([#683](https://github.com/livestorejs/livestore/issues/683),
   [#1671](https://github.com/livestorejs/livestore/pull/1671)).
-
-- **Integration testing:** Scope temporary Chromium profiles to each Playwright
-  test and remove them after the browser closes, including launch and test
-  failures. Teardown asserts profile removal; trace evidence remains in
-  `test-results`.
 
 - **CI composition:** Aligned the megarepo setup with the automatic CI worktree
   policy and consolidated devenv resolver from
