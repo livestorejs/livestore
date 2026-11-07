@@ -279,6 +279,11 @@ For maintainers and contributors:
   ([#683](https://github.com/livestorejs/livestore/issues/683),
   [#1671](https://github.com/livestorejs/livestore/pull/1671)).
 
+- **Integration testing:** Scope temporary Chromium profiles to each Playwright
+  test and remove them after the browser closes, including launch and test
+  failures. Teardown asserts profile removal; trace evidence remains in
+  `test-results`.
+
 - **CI composition:** Aligned the megarepo setup with the automatic CI worktree
   policy and consolidated devenv resolver from
   [effect-utils#1207](https://github.com/overengineeringstudio/effect-utils/pull/1207).

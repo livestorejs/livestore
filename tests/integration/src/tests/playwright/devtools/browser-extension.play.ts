@@ -1,7 +1,3 @@
-import fs from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
-
 import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
 import { expect, test } from '@playwright/test'
@@ -24,6 +20,7 @@ import { PlatformNode } from '@livestore/utils/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 
 import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.ts'
+import { makePersistentContextPath } from '../shared-test.ts'
 import { checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
 
 const appStoreId = 'app-root'
@@ -213,7 +210,7 @@ const getExtensionPath = Effect.gen(function* () {
 
 const PWLive = ({ extensionPath }: { extensionPath: string }) =>
   Effect.gen(function* () {
-    const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
+    const persistentContextPath = yield* makePersistentContextPath
 
     return Playwright.browserContextLayer({
       persistentContextPath,
