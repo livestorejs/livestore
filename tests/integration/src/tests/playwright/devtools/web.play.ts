@@ -1,7 +1,3 @@
-import fs from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
-
 import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
 import { test } from '@playwright/test'
@@ -10,6 +6,7 @@ import * as Playwright from '@livestore/effect-playwright'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { type Scope, Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
 
+import { makePersistentContextPath } from '../shared-test.ts'
 import { checkConnectionRemainsActive, checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
 
 const usedPages = new Set<PW.Page>()
@@ -137,7 +134,7 @@ const makeTabPair = (
   })
 
 const PWLive = Effect.gen(function* () {
-  const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
+  const persistentContextPath = yield* makePersistentContextPath
 
   return Playwright.browserContextLayer({ persistentContextPath })
 }).pipe(Layer.unwrap)
