@@ -149,9 +149,9 @@ if (import.meta.main) {
   console.log('| Sample path (synthetic where necessary) | Final owner | Last matching pattern |')
   console.log('| --- | --- | --- |')
   const covered = new Set()
-  for (const [paths, expected] of [
-    [delegated, ''],
-    [retained, '@schickling'],
+  for (const { paths, expected } of [
+    { paths: delegated, expected: '' },
+    { paths: retained, expected: '@schickling' },
   ]) {
     for (const path of paths) {
       const last = rules.findLast((rule) => rule.matches.test(path))
