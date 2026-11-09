@@ -25,7 +25,7 @@ const makeClient = (window: TestWindow, legacy = false) =>
     listenWindow: window as unknown as Window,
     sendWindow: window as unknown as Window,
     schema: {
-      listen: legacy ? DevtoolsWeb.ClientSessionContentscriptMainRes : DevtoolsWeb.ContentscriptMainMessage,
+      listen: legacy === true ? DevtoolsWeb.ClientSessionContentscriptMainRes : DevtoolsWeb.ContentscriptMainMessage,
       send: DevtoolsWeb.ClientSessionContentscriptMainReq,
     },
     ids: { own: 'client-session-static', other: 'contentscript-main-static' },
@@ -51,12 +51,12 @@ for (const order of ['app-first', 'extension-first'] as const) {
         Deferred.doneUnsafe(firstRequest, Effect.void)
       }
       const extensionBeforeApp = order === 'extension-first' ? yield* makeExtension(window) : undefined
-      if (extensionBeforeApp) yield* extensionBeforeApp.send(DevtoolsWeb.ContentscriptMainReady.make({}))
+      if (extensionBeforeApp !== undefined) yield* extensionBeforeApp.send(DevtoolsWeb.ContentscriptMainReady.make({}))
       const client = yield* makeClient(window)
       const app = yield* DevtoolsWeb.requestContentscriptMain(client, session).pipe(Effect.forkScoped)
       yield* Deferred.await(firstRequest)
       const extension = extensionBeforeApp ?? (yield* makeExtension(window))
-      if (!extensionBeforeApp) yield* extension.send(DevtoolsWeb.ContentscriptMainReady.make({}))
+      if (extensionBeforeApp === undefined) yield* extension.send(DevtoolsWeb.ContentscriptMainReady.make({}))
       const request = yield* extension.listen.pipe(
         Stream.mapEffect(Effect.fromResult),
         Stream.runHead,
