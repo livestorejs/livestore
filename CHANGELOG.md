@@ -13,6 +13,10 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 ### Changed
 
+- **React:** Suspended store consumers retain their initial promise through React's
+  component replay, avoiding hook-order errors and duplicate store boots that can
+  leave extension DevTools at "Connecting to session". Mounted renders still use
+  the synchronous store path so action transitions can commit.
 - **DevTools:** DevTools no longer requires a sponsor license ([#1511](https://github.com/livestorejs/livestore/issues/1511)).
 - **DevTools:** Fixed web sessions getting stuck at "Connecting to session" by keeping worker connections alive until the session disconnects ([#1709](https://github.com/livestorejs/livestore/pull/1709)).
 - **State storage:** Rebases roll back state through a materialization journal table instead of SQLite changesets carried in event metadata. Because the state system tables changed, existing state databases are rebuilt from the eventlog once after upgrading ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
@@ -26,6 +30,10 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 For maintainers and contributors:
 
+- **DevTools tests:** Persisted multi-tab fixtures use the adapter's shared client identity,
+  while in-memory fixtures assert independent databases and reload behavior. The TodoMVC
+  fixture keeps one store registry per document so aborted route renders cannot
+  boot duplicate stores with the same DevTools mesh node IDs.
 - **Review delegation:** Package source outside credentialed runtime trees,
   changelogs, and implementation context allow independent agent review without
   a required Johannes code-owner approval. Vision, requirements, decisions,
