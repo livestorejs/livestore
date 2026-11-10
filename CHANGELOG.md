@@ -36,6 +36,15 @@ For maintainers and contributors:
   while in-memory fixtures assert independent databases and reload behavior. The TodoMVC
   fixture keeps one store registry per document so aborted route renders cannot
   boot duplicate stores with the same DevTools mesh node IDs.
+- **Review delegation:** Package source outside credentialed runtime trees,
+  changelogs, and implementation context allow independent agent review without
+  a required Johannes code-owner approval. Vision, requirements, decisions,
+  releases, install inputs, and credentialed workflow execution retain his gate,
+  including previously ownerless launchers and transitive tooling. The docs
+  changelog renders raw Markdown rather than compiling delegated frontmatter
+  as an executable Astro module
+  ([#1711](https://github.com/livestorejs/livestore/pull/1711),
+  [#1701](https://github.com/livestorejs/livestore/issues/1701)).
 - **Test tooling:** Extension-backed Playwright launches preserve caller-supplied
   Chromium arguments alongside extension flags. The DevTools undock locator
   selects the native button by role instead of matching its presentation host.

@@ -7,8 +7,6 @@ import starlight from '@astrojs/starlight'
 import tailwind from '@tailwindcss/vite'
 import astroD2 from 'astro-d2'
 import { defineConfig, envField } from 'astro/config'
-import rehypeMermaid from 'rehype-mermaid'
-import remarkCustomHeaderId from 'remark-custom-header-id'
 // import starlightAutoSidebar from 'starlight-auto-sidebar'
 import starlightLinksValidator from 'starlight-links-validator'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
@@ -20,12 +18,11 @@ import { createAstroTwoslashCodeIntegration } from '@local/astro-twoslash-code/i
 import { DISCORD_INVITE_URL } from '@local/shared'
 
 import { getBranchName } from './src/data/data.ts'
-import { rehypeExternalLinks } from './src/plugins/rehype/externalLinks.js'
-import { remarkGithubIssueLinks } from './src/plugins/remark/githubIssueLinks.js'
 import { createCopyPageClipboardFallbackIntegration } from './src/plugins/starlight/contextual-menu-fallback/plugin.ts'
 import starlightContextualMenu from './src/plugins/starlight/contextual-menu/index.js'
 import starlightMarkdown from './src/plugins/starlight/markdown/index.js'
 import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.js'
+import { markdownOptions } from './src/utils/markdown-config.ts'
 
 const port = 5252
 
@@ -458,20 +455,5 @@ export default defineConfig({
     },
     plugins: [tailwind()],
   },
-  markdown: {
-    syntaxHighlight: {
-      type: 'shiki',
-      excludeLangs: ['mermaid', 'math', 'd2'],
-    },
-    remarkPlugins: [
-      remarkGithubIssueLinks,
-      // MD: {#custom-id}
-      // MDX: \{#custom-id\}
-      remarkCustomHeaderId,
-    ],
-    rehypePlugins: [
-      [rehypeMermaid, { strategy: 'img-svg', dark: true }],
-      [rehypeExternalLinks, { internalDomains: ['livestore.dev', 'localhost'] }],
-    ],
-  },
+  markdown: markdownOptions,
 })
