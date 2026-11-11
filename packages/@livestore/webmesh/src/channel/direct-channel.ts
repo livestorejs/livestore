@@ -44,13 +44,17 @@ export const makeDirectChannel = ({
   incomingPacketsQueue,
   target,
   sendPacket,
-}: MakeDirectChannelArgs) =>
+  onReconnect,
+}: MakeDirectChannelArgs & { onReconnect?: Effect.Effect<void> }) =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {
       /** Only used to identify whether a source is the same instance to know when to reconnect */
       const sourceId = nanoid()
+      let previousChannelVersion = 0
+      let minimumChannelVersion = 1
+      let hasConnected = false
 
-      const listenQueue = yield* Queue.unbounded<any>()
+      const listenQueue = yield* Effect.acquireRelease(Queue.unbounded<any>(), Queue.shutdown)
       const sendQueue = yield* TxQueue.unbounded<[msg: any, deferred: Deferred.Deferred<void>]>()
 
       const initialEdgeDeferred = yield* Deferred.make<void>()
@@ -73,7 +77,8 @@ export const makeDirectChannel = ({
 
         while (true) {
           debugInfo.connectCounter++
-          const channelVersion = debugInfo.connectCounter
+          const channelVersion = Math.max(previousChannelVersion + 1, minimumChannelVersion)
+          previousChannelVersion = channelVersion
 
           yield* Effect.spanEvent(`Connecting#${channelVersion}`)
 
@@ -116,6 +121,9 @@ export const makeDirectChannel = ({
             newEdgeAvailablePubSub,
             sendPacket,
             scope: makeDirectChannelScope,
+            onHigherVersion: (version) => {
+              minimumChannelVersion = Math.max(minimumChannelVersion, version)
+            },
           }).pipe(
             Scope.provide(makeDirectChannelScope),
             Effect.forkIn(makeDirectChannelScope),
@@ -157,6 +165,39 @@ export const makeDirectChannel = ({
         yield* Effect.spanEvent(`Connected#${channelVersion}`)
         debugInfo.isConnected = true
         debugInfo.innerChannelRef.current = channel
+        yield* Effect.gen(function* () {
+          while (true) {
+            const [msg, deferred] = yield* TxQueue.peek(sendQueue)
+            // NOTE we don't need an explicit retry flow here since in case of the channel being closed,
+            // the send will never succeed. Meanwhile the send-loop fiber will be interrupted and
+            // given we only peeked at the queue, the message to send is still there.
+            yield* channel.send(msg)
+            yield* Deferred.succeed(deferred, void 0)
+            yield* TxQueue.take(sendQueue) // Remove the message from the queue
+          }
+        }).pipe(Effect.forkIn(makeDirectChannelScope))
+        if (hasConnected === true && onReconnect !== undefined) yield* onReconnect
+        hasConnected = true
+
+        // MessagePorts do not notify us when a remote page/worker disappears.
+        // Probe newly available routes even while the old port looks connected:
+        // a same-name replacement must receive a request to register a responder.
+        yield* Stream.fromPubSub(newEdgeAvailablePubSub).pipe(
+          Stream.runForEach(() =>
+            sendPacket(
+              WebmeshSchema.DirectChannelRequest.make({
+                source: nodeName,
+                sourceId,
+                target,
+                channelName,
+                channelVersion,
+                hops: [],
+                reqId: undefined,
+              }),
+            ),
+          ),
+          Effect.forkIn(makeDirectChannelScope),
+        )
 
         yield* Deferred.succeed(initialEdgeDeferred, void 0)
 
@@ -169,18 +210,6 @@ export const makeDirectChannel = ({
           Effect.tapCauseLogPretty,
           Effect.forkIn(makeDirectChannelScope),
         )
-
-        yield* Effect.gen(function* () {
-          while (true) {
-            const [msg, deferred] = yield* TxQueue.peek(sendQueue)
-            // NOTE we don't need an explicit retry flow here since in case of the channel being closed,
-            // the send will never succeed. Meanwhile the send-loop fiber will be interrupted and
-            // given we only peeked at the queue, the message to send is still there.
-            yield* channel.send(msg)
-            yield* Deferred.succeed(deferred, void 0)
-            yield* TxQueue.take(sendQueue) // Remove the message from the queue
-          }
-        }).pipe(Effect.forkIn(makeDirectChannelScope))
 
         // Wait until the channel is closed and then try to reconnect
         yield* Deferred.await(channel.closedDeferred)
