@@ -34,6 +34,7 @@ import {
   Layer,
   Queue,
   RpcClient,
+  type RpcClientError,
   type Schema,
   SubscriptionRef,
 } from '@livestore/utils/effect'
@@ -141,18 +142,7 @@ export const makeInMemoryAdapter =
           : undefined
 
       const sharedWorkerClient =
-        sharedWebWorker !== undefined
-          ? yield* RpcClient.make(WorkerSchema.SharedWorkerRpcs).pipe(
-              Effect.provide(
-                Layer.provideMerge(
-                  RpcClient.layerProtocolWorker({ size: 1, concurrency: 100 }),
-                  BrowserWorker.layer(() => sharedWebWorker),
-                ),
-              ),
-              Effect.tapCauseLogPretty,
-              UnknownError.mapToUnknownError,
-            )
-          : undefined
+        sharedWebWorker !== undefined ? yield* makeSharedWorkerClient(sharedWebWorker) : undefined
 
       const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
         schema,
@@ -210,6 +200,25 @@ export const makeInMemoryAdapter =
 
       return clientSession
     }).pipe(UnknownError.mapToUnknownError, Effect.provide(FetchHttpClient.layer))
+
+/** @internal Creates the optional DevTools client in the enclosing adapter scope. */
+export const makeSharedWorkerClient = (
+  sharedWebWorker: globalThis.SharedWorker,
+): Effect.Effect<
+  RpcClient.FromGroup<typeof WorkerSchema.SharedWorkerRpcs, RpcClientError.RpcClientError>,
+  UnknownError,
+  Scope.Scope
+> =>
+  Effect.gen(function* () {
+    // Build in the adapter scope: providing the layer only around client creation
+    // would release the worker protocol before subsequent mesh connection RPCs.
+    const sharedWorkerContext = yield* Layer.build(
+      RpcClient.layerProtocolWorker({ size: 1, concurrency: 100 }).pipe(
+        Layer.provide(BrowserWorker.layer(() => sharedWebWorker)),
+      ),
+    )
+    return yield* RpcClient.make(WorkerSchema.SharedWorkerRpcs).pipe(Effect.provide(sharedWorkerContext))
+  }).pipe(Effect.tapCauseLogPretty, UnknownError.mapToUnknownError)
 
 export interface MakeLeaderThreadArgs {
   schema: LiveStoreSchema
