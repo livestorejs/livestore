@@ -7,6 +7,7 @@ import {
   Fiber,
   Predicate,
   Queue,
+  Result,
   Schema,
   Scope,
   Stream,
@@ -270,13 +271,11 @@ export const makeDirectChannelInternal = ({
               Effect.forkChild,
             )
 
-            // There seems to be some scenario where the initial ping message is lost.
-            // As a workaround until we find the root cause, we're retrying the ping a few times.
-            // TODO write a test that reproduces this issue and fix the root cause ()
-            // https://github.com/livestorejs/livestore/issues/262
-            yield* channel
-              .send(MeshSchema.DirectChannelPing.make({}))
-              .pipe(Effect.timeout(10), Effect.retry({ times: 2 }))
+            // MessagePort events are buffered eagerly and sends wait for an ack. A slow peer
+            // is not a lost ping: retrying on a short deadline duplicates protocol messages
+            // and can fail an otherwise healthy handshake (https://github.com/livestorejs/livestore/issues/262).
+            // This wait ends on peer readiness, caller interruption, or scope closure, not a local deadline.
+            yield* channel.send(MeshSchema.DirectChannelPing.make({}))
 
             yield* Fiber.join(waitForPongFiber)
 
@@ -345,6 +344,14 @@ export const makeDirectChannelInternal = ({
     }).pipe(Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
 
     const channel = yield* Deferred.await(deferred)
+    const isHandshakeMessage = Schema.is(Schema.Union([MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong]))
 
-    return channel
+    return {
+      ...channel,
+      schema: schema_,
+      // Handshake messages belong to the transport, including any late duplicates.
+      listen: channel.listen.pipe(
+        Stream.filter((message) => Result.isFailure(message) || !isHandshakeMessage(message.success)),
+      ),
+    }
   }).pipe(Effect.withSpanScoped(`makeDirectChannel:${channelVersion}`))
