@@ -172,6 +172,7 @@ export const makeLeaderThreadLayer = ({
                   clear: Effect.die(new Error(`Not implemented. Should never be used.`)),
                   remove: () => Effect.die(new Error(`Not implemented. Should never be used.`)),
                   size: Effect.die(new Error(`Not implemented. Should never be used.`)),
+                  keys: Effect.die(new Error(`Not implemented. Should never be used.`)),
                 }),
               ),
             ),
