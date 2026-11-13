@@ -235,8 +235,10 @@ Vitest.describe('sync-cf telemetry ownership', () => {
       Vitest.expect(effectError).toBe(expected)
       Vitest.expect(streamError).toBe(expected)
       Vitest.expect(unexpectedError).toBe(unexpected)
-      Vitest.expect(statuses.get('expected-effect')).toBe(SpanStatusCode.OK)
-      Vitest.expect(statuses.get('expected-stream')).toBe(SpanStatusCode.OK)
+      // Successful spans are left UNSET since @effect/opentelemetry 4.1 (OTel spec). What matters is that
+      // anticipated recovery failures never surface as ERROR.
+      Vitest.expect(statuses.get('expected-effect')).not.toBe(SpanStatusCode.ERROR)
+      Vitest.expect(statuses.get('expected-stream')).not.toBe(SpanStatusCode.ERROR)
       Vitest.expect(statuses.get('unexpected-effect')).toBe(SpanStatusCode.ERROR)
     }),
   )
