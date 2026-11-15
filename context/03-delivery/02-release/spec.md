@@ -98,7 +98,9 @@ every ten seconds and retrying temporary registry read failures. A preparation
 retry refuses to rebuild when the workflow run already contains its prepared
 release artifact, preserving the exact bytes for publishing retries. The release
 artifact is uploaded last so failures in earlier preparation steps, including
-the separate Chrome ZIP upload, leave preparation retryable. Stable
+the separate Chrome ZIP upload, leave preparation retryable. Ancillary Chrome
+ZIP and certification-report uploads may replace prior attempts; the guarded
+release artifact must never be overwritten. Stable
 finalization handles GitHub Release metadata and Chrome assets
 outside the npm-credentialed job.
 

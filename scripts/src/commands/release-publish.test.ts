@@ -175,11 +175,20 @@ describe('isolated npm publisher', () => {
 })
 
 describe('release artifact protection', () => {
-  it.each(['release', 'snapshot-version'])('uploads the guarded artifact last for %s', (suffix) => {
-    const steps = workflow.jobs[`prepare-${suffix}`].steps
-    expect(steps.at(-1).uses).toBe('actions/upload-artifact@v4')
-    expect(steps.at(-1).with.name).toBe(`npm-release-${suffix}`)
-  })
+  it.each(['release', 'snapshot-version'])(
+    'keeps ancillary uploads retryable and the guarded artifact last for %s',
+    (suffix) => {
+      const steps = workflow.jobs[`prepare-${suffix}`].steps
+      expect(steps.at(-1).uses).toBe('actions/upload-artifact@v4')
+      expect(steps.at(-1).with.name).toBe(`npm-release-${suffix}`)
+      expect(steps.at(-1).with.overwrite).not.toBe(true)
+      const ancillaryUploads = steps
+        .slice(0, -1)
+        .filter((step: { uses?: string }) => step.uses === 'actions/upload-artifact@v4')
+      expect(ancillaryUploads.length).toBeGreaterThan(0)
+      for (const upload of ancillaryUploads) expect(upload.with.overwrite).toBe(true)
+    },
+  )
 
   it.each(['release', 'snapshot-version'])('blocks rebuilding an existing artifact for %s', (suffix) => {
     const prepare = workflow.jobs[`prepare-${suffix}`]

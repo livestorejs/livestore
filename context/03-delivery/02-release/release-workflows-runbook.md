@@ -260,7 +260,9 @@ jobs**, or rerun the individual failed publish job, rather than **Re-run all
 jobs**. If preparation failed before uploading its release artifact, it can be
 retried normally. The release artifact upload is the last preparation step,
 after ancillary uploads such as the separate Chrome snapshot ZIP, so their
-failures do not trip the artifact guard on retry.
+failures do not trip the artifact guard on retry. Ancillary Chrome ZIP and
+certification-report uploads use `overwrite: true` to avoid duplicate-name
+conflicts when preparation retries. The guarded npm release artifact does not.
 
 Do not rerun preparation, dispatch a new run, generate a new release plan, bump the
 version, or rebuild a different candidate to evade the conflict. Rebuilding

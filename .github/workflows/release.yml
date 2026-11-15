@@ -1594,6 +1594,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: devtools-certification-release
+          overwrite: true
           path: |
             tests/integration/playwright-report/
             tests/integration/test-results/devtools/
@@ -1962,6 +1963,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'livestore-devtools-chrome-0.0.0-snapshot-${{ github.event.workflow_run.head_sha || github.sha }}'
+          overwrite: true
           path: '${{ runner.temp }}/release-artifact/livestore-devtools-chrome-0.0.0-snapshot-${{ github.event.workflow_run.head_sha || github.sha }}.zip'
           if-no-files-found: error
           retention-days: 14

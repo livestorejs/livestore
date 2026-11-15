@@ -139,6 +139,7 @@ echo "LIVESTORE_NPM_TAG=$RELEASE_CANDIDATE_NPM_TAG" >> "$GITHUB_ENV"`,
                 if: '${{ !cancelled() }}',
                 with: {
                   name: `devtools-certification-${suffix}`,
+                  overwrite: true,
                   path: 'tests/integration/playwright-report/\ntests/integration/test-results/devtools/',
                   'if-no-files-found': 'ignore',
                 },
@@ -168,6 +169,7 @@ node .github/scripts/release-artifact.mjs create --artifact-dir "$RELEASE_ARTIFA
                 uses: 'actions/upload-artifact@v4',
                 with: {
                   name: `livestore-devtools-chrome-0.0.0-snapshot-${releaseHeadSha}`,
+                  overwrite: true,
                   path: `\${{ runner.temp }}/release-artifact/livestore-devtools-chrome-0.0.0-snapshot-${releaseHeadSha}.zip`,
                   'if-no-files-found': 'error',
                   'retention-days': 14,
