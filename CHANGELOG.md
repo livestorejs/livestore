@@ -13,6 +13,14 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 ### Changed
 
+- **Effect dependencies:** Updated the aligned Effect 4 dependency cohort from
+  `4.0.3` to `4.1.4`, including its AI, OpenTelemetry, platform, SQLite, and
+  Vitest packages. Applications using Effect should align their dependencies
+  to `4.1.4` or a compatible later 4.x release. With Effect 4.1, successful
+  spans exported through `@effect/opentelemetry` keep the `UNSET` status
+  instead of `OK`. JSON column detection and storage fingerprints were adapted
+  to the new Effect schema representation, so existing state databases are not
+  rebuilt.
 - **DevTools:** DevTools no longer requires a sponsor license ([#1511](https://github.com/livestorejs/livestore/issues/1511)).
 - **DevTools:** Fixed web sessions getting stuck at "Connecting to session" by keeping worker connections alive until the session disconnects ([#1709](https://github.com/livestorejs/livestore/pull/1709)).
 - **State storage:** Rebases roll back state through a materialization journal table instead of SQLite changesets carried in event metadata. Because the state system tables changed, existing state databases are rebuilt from the eventlog once after upgrading ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
