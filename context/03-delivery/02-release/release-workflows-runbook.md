@@ -207,13 +207,16 @@ the version. Treat that specific conflict as pending visibility, not as a
 successful release or a reason to change the release version. Other publish
 errors are not evidence of staging.
 
-The isolated publishers fail closed if npm publish fails or the public integrity
-or dist-tag does not match immediately afterward. Their short diagnostic points
-to this section; there is no credentialed staging-recovery state machine.
-Already-visible versions are skipped only when both their integrity and requested
-dist-tag match the prepared artifact. Do not mark the release green or advance
-production promotion while verification is failing. Missing visibility alone
-does not prove that a maintainer-approvable stage exists. A staged version does
+The isolated publishers upload the full package cohort, then poll public
+integrity and requested dist-tags every ten seconds within one shared five-minute
+visibility window. Registry reads prefer online data and retry temporary network
+failures. Already-visible versions with matching integrity skip upload but still
+require the requested dist-tag before verification succeeds. Different public
+bytes fail immediately. A rejected upload or a visibility timeout fails closed
+and points here; there is no credentialed staging-recovery state machine. Do not
+mark the release green or advance production promotion while verification is
+failing. Missing visibility alone does not prove that a maintainer-approvable
+stage exists. A staged version does
 not auto-promote: inspect and approve it using the commands below, or ask the npm
 administrator to allow direct publishing in the trusted-publisher configuration.
 
@@ -249,8 +252,15 @@ the release workflow nor an agent should auto-approve or handle the
 maintainer's OTP.
 
 After approval, rerun the failed publish job in the original workflow run,
-retaining its immutable prepared artifact, commit, version, and npm tag. Do not
-rerun preparation, dispatch a new run, generate a new release plan, bump the
+retaining its immutable prepared artifact, commit, version, and npm tag.
+Preparation retries check for the existing artifact before checkout or building
+and refuse to replace it. A full workflow rerun can otherwise delete the original
+artifact when uploading another artifact with the same name. Use **Re-run failed
+jobs**, or rerun the individual failed publish job, rather than **Re-run all
+jobs**. If preparation failed before uploading its release artifact, it can be
+retried normally.
+
+Do not rerun preparation, dispatch a new run, generate a new release plan, bump the
 version, or rebuild a different candidate to evade the conflict. Rebuilding
 may change bytes (including certification metadata) and must fail the integrity
 comparison against an already-published version. The publishers skip matching
