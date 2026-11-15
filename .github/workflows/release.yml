@@ -1958,17 +1958,17 @@ jobs:
           done
 
           node .github/scripts/release-artifact.mjs create --artifact-dir "$RELEASE_ARTIFACT_DIR" --source-sha "$SOURCE_SHA" --version "$LIVESTORE_RELEASE_VERSION" --npm-tag "$LIVESTORE_NPM_TAG" --topology scripts/src/generated/release-topology.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: npm-release-snapshot-version
-          path: '${{ runner.temp }}/release-artifact/'
-          if-no-files-found: error
-          retention-days: 14
       - name: Upload DevTools Chrome snapshot artifact
         uses: actions/upload-artifact@v4
         with:
           name: 'livestore-devtools-chrome-0.0.0-snapshot-${{ github.event.workflow_run.head_sha || github.sha }}'
           path: '${{ runner.temp }}/release-artifact/livestore-devtools-chrome-0.0.0-snapshot-${{ github.event.workflow_run.head_sha || github.sha }}.zip'
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-release-snapshot-version
+          path: '${{ runner.temp }}/release-artifact/'
           if-no-files-found: error
           retention-days: 14
   validate-snapshot-version:

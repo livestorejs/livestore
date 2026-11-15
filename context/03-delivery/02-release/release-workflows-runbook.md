@@ -258,7 +258,9 @@ and refuse to replace it. A full workflow rerun can otherwise delete the origina
 artifact when uploading another artifact with the same name. Use **Re-run failed
 jobs**, or rerun the individual failed publish job, rather than **Re-run all
 jobs**. If preparation failed before uploading its release artifact, it can be
-retried normally.
+retried normally. The release artifact upload is the last preparation step,
+after ancillary uploads such as the separate Chrome snapshot ZIP, so their
+failures do not trip the artifact guard on retry.
 
 Do not rerun preparation, dispatch a new run, generate a new release plan, bump the
 version, or rebuild a different candidate to evade the conflict. Rebuilding

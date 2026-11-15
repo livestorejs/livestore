@@ -161,15 +161,6 @@ done
 ${stable === true ? 'cp release/release-notes.md "$RELEASE_ARTIFACT_DIR/release-notes.md"' : ''}
 node .github/scripts/release-artifact.mjs create --artifact-dir "$RELEASE_ARTIFACT_DIR" --source-sha "$SOURCE_SHA" --version "$LIVESTORE_RELEASE_VERSION" --npm-tag "$LIVESTORE_NPM_TAG" --topology ${releaseTopologyPath}`,
         },
-        {
-          uses: 'actions/upload-artifact@v4',
-          with: {
-            name: `npm-release-${suffix}`,
-            path: '${{ runner.temp }}/release-artifact/',
-            'if-no-files-found': 'error',
-            'retention-days': 14,
-          },
-        },
         ...(stable === false
           ? [
               {
@@ -184,6 +175,16 @@ node .github/scripts/release-artifact.mjs create --artifact-dir "$RELEASE_ARTIFA
               },
             ]
           : []),
+        // Publish the handoff last so an earlier upload failure can safely retry preparation.
+        {
+          uses: 'actions/upload-artifact@v4',
+          with: {
+            name: `npm-release-${suffix}`,
+            path: '${{ runner.temp }}/release-artifact/',
+            'if-no-files-found': 'error',
+            'retention-days': 14,
+          },
+        },
       ],
     },
     [validate]: {

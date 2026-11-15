@@ -175,6 +175,12 @@ describe('isolated npm publisher', () => {
 })
 
 describe('release artifact protection', () => {
+  it.each(['release', 'snapshot-version'])('uploads the guarded artifact last for %s', (suffix) => {
+    const steps = workflow.jobs[`prepare-${suffix}`].steps
+    expect(steps.at(-1).uses).toBe('actions/upload-artifact@v4')
+    expect(steps.at(-1).with.name).toBe(`npm-release-${suffix}`)
+  })
+
   it.each(['release', 'snapshot-version'])('blocks rebuilding an existing artifact for %s', (suffix) => {
     const prepare = workflow.jobs[`prepare-${suffix}`]
     const guard = prepare.steps[0]

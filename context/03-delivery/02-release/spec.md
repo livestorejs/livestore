@@ -96,7 +96,9 @@ matches. After all uploads, publication waits for matching public integrity and
 requested dist-tags within one shared five-minute visibility window, polling
 every ten seconds and retrying temporary registry read failures. A preparation
 retry refuses to rebuild when the workflow run already contains its prepared
-release artifact, preserving the exact bytes for publishing retries. Stable
+release artifact, preserving the exact bytes for publishing retries. The release
+artifact is uploaded last so failures in earlier preparation steps, including
+the separate Chrome ZIP upload, leave preparation retryable. Stable
 finalization handles GitHub Release metadata and Chrome assets
 outside the npm-credentialed job.
 
