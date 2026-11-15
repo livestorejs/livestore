@@ -37,7 +37,7 @@ For maintainers and contributors:
 - **npm publishing:** Wait for npm to finish processing the full release group
   before checking publication success. Publishing retries keep the original
   build files, and preparation refuses to replace an existing release artifact
-  ([#1705](https://github.com/livestorejs/livestore/pull/1705)).
+  ([#1728](https://github.com/livestorejs/livestore/pull/1728)).
 
 - **Review delegation:** Package source outside credentialed runtime trees,
   changelogs, and implementation context allow independent agent review without
