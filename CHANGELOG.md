@@ -13,6 +13,9 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 ### Changed
 
+- **Documentation:** Published corpus source links use the configured documentation
+  origin even when Netlify supplies a different build URL
+  ([#1723](https://github.com/livestorejs/livestore/issues/1723)).
 - **Effect dependencies:** Updated the aligned Effect 4 dependency cohort from
   `4.0.3` to `4.1.4`, including its AI, OpenTelemetry, platform, SQLite, and
   Vitest packages. Applications using Effect should align their dependencies
