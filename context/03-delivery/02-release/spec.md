@@ -92,7 +92,16 @@ without repository checkout, dependency installation, building, `mono`, or
 package lifecycle scripts. The npm-credentialed boundary contains only shell
 orchestration and `npm publish --ignore-scripts --provenance`; it rechecks byte
 integrity and accepts an already-published version only when registry integrity
-matches. Stable finalization handles GitHub Release metadata and Chrome assets
+matches. After all uploads, publication waits for matching public integrity and
+requested dist-tags within one shared five-minute visibility window, polling
+every ten seconds and retrying temporary registry read failures. A preparation
+retry refuses to rebuild when the workflow run already contains its prepared
+release artifact, preserving the exact bytes for publishing retries. The release
+artifact is uploaded last so failures in earlier preparation steps, including
+the separate Chrome ZIP upload, leave preparation retryable. Ancillary Chrome
+ZIP and certification-report uploads may replace prior attempts; the guarded
+release artifact must never be overwritten. Stable
+finalization handles GitHub Release metadata and Chrome assets
 outside the npm-credentialed job.
 
 This is credential containment, not a proof of benign build output. Hashes bind
