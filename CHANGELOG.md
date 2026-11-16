@@ -6,6 +6,14 @@
 > for more info. LiveStore is following a semver-like release strategy where
 > breaking changes are released in minor versions before the 1.0 release.
 
+## Unreleased
+
+### Changed
+
+- **Documentation:** Published corpus source links use the configured documentation
+  origin even when Netlify supplies a different build URL
+  ([#1723](https://github.com/livestorejs/livestore/issues/1723)).
+
 ## 0.5.0
 
 ### Changed
