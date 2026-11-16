@@ -23,6 +23,7 @@ import starlightContextualMenu from './src/plugins/starlight/contextual-menu/ind
 import starlightMarkdown from './src/plugins/starlight/markdown/index.js'
 import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.js'
 import { markdownOptions } from './src/utils/markdown-config.ts'
+import { resolveDocsSiteUrl } from './src/utils/site-url.ts'
 
 const port = 5252
 
@@ -97,17 +98,7 @@ const docsRedirects = Object.fromEntries([
   ...docsRedirect('/sustainable-open-source/contributing/monorepo', '/sustainable-open-source/contributing/full-setup'),
 ]) satisfies Record<string, string | { status: 302; destination: string }>
 
-// Netlify preview domain (see https://docs.netlify.com/configure-builds/environment-variables/#build-metadata)
-const domain =
-  process.env.DEPLOY_PRIME_URL !== undefined
-    ? new URL(process.env.DEPLOY_PRIME_URL).hostname
-    : process.env.LIVESTORE_DOCS_SITE_URL !== undefined
-      ? new URL(process.env.LIVESTORE_DOCS_SITE_URL).hostname
-      : process.env.NODE_ENV === 'production'
-        ? 'dev.docs.livestore.dev'
-        : `localhost:${port}`
-
-const site = `https://${domain}`
+const site = resolveDocsSiteUrl(process.env, port)
 
 // https://astro.build/config
 export default defineConfig({
