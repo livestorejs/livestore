@@ -21,14 +21,14 @@ calendar events derive from this node and the versioned schedule.
   does not invalidate previously shared links. Guest entry is not a release
   prerequisite. `refines: LS.CONTRIB.COMM-R01`
 - **LS.CONTRIB.COMM.MEET-R04 Canonical information:** The docs page presents
-  the next two meetings and is linked from calendar events. Schedule edits
+  the next two meetings, or an explicit indefinite-pause notice, and is linked from calendar events. Schedule edits
   appear within minutes without rebuilding docs. Failed reads are explicit.
   `refines: LS.CONTRIB.COMM-R03`
 - **LS.CONTRIB.COMM.MEET-R05 Explained changes:** Rescheduling and cancellation
   require a public reason. Rescheduling preserves identity and resets later
-  cadence. Cancellation requires two explicitly chosen next dates.
+  cadence. A single cancellation requires two explicitly chosen next dates; an indefinite pause requires a public note and no replacement dates.
 - **LS.CONTRIB.COMM.MEET-R06 Observable publication:** Repeated publication
-  creates no duplicates and maintains two upcoming meetings. A reusable issue
+  creates no duplicates and maintains two upcoming meetings while active, or removes future meetings while paused. A reusable issue
   reports changed failures, suppresses unchanged repeats, and closes on
   recovery. A private calendar verifies the full lifecycle before activation.
 - **LS.CONTRIB.COMM.MEET-R07 Recoverable credentials:** Publishing credentials

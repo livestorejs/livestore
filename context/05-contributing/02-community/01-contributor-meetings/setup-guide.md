@@ -125,3 +125,16 @@ canonical page and explain that subscription refresh timing is client-owned.
 Keep Discord message experiments in the real server's test channel. Production
 Discord automation follows
 [contrib PR #55](https://github.com/livestorejs/livestore-contrib/pull/55).
+
+### Pause all contributor syncs
+
+Add a final `pause` change at the first occurrence that should not take place,
+with a public `note` and no replacement dates. The meeting page shows the pause;
+publication removes future managed events and preserves historical meetings.
+Remove the pause to resume the existing cadence. For an immediate operational
+pause, set `CONTRIBUTOR_MEETING_PUBLISHING_ENABLED` to `false` before cancelling
+future calendar copies, then keep the canonical schedule aligned.
+
+Deploy a reader that supports `pause` before expecting an explicit pause notice
+on the production page. Older readers fail with the unavailable state rather
+than announce dates from a paused schedule.

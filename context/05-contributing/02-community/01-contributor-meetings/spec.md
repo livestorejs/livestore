@@ -40,6 +40,7 @@ type MeetingSchedule = {
   changes: Array<
     | { kind: 'reschedule'; occurrence: number; date: string; localStart?: string; note: string }
     | { kind: 'cancel'; occurrence: number; nextDates: [string, string]; note: string }
+    | { kind: 'pause'; occurrence: number; note: string }
   >
 }
 ```
@@ -56,6 +57,14 @@ the cadence resumes 14 days after the second. Duplicate change entries,
 overlapping cancellation replacement ranges, date collisions, and empty
 public notes are invalid. `calendarId` is absent until the dedicated public
 calendar is provisioned; readers must not manufacture a subscription URL.
+
+A `pause` change stops the schedule from its occurrence indefinitely, without
+inventing replacement dates. It must be the final change and keeps a public
+pause notice visible. Earlier published history is retained. Removing the
+pause restores the existing cadence and stable identities. A paused schedule
+produces no future calendar events; reconciliation removes managed future
+copies. Readers that do not support this change fail explicitly instead of
+showing stale dates.
 
 Cancellation notices remain visible until the affected meeting's end time.
 Reschedule notices remain visible through the later of the original and new
@@ -80,7 +89,7 @@ The community page links to
 `https://docs.livestore.dev/misc/contributor-sync/`. On each visit, this page
 reads the public schedule from the core repository's `main` branch. The raw
 file cache can delay visibility by approximately five minutes. The page
-computes the next two meetings, shows change reasons and current cancellation
+computes up to two meetings before any pause, shows change reasons and current cancellation
 notices, and offers individual calendar additions, a subscription to the
 dedicated LiveStore Google calendar, and the room link. A failed schedule read
 shows an explicit unavailable state. A standing notice explains that saved
@@ -110,7 +119,8 @@ schedule merge / daily timer / manual dispatch
 ```
 
 The repository variable `CONTRIBUTOR_MEETING_PUBLISHING_ENABLED` gates Google
-writes; it is enabled, and disabling it stops writes during an incident. The
+writes; disabling it stops writes during an incident or an operational pause. The
+canonical schedule also records a pause so readers agree with the calendar. The
 workflow uses a service-account credential stored in Actions secrets, with writer
 access only to the dedicated public calendar, with a recoverable backup in
 shared 1Password. It creates individual events

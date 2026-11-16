@@ -36,7 +36,8 @@ try {
       await page
         .locator(`contributor-meetings[data-meeting-state="ready"][data-schedule-revision="${revision}"]`)
         .waitFor({ timeout: Math.min(20000, remaining()) })
-      const expected = getMeetingView(schedule, new Date()).upcoming
+      const view = getMeetingView(schedule, new Date())
+      const expected = view.upcoming
       const shown = await page.locator('[data-meeting-id]').evaluateAll((elements) =>
         elements.map((element) => ({
           id: element.getAttribute('data-meeting-id'),
@@ -44,11 +45,16 @@ try {
         })),
       )
       if (
-        shown.length !== 2 ||
+        shown.length !== expected.length ||
         shown.some((item, index) => item.id !== expected[index]?.id || item.start !== expected[index]?.start) === true
       ) {
         throw new Error('Published page rendered unexpected meeting dates')
       }
+      if (
+        view.notices.some((notice) => notice.kind === 'pause') === true &&
+        (await page.locator('[data-meeting-pause]').count()) !== 1
+      )
+        throw new Error('Published page did not render the schedule pause')
       verified = true
       break
     } catch {
