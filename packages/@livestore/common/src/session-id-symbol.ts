@@ -8,7 +8,7 @@
  */
 import { Predicate } from '@livestore/utils/effect'
 
-import type { Bindable, SqlValue } from './util.ts'
+import type { Bindable, SqlBindValue } from './util.ts'
 
 /**
  * Can be used in queries to refer to the current session id.
@@ -36,8 +36,8 @@ export const SessionIdSymbol = Symbol.for('@livestore/session-id')
 export type SessionIdSymbol = typeof SessionIdSymbol
 
 export type BindableWithSessionIdSymbol =
-  | ReadonlyArray<SqlValue | SessionIdSymbol>
-  | Record<string, SqlValue | SessionIdSymbol>
+  | ReadonlyArray<SqlBindValue | SessionIdSymbol>
+  | Record<string, SqlBindValue | SessionIdSymbol>
 
 export const resolveSessionIdSymbolInBindValues = (
   bindValues: BindableWithSessionIdSymbol,
@@ -47,7 +47,7 @@ export const resolveSessionIdSymbolInBindValues = (
     ? bindValues.map((value) => (value === SessionIdSymbol ? sessionId : value))
     : (Object.fromEntries(
         Object.entries(bindValues).map(([key, value]) => [key, value === SessionIdSymbol ? sessionId : value]),
-      ) as Record<string, SqlValue>)
+      ) as Record<string, SqlBindValue>)
 }
 
 export const resolveSessionIdSymbolInEventArgs = (args: unknown, sessionId: string): unknown => {
