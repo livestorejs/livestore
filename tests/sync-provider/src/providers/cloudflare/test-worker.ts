@@ -46,6 +46,9 @@ const jsonParse = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown)
  */
 const observedPushPayloads = new Map<string, Schema.Json | undefined>()
 
+/** Test-only outage admission and counters, isolated by each test's store id. */
+const webSocketOutages = new Map<string, { until: number; openAttempts: number }>()
+
 interface SyncDoProbe {
   getHibernationProbe(): {
     instanceId: string
@@ -324,8 +327,17 @@ export default {
     if (url.pathname.endsWith('/instance/close-websockets') === true && request.method === 'POST') {
       const storeId = url.searchParams.get('storeId')
       if (storeId === null) return new Response('storeId required', { status: 400 })
+      webSocketOutages.set(storeId, { until: Date.now() + 20_000, openAttempts: 0 })
       const count = await env.SYNC_BACKEND_DO.get(env.SYNC_BACKEND_DO.idFromName(storeId)).closeWebSockets()
       return new Response(JSON.stringify({ count }), { headers: { 'content-type': 'application/json' } })
+    }
+
+    if (url.pathname.endsWith('/instance/websocket-outage') === true) {
+      const storeId = url.searchParams.get('storeId')
+      if (storeId === null) return new Response('storeId required', { status: 400 })
+      return new Response(JSON.stringify(webSocketOutages.get(storeId)), {
+        headers: { 'content-type': 'application/json' },
+      })
     }
 
     if (url.pathname.endsWith('/instance/push-probe') === true) {
@@ -382,6 +394,11 @@ export default {
 
     const searchParams = matchSyncRequest(request)
     if (searchParams !== undefined) {
+      const outage = webSocketOutages.get(searchParams.storeId)
+      if (outage !== undefined && request.headers.get('Upgrade')?.toLowerCase() === 'websocket') {
+        outage.openAttempts++
+        if (Date.now() < outage.until) return new Response('Test backend unavailable', { status: 503 })
+      }
       return handleSyncRequest({
         request,
         searchParams,
