@@ -7,6 +7,7 @@ export const MEETING_SCHEDULE_URL =
 export type MeetingChange =
   | { kind: 'reschedule'; occurrence: number; date: string; note: string; localStart?: string }
   | { kind: 'cancel'; occurrence: number; nextDates: [string, string]; note: string }
+  | { kind: 'pause'; occurrence: number; note: string }
 
 export type MeetingSchedule = {
   version: 1
@@ -28,7 +29,7 @@ export type MeetingOccurrence = {
   note?: string
 }
 
-export type MeetingNotice = { kind: 'reschedule' | 'cancel'; date: string; newDate?: string; note: string }
+export type MeetingNotice = { kind: 'reschedule' | 'cancel' | 'pause'; date: string; newDate?: string; note: string }
 
 export class MeetingScheduleError extends Error {
   override name = 'MeetingScheduleError'
@@ -52,6 +53,7 @@ export const decodeMeetingSchedule = (input: unknown): MeetingSchedule => {
     const note = string(change.note, 'note').trim()
     if (note.length === 0 || note.length > 280)
       throw new MeetingScheduleError('Changes need a public note of 1–280 characters')
+    if (change.kind === 'pause') return { kind: 'pause', occurrence, note }
     if (change.kind === 'reschedule') {
       const movedTime = change.localStart === undefined ? undefined : string(change.localStart, 'localStart')
       if (movedTime !== undefined && /^([01]\d|2[0-3]):[0-5]\d$/.test(movedTime) === false)
@@ -78,7 +80,8 @@ export const decodeMeetingSchedule = (input: unknown): MeetingSchedule => {
   for (const change of changes) {
     if (change.occurrence <= previousChangeEnd)
       throw new MeetingScheduleError('Changes must be ordered and not overlap')
-    previousChangeEnd = change.occurrence + (change.kind === 'cancel' ? 2 : 0)
+    previousChangeEnd =
+      change.kind === 'pause' ? Number.POSITIVE_INFINITY : change.occurrence + (change.kind === 'cancel' ? 2 : 0)
   }
   const calendarId = value.calendarId === undefined ? undefined : string(value.calendarId, 'calendarId')
   if (calendarId !== undefined && /^[a-zA-Z0-9._@-]+$/.test(calendarId) === false)
@@ -121,6 +124,10 @@ export const getMeetingView = (
     let note = replacementNotes.get(occurrence)
     if (change !== undefined) {
       note = change.note
+      if (change.kind === 'pause') {
+        notices.push({ kind: 'pause', date: originalDate, note })
+        return { upcoming, notices, retainedHistory }
+      }
       if (change.kind === 'cancel') {
         replacements.set(occurrence + 1, change.nextDates[0])
         replacements.set(occurrence + 2, change.nextDates[1])
@@ -239,6 +246,7 @@ const validateCadence = (schedule: MeetingSchedule): void => {
   for (let occurrence = 0; occurrence < 10000; occurrence++) {
     day = replacements.get(occurrence) ?? day
     const change = changes.get(occurrence)
+    if (change?.kind === 'pause') return
     if (change?.kind === 'cancel') {
       replacements.set(occurrence + 1, change.nextDates[0])
       replacements.set(occurrence + 2, change.nextDates[1])

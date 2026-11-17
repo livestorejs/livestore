@@ -88,6 +88,39 @@ describe('contributor schedule', () => {
       }),
     ).not.toThrow()
   })
+  test('an indefinite pause removes future meetings while retaining published history', () => {
+    const paused = decodeMeetingSchedule({
+      ...base,
+      changes: [{ kind: 'pause', occurrence: 4, note: 'Paused until further notice.' }],
+    })
+    const currentTime = new Date('2026-11-16T12:00:00Z')
+    const oldView = getMeetingView(schedule, currentTime)
+    const existing = oldView.upcoming.map(desiredCalendarEvent).map((event) => ({ ...event, etag: '"v1"' }))
+    const retainedIds = new Set(['lscontrib00000001', 'lscontrib00000002', 'lscontrib00000003'])
+    const view = getMeetingView(paused, currentTime, retainedIds)
+    expect(view.upcoming).toEqual([])
+    expect(view.notices).toEqual([{ kind: 'pause', date: '2026-11-19', note: 'Paused until further notice.' }])
+    expect(view.retainedHistory.map(({ id }) => id)).toEqual([...retainedIds])
+    expect(planCalendar([], existing)).toEqual(existing.map(({ id, etag }) => ({ kind: 'delete', id, etag })))
+    expect(getMeetingView(paused, new Date('2030-01-01')).upcoming).toEqual([])
+    expect(getMeetingView(schedule, currentTime).upcoming.map(({ id }) => id)).toEqual(existing.map(({ id }) => id))
+  })
+  test('shows meetings before a future pause without inventing replacement dates', () => {
+    const paused = decodeMeetingSchedule({
+      ...base,
+      changes: [{ kind: 'pause', occurrence: 2, note: 'Paused until further notice.' }],
+    })
+    expect(getMeetingView(paused, now).upcoming.map(({ date }) => date)).toEqual(['2026-10-08'])
+    expect(() =>
+      decodeMeetingSchedule({
+        ...base,
+        changes: [
+          { kind: 'pause', occurrence: 1, note: 'Paused.' },
+          { kind: 'reschedule', occurrence: 2, date: '2026-10-22', note: 'Unreachable.' },
+        ],
+      }),
+    ).toThrow('ordered and not overlap')
+  })
   test('selects October 8 and 22 at 19:00 Berlin', () => {
     expect(getMeetingView(schedule, now).upcoming.map(({ start }) => start)).toEqual([
       '2026-10-08T17:00:00.000Z',

@@ -38,6 +38,8 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 For maintainers and contributors:
 
+- **Contributor syncs:** Support indefinite schedule pauses with a public notice and no invented replacement dates ([#1729](https://github.com/livestorejs/livestore/issues/1729)).
+
 - **npm publishing:** Wait for npm to finish processing the full release group
   before checking publication success. Publishing retries keep the original
   build files, and preparation refuses to replace an existing release artifact

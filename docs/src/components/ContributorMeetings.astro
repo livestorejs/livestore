@@ -3,7 +3,7 @@ import { MEETING_ROOM_URL, MEETING_SCHEDULE_URL } from '@local/shared/contributo
 ---
 
 <contributor-meetings data-meeting-state="loading">
-  <p><a href={MEETING_ROOM_URL}>Join on Riverside</a></p>
+  <p data-room><a href={MEETING_ROOM_URL}>Join on Riverside</a></p>
   <p data-status role="status" aria-live="polite">Loading the next contributor meetings…</p>
   <div data-notices></div>
   <ol data-meetings aria-label="Upcoming contributor meetings"></ol>
@@ -147,8 +147,10 @@ import { MEETING_ROOM_URL, MEETING_SCHEDULE_URL } from '@local/shared/contributo
         notices.replaceChildren()
         subscription.replaceChildren()
         for (const notice of view.notices) {
-          const action = notice.kind === 'cancel' ? `Cancelled: ${notice.date}` : `Moved: ${notice.date} → ${notice.newDate}`
-          notices.append(element('p', `${action}. ${notice.note}`))
+          const action = notice.kind === 'pause' ? `Paused from ${notice.date}` : notice.kind === 'cancel' ? `Cancelled: ${notice.date}` : `Moved: ${notice.date} → ${notice.newDate}`
+          const message = element('p', `${action}. ${notice.note}`)
+          if (notice.kind === 'pause') message.dataset.meetingPause = ''
+          notices.append(message)
         }
         for (const meeting of view.upcoming) {
           const item = element('li')
@@ -185,7 +187,12 @@ import { MEETING_ROOM_URL, MEETING_SCHEDULE_URL } from '@local/shared/contributo
         } else {
           subscription.append(element('p', 'Calendar subscription is being set up.'))
         }
-        status.textContent = 'The next two meetings are shown below. All times are Europe/Berlin.'
+        const paused = view.notices.some((notice) => notice.kind === 'pause')
+        const room = this.querySelector<HTMLElement>('[data-room]')
+        if (room !== null) room.hidden = paused === true && view.upcoming.length === 0
+        status.textContent = paused === true && view.upcoming.length === 0
+          ? 'Contributor syncs are paused until further notice. No upcoming meetings are scheduled.'
+          : 'The next meetings are shown below. All times are Europe/Berlin.'
         retry.hidden = true
         this.dataset.scheduleRevision = revision
         this.dataset.meetingState = 'ready'
