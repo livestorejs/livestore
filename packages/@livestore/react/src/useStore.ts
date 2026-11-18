@@ -1,7 +1,7 @@
 import React from 'react'
 
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import type { RegistryStoreOptions, Store, StoreRegistry, SyncStatus } from '@livestore/livestore'
+import type { RegistryStoreOptions, Store, SyncStatus } from '@livestore/livestore'
 import type { Schema } from '@livestore/utils/effect'
 
 import { useStoreRegistry } from './StoreRegistryContext.tsx'
@@ -63,25 +63,21 @@ export const useStore = <
 ): Store<TSchema, TContext> & ReactApi => {
   const storeRegistry = useStoreRegistry()
 
-  const pending = React.useRef<
-    { registry: StoreRegistry; storeId: string; promise: Promise<Store<TSchema, TContext>> } | undefined
-  >(undefined)
-  const previous = pending.current
+  // Called on every render (intentionally not memoized): the registry is the source of truth
+  // for which Store is currently live.
   const current = storeRegistry.getOrLoadPromise(options)
-  const storeOrPromise =
-    previous?.registry === storeRegistry && previous.storeId === options.storeId && current instanceof Promise === false
-      ? previous.promise
-      : current
 
-  if (storeOrPromise instanceof Promise && previous?.promise !== storeOrPromise) {
-    pending.current = { registry: storeRegistry, storeId: options.storeId, promise: storeOrPromise }
-  }
-  // A suspended component can be replayed after the registry already has a synchronous Store.
-  // Still unwrap its original Promise: React.use restores the mount dispatcher for later hooks.
-  const loaded = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
-  // The promise preserves replay order; the registry decides which Store is still live.
-  const store = current instanceof Promise ? loaded : current
-  const attempt = pending.current
+  // `React.use` is called exactly once on every render, whether or not the store is loaded.
+  // When a suspended render is replayed, React assumes the same sequence of `use` calls: it
+  // assigns thenables to ordered slots and relies on `use` to switch back from the replay
+  // dispatcher. Skipping the call once the registry has become synchronous would hand the
+  // store's slot to a later `use` in the same component and run later hooks under the wrong
+  // dispatcher. A loaded store is passed as an already-fulfilled thenable, which React reads
+  // synchronously, so mounted renders never suspend and transitions stay committable.
+  const used = React.use(current instanceof Promise ? current : fulfilledThenable(current))
+  // On replay React returns the first attempt's thenable result; a store the registry
+  // currently has always wins over it.
+  const store = current instanceof Promise ? used : current
 
   // Retain only after the suspension point, once this render has obtained the store.
   //
@@ -91,14 +87,23 @@ export const useStore = <
   // an issue with the default 60s cache time, but it becomes an issue when `unusedCacheTime` is
   // configured to values less than ~100ms.
   // See https://github.com/livestorejs/livestore/issues/916
-  React.useEffect(() => {
-    // A later hook may suspend too. Keep this attempt until the whole component commits,
-    // without clearing a newer attempt started by an interrupted render.
-    if (pending.current === attempt) pending.current = undefined
-    return storeRegistry.retain(options)
-  }, [storeRegistry, options, attempt])
+  React.useEffect(() => storeRegistry.retain(options), [storeRegistry, options])
 
   return withReactApi(store)
+}
+
+/**
+ * One stable, already-fulfilled thenable per loaded value. The `status`/`value` fields follow
+ * React's thenable convention, letting `React.use` read the value without suspending.
+ */
+const fulfilledThenables = new WeakMap<object, PromiseLike<unknown>>()
+
+const fulfilledThenable = <T extends object>(value: T): PromiseLike<T> => {
+  const cached = fulfilledThenables.get(value)
+  if (cached !== undefined) return cached as PromiseLike<T>
+  const thenable = Object.assign(Promise.resolve(value), { status: 'fulfilled' as const, value })
+  fulfilledThenables.set(value, thenable)
+  return thenable
 }
 
 /**

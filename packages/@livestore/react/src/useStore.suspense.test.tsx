@@ -1,4 +1,4 @@
-import { act, type Queries, type queries, render, type RenderResult, waitFor } from '@testing-library/react'
+import { act, fireEvent, type Queries, type queries, render, type RenderResult, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { expect, it, vi } from 'vitest'
 
@@ -397,3 +397,156 @@ it.each([
     warnings.mockRestore()
   }
 })
+
+it.each([
+  { scenario: 'cold switch', transition: false },
+  { scenario: 'cold switch', transition: true },
+  { scenario: 'abandoned transition', transition: true },
+] as const)(
+  'does not release a mounted store on unrelated renders ($scenario, transition: $transition)',
+  async ({ scenario, transition }) => {
+    const registry = new StoreRegistry()
+    const calls: string[] = []
+    const originalRetain = registry.retain
+    registry.retain = (options) => {
+      calls.push(`retain:${options.storeId}`)
+      const release = originalRetain(options)
+      return () => {
+        calls.push(`release:${options.storeId}`)
+        release()
+      }
+    }
+    const gate = Promise.withResolvers<void>()
+    const baseAdapter = makeInMemoryAdapter()
+    const delayedAdapter: Adapter = (args) =>
+      Effect.andThen(
+        Effect.promise(() => gate.promise),
+        baseAdapter(args),
+      )
+    const initial = { storeId: 'churn-initial', schema, adapter: baseAdapter, disableDevtools: true }
+    const cold = {
+      ...initial,
+      storeId: 'churn-cold',
+      adapter: scenario === 'cold switch' ? baseAdapter : delayedAdapter,
+    }
+    await registry.getOrLoadPromise(initial)
+    const Consumer = ({ options, tick }: { options: typeof initial; tick: number }) => {
+      const store = useStore(options)
+      return <span data-testid="churn">{`${store.storeId}/${tick}`}</span>
+    }
+    const tree = (options: typeof initial, tick: number) => (
+      <StoreRegistryProvider storeRegistry={registry}>
+        <React.Suspense fallback="loading">
+          <Consumer options={options} tick={tick} />
+        </React.Suspense>
+      </StoreRegistryProvider>
+    )
+    const view = await act(async () => render(tree(initial, 0)))
+    try {
+      await act(async () => {
+        if (transition === true) React.startTransition(() => view.rerender(tree(cold, 0)))
+        else view.rerender(tree(cold, 0))
+      })
+      const settled = scenario === 'cold switch' ? cold : initial
+      if (scenario === 'abandoned transition') await act(async () => view.rerender(tree(initial, 0)))
+      await waitFor(() => expect(view.getByTestId('churn').textContent).toBe(`${settled.storeId}/0`))
+      const expected =
+        scenario === 'cold switch'
+          ? ['retain:churn-initial', 'release:churn-initial', 'retain:churn-cold']
+          : ['retain:churn-initial']
+      expect(calls).toEqual(expected)
+      await act(async () => view.rerender(tree(settled, 1)))
+      await act(async () => view.rerender(tree(settled, 2)))
+      expect(view.getByTestId('churn').textContent).toBe(`${settled.storeId}/2`)
+      expect(calls).toEqual(expected)
+    } finally {
+      gate.resolve()
+      await act(async () => view.unmount())
+      await registry.dispose()
+    }
+  },
+)
+
+it('renders loaded stores synchronously without showing the fallback', async () => {
+  const registry = new StoreRegistry()
+  const adapter = makeInMemoryAdapter()
+  const first = { storeId: 'sync-first', schema, adapter, disableDevtools: true }
+  const second = { ...first, storeId: 'sync-second' }
+  await registry.getOrLoadPromise(first)
+  await registry.getOrLoadPromise(second)
+  const Consumer = ({ options }: { options: typeof first }) => (
+    <span data-testid="sync">{useStore(options).storeId}</span>
+  )
+  const tree = (options: typeof first) => (
+    <StoreRegistryProvider storeRegistry={registry}>
+      <React.Suspense fallback="loading">
+        <Consumer options={options} />
+      </React.Suspense>
+    </StoreRegistryProvider>
+  )
+  // Asserted right after each synchronous render, without awaiting anything: a suspended
+  // render would still be showing the fallback at this point.
+  const view = render(tree(first))
+  try {
+    expect(view.container.textContent).toBe('sync-first')
+    view.rerender(tree(second))
+    expect(view.container.textContent).toBe('sync-second')
+  } finally {
+    await act(async () => view.unmount())
+    await registry.dispose()
+  }
+})
+
+it.each([false, true])(
+  'commits an async action transition and interleaved updates (StrictMode: %s)',
+  async (strictMode) => {
+    const registry = new StoreRegistry()
+    const options = {
+      storeId: `async-action-${strictMode}`,
+      schema,
+      adapter: makeInMemoryAdapter(),
+      disableDevtools: true,
+    }
+    const gate = Promise.withResolvers<void>()
+    const Consumer = () => {
+      const [count, setCount] = React.useState(0)
+      useStore(options)
+      const [state, dispatch, isPending] = React.useActionState(async (_previous: string, value: string) => {
+        await gate.promise
+        return value
+      }, 'none')
+      return (
+        <div>
+          {/* eslint-disable-next-line react-perf/jsx-no-new-function-as-prop -- test component */}
+          <button data-testid="submit" onClick={() => React.startTransition(() => dispatch('updated'))} />
+          {/* eslint-disable-next-line react-perf/jsx-no-new-function-as-prop -- test component */}
+          <button data-testid="increment" onClick={() => setCount((value) => value + 1)} />
+          <span data-testid="action">{`${state}/${isPending}/${count}`}</span>
+        </div>
+      )
+    }
+    const view = await act(async () =>
+      render<typeof queries>(
+        <StoreRegistryProvider storeRegistry={registry}>
+          <React.Suspense fallback="loading">
+            <Consumer />
+          </React.Suspense>
+        </StoreRegistryProvider>,
+        { reactStrictMode: strictMode },
+      ),
+    )
+    try {
+      await waitFor(() => expect(view.getByTestId('action').textContent).toBe('none/false/0'))
+      await act(async () => fireEvent.click(view.getByTestId('submit')))
+      expect(view.getByTestId('action').textContent).toBe('none/true/0')
+      await act(async () => fireEvent.click(view.getByTestId('increment')))
+      expect(view.getByTestId('action').textContent).toBe('none/true/1')
+      await act(async () => gate.resolve())
+      await waitFor(() => expect(view.getByTestId('action').textContent).toBe('updated/false/1'))
+    } finally {
+      gate.resolve()
+      await act(async () => view.unmount())
+      await registry.dispose()
+    }
+  },
+)

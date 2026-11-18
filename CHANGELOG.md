@@ -13,11 +13,12 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 ### Changed
 
-- **React:** Suspended store consumers retain their attempt promise until the
-  component commits, including when a later hook suspends again. This preserves
-  distinct sequential stores and avoids replay hook-order errors. Retries
-  revalidate expired registry entries instead of returning disposed stores.
-  Mounted renders still use the synchronous store path so action transitions can commit.
+- **React:** `useStore` calls `React.use` on every render, passing a loaded
+  store as an already-fulfilled thenable. This keeps suspended renders
+  replayable: sequential stores stay distinct, a later `use` in the same
+  component keeps its own value, and replay no longer causes hook-order
+  errors. Retries revalidate expired registry entries instead of returning
+  disposed stores, and mounted renders never suspend, so action transitions commit.
 - **DevTools:** DevTools no longer requires a sponsor license ([#1511](https://github.com/livestorejs/livestore/issues/1511)).
 - **DevTools:** Fixed web sessions getting stuck at "Connecting to session" by keeping worker connections alive until the session disconnects ([#1709](https://github.com/livestorejs/livestore/pull/1709)).
 - **State storage:** Rebases roll back state through a materialization journal table instead of SQLite changesets carried in event metadata. Because the state system tables changed, existing state databases are rebuilt from the eventlog once after upgrading ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
