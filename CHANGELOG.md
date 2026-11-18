@@ -14,6 +14,9 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 ### Changed
 
 - **DevTools:** Direct-channel startup now waits for slow peers without failing a session after short ping retries. A non-answering peer waits until caller interruption or scope closure. Internal handshake messages no longer reach application listeners ([#262](https://github.com/livestorejs/livestore/issues/262)).
+- **DevTools:** Direct-channel handshakes keep processing mesh control requests while waiting for port readiness, so reloading a peer can replace an abandoned handshake instead of leaving the panel stuck connecting. Reconnecting instances align directly with the peer's channel version instead of rebuilding every skipped generation.
+- **DevTools:** Gracefully closed session channels release their responder registration before stopping consumers, allowing a reloaded panel to connect again without restarting the app, including when its request arrives during teardown.
+- **DevTools:** Established direct channels rediscover same-name peer replacements when routes change.
 - **Documentation:** Published corpus source links use the configured documentation
   origin even when Netlify supplies a different build URL
   ([#1723](https://github.com/livestorejs/livestore/issues/1723)).
