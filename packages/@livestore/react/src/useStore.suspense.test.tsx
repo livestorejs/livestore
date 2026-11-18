@@ -19,6 +19,7 @@ it('replays suspended siblings without recovering the root or booting another st
   const adapter = vi.fn(makeInMemoryAdapter())
   const options = { storeId: 'suspended-siblings', schema, adapter, disableDevtools: true }
   const recovered: unknown[] = []
+  const errors = vi.spyOn(console, 'error')
   const Consumer = () => {
     const store = useStore(options)
     const rows = store.useQuery(todos$)
@@ -44,11 +45,13 @@ it('replays suspended siblings without recovering the root or booting another st
     const rendered = view ?? shouldNeverHappen('render failed')
     await waitFor(() => expect(rendered.container.querySelectorAll('span[data-count="0"]')).toHaveLength(3))
     expect(recovered).toEqual([])
+    expect(errors).not.toHaveBeenCalled()
     expect(adapter).toHaveBeenCalledTimes(1)
   } finally {
     const rendered = view
     if (rendered !== undefined) await act(async () => rendered.unmount())
     await registry.dispose()
+    errors.mockRestore()
   }
 })
 
@@ -60,6 +63,7 @@ it.each([false, true])('keeps sequential cold stores distinct (StrictMode: %s)',
   const initial = { ...first, storeId: 'sequential-initial' }
   await registry.getOrLoadPromise(initial)
   const recovered: unknown[] = []
+  const errors = vi.spyOn(console, 'error')
   const Consumer = ({ cold }: { cold: boolean }) => {
     const a = useStore(cold === true ? first : initial)
     const b = useStore(cold === true ? second : initial)
@@ -83,9 +87,11 @@ it.each([false, true])('keeps sequential cold stores distinct (StrictMode: %s)',
     await act(async () => view.rerender(tree(true)))
     await waitFor(() => expect(view.getByTestId('stores').textContent).toBe('sequential-first/sequential-second'))
     expect(recovered).toEqual([])
+    expect(errors).not.toHaveBeenCalled()
   } finally {
     await act(async () => view.unmount())
     await registry.dispose()
+    errors.mockRestore()
   }
 })
 
@@ -99,6 +105,7 @@ it('preserves the store thenable through a later unrelated suspension', async ()
   const later = Promise.resolve('unrelated')
   const reachedLater = vi.fn()
   const recovered: unknown[] = []
+  const errors = vi.spyOn(console, 'error')
   const Consumer = ({ cold }: { cold: boolean }) => {
     const store = useStore(cold === true ? options : initial)
     reachedLater()
@@ -121,9 +128,11 @@ it('preserves the store thenable through a later unrelated suspension', async ()
     await waitFor(() => expect(reachedLater).toHaveBeenCalled())
     await waitFor(() => expect(view.getByTestId('result').textContent).toBe('before-unrelated/unrelated'))
     expect(recovered).toEqual([])
+    expect(errors).not.toHaveBeenCalled()
   } finally {
     await act(async () => view.unmount())
     await registry.dispose()
+    errors.mockRestore()
   }
 })
 

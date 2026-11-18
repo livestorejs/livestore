@@ -67,7 +67,9 @@ Only store loading suspends. `useStore` calls `React.use` exactly once on
 every render: an unloaded store passes the registry's loading promise
 (suspending the component); a loaded store passes a stable, already-fulfilled
 thenable that React reads synchronously, so mounted renders never suspend and
-transitions stay committable. Calling `use` unconditionally keeps the hook
+transitions stay committable. That thenable is the loading promise itself
+when the hook saw the store load, so a replayed render hands React the
+identical thenable it suspended on. Calling `use` unconditionally keeps the hook
 idempotent across React's replay of a suspended render, which assumes the
 same sequence of `use` calls: later `use` calls keep their thenable slot and
 later hooks run under the correct dispatcher.

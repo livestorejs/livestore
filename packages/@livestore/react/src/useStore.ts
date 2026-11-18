@@ -74,7 +74,7 @@ export const useStore = <
   // store's slot to a later `use` in the same component and run later hooks under the wrong
   // dispatcher. A loaded store is passed as an already-fulfilled thenable, which React reads
   // synchronously, so mounted renders never suspend and transitions stay committable.
-  const used = React.use(current instanceof Promise ? current : fulfilledThenable(current))
+  const used = React.use(current instanceof Promise ? trackLoading(current) : fulfilledThenable(current))
   // On replay React returns the first attempt's thenable result; a store the registry
   // currently has always wins over it.
   const store = current instanceof Promise ? used : current
@@ -93,10 +93,11 @@ export const useStore = <
 }
 
 /**
- * One stable, already-fulfilled thenable per loaded value. The `status`/`value` fields follow
- * React's thenable convention, letting `React.use` read the value without suspending.
+ * One stable thenable per loaded value, with the `status`/`value` fields of React's thenable
+ * convention set, so `React.use` reads the value without suspending.
  */
 const fulfilledThenables = new WeakMap<object, PromiseLike<unknown>>()
+const trackedLoading = new WeakSet<Promise<unknown>>()
 
 const fulfilledThenable = <T extends object>(value: T): PromiseLike<T> => {
   const cached = fulfilledThenables.get(value)
@@ -104,6 +105,24 @@ const fulfilledThenable = <T extends object>(value: T): PromiseLike<T> => {
   const thenable = Object.assign(Promise.resolve(value), { status: 'fulfilled' as const, value })
   fulfilledThenables.set(value, thenable)
   return thenable
+}
+
+/**
+ * Makes a loading promise the thenable of the value it resolves to. A replayed render finds the
+ * store loaded and must hand React the identical thenable it suspended on: React warns about an
+ * uncached promise when a different one shows up in the same `use` slot.
+ */
+const trackLoading = <T extends object>(promise: Promise<T>): Promise<T> => {
+  if (trackedLoading.has(promise) === false) {
+    trackedLoading.add(promise)
+    promise.then(
+      (value) => {
+        fulfilledThenables.set(value, Object.assign(promise, { status: 'fulfilled' as const, value }))
+      },
+      () => {},
+    )
+  }
+  return promise
 }
 
 /**
