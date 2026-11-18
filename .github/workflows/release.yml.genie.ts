@@ -44,6 +44,7 @@ const releasePlanPaths = [
   'scripts/src/commands/changesets.ts',
   '.github/scripts/release-artifact.mjs',
   'scripts/src/commands/release-artifact.test.mjs',
+  'scripts/src/commands/release-publish.test.ts',
   '.github/scripts/release-artifact-jobs.ts',
   'scripts/src/commands/docs.ts',
   'scripts/src/shared/netlify.ts',

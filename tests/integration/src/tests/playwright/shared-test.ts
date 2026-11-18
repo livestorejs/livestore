@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -32,8 +33,22 @@ export const runTest =
     )
   }
 
+/**
+ * Own the profile before launching Chromium so launch failures also clean up.
+ * Registered first, this finalizer runs after the browser context closes.
+ * Remove profiles even on test failure: trace evidence lives in test-results.
+ */
+export const makePersistentContextPath = Effect.acquireRelease(
+  Effect.sync(() => fs.mkdtempSync(path.join(os.tmpdir(), 'livestore-playwright'))),
+  (persistentContextPath) =>
+    Effect.sync(() => {
+      fs.rmSync(persistentContextPath, { recursive: true, force: true })
+      assert.equal(fs.existsSync(persistentContextPath), false, `Leaked Chromium profile: ${persistentContextPath}`)
+    }),
+)
+
 const PWLive = Effect.gen(function* () {
-  const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
+  const persistentContextPath = yield* makePersistentContextPath
 
   return Playwright.browserContextLayer({ persistentContextPath })
 }).pipe(Layer.unwrap)
