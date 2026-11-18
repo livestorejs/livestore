@@ -152,7 +152,14 @@ const schemaRepresentationDescriptor = (value: unknown, parentKey?: string): Can
   return canonicalValue(value)
 }
 
-const effectIgnoredFields = new Set(['annotations', 'isMutable'])
+/**
+ * Effect metadata fields that must not affect fingerprints.
+ *
+ * `content` was added in Effect 4.1 to describe JSON-string encodings. Before 4.1 the same information was an
+ * annotation (already ignored), and the decoded schema it carries is covered by the type-side representation.
+ * Ignoring it keeps existing state fingerprints stable across the upgrade.
+ */
+const effectIgnoredFields = new Set(['annotations', 'isMutable', 'content'])
 
 /** Maps renamed Effect check ids to the ids existing fingerprints were computed from, so the rename does not rebuild state. */
 const renamedEffectCheckIds = new Map([
