@@ -44,15 +44,13 @@ export const makeDirectChannel = ({
   incomingPacketsQueue,
   target,
   sendPacket,
-  onReconnect,
-}: MakeDirectChannelArgs & { onReconnect?: Effect.Effect<void> }) =>
+}: MakeDirectChannelArgs) =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {
       /** Only used to identify whether a source is the same instance to know when to reconnect */
       const sourceId = nanoid()
       let previousChannelVersion = 0
       let minimumChannelVersion = 1
-      let hasConnected = false
 
       const listenQueue = yield* Effect.acquireRelease(Queue.unbounded<any>(), Queue.shutdown)
       const sendQueue = yield* TxQueue.unbounded<[msg: any, deferred: Deferred.Deferred<void>]>()
@@ -176,8 +174,6 @@ export const makeDirectChannel = ({
             yield* TxQueue.take(sendQueue) // Remove the message from the queue
           }
         }).pipe(Effect.forkIn(makeDirectChannelScope))
-        if (hasConnected === true && onReconnect !== undefined) yield* onReconnect
-        hasConnected = true
 
         // MessagePorts do not notify us when a remote page/worker disappears.
         // Probe newly available routes even while the old port looks connected:

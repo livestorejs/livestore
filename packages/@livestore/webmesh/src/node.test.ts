@@ -1304,57 +1304,6 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(Vitest.withTestCtx(test)),
     )
 
-    Vitest.live('notify the application when a same-identity peer replaces an established transport', (test) =>
-      Effect.gen(function* () {
-        const frame = yield* makeMeshNode('devtools-frame')
-        const worker = yield* makeMeshNode('shared-worker')
-        yield* connectNodesViaMessageChannel(frame, worker)
-        const oldLeaderScope = yield* Scope.make()
-        const oldLeader = yield* makeMeshNode('leader').pipe(Scope.provide(oldLeaderScope))
-        yield* connectNodesViaMessageChannel(worker, oldLeader).pipe(Scope.provide(oldLeaderScope))
-        let reconnects = 0
-        let activeChannel: WebChannel.WebChannel<typeof ExampleSchema.Type, typeof ExampleSchema.Type> | undefined
-        const [frameChannel] = yield* Effect.all(
-          [
-            frame.makeChannel({
-              target: oldLeader.nodeName,
-              channelName: 'test',
-              schema: ExampleSchema,
-              mode: 'direct',
-              onReconnect: Effect.gen(function* () {
-                reconnects++
-                expect(activeChannel).toBeDefined()
-                yield* activeChannel!.send({ message: 'renew subscription' }).pipe(Effect.orDie)
-              }),
-            }),
-            createChannel(oldLeader, frame.nodeName).pipe(Scope.provide(oldLeaderScope)),
-          ],
-          { concurrency: 'unbounded' },
-        )
-        activeChannel = frameChannel
-        expect(reconnects).toBe(0)
-        yield* Scope.close(oldLeaderScope, Exit.void)
-
-        // A persisted session/leader keeps its mesh identity after reload, but
-        // subscriptions and the snapshot cursor belonged to the old instance.
-        const leader = yield* makeMeshNode('leader')
-        const accepted =
-          yield* Deferred.make<WebChannel.WebChannel<typeof ExampleSchema.Type, typeof ExampleSchema.Type>>()
-        yield* leader.listenForChannel.pipe(
-          Stream.runForEach(({ source }) =>
-            createChannel(leader, source).pipe(Effect.flatMap((channel) => Deferred.succeed(accepted, channel))),
-          ),
-          Effect.forkScoped,
-        )
-        yield* connectNodesViaMessageChannel(worker, leader, { replaceIfExists: true })
-        const leaderChannel = yield* Deferred.await(accepted)
-        expect(yield* getFirstMessage(leaderChannel)).toEqual({ message: 'renew subscription' })
-        yield* leaderChannel.send({ message: 'replacement state' })
-        expect(yield* getFirstMessage(frameChannel)).toEqual({ message: 'replacement state' })
-        expect(reconnects).toBe(1)
-      }).pipe(Vitest.withTestCtx(test)),
-    )
-
     Vitest.live('re-register a listener after graceful channel shutdown and frame reload', (test) =>
       Effect.gen(function* () {
         const app = yield* makeMeshNode('app-session')
