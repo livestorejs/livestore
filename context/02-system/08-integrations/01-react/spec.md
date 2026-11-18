@@ -54,8 +54,7 @@ during render (`client-document-get-query.ts:47-53`; LS.SYS.INT-R06).
 ## Store Acquisition
 
 `useStore` requests the store from the registry on every render, including
-suspended retries. Mounted renders use synchronous cached stores so React
-transitions stay committable.
+suspended retries, and always passes the result through `React.use`.
 `retain()` runs in `useEffect` _after_ the suspension point, accepting a
 documented timing-gap race when `unusedCacheTime` is below ~100ms (issue
 #916). The returned store is wrapped by
@@ -64,18 +63,19 @@ documented timing-gap race when `unusedCacheTime` is below ~100ms (issue
 
 ## Suspense Contract
 
-Only store loading suspends. An unloaded store returns a promise consumed
-via `React.use`. A ref keyed by registry and store ID keeps that promise
-through suspended component replay, even if the registry has finished
-loading: consuming it lets React restore the mount dispatcher before later
-hooks run. The promise remains available if a later hook in the same
-component suspends. The retention effect clears only the attempt captured
-by the committed render. Subsequent mounted renders use the synchronous
-cached store without `React.use`, keeping transitions committable.
-The registry is authoritative: a currently cached store supersedes a
-resolved replay promise's store, and a new loading promise replaces the
-attempt when its previous entry expired. Changing the registry or store
-ID does not reuse another store's pending promise. Loading errors and calling outside
+Only store loading suspends. `useStore` calls `React.use` exactly once on
+every render: an unloaded store passes the registry's loading promise
+(suspending the component); a loaded store passes a stable, already-fulfilled
+thenable that React reads synchronously, so mounted renders never suspend and
+transitions stay committable. That thenable is the loading promise itself
+when the hook saw the store load, so a replayed render hands React the
+identical thenable it suspended on. Calling `use` unconditionally keeps the hook
+idempotent across React's replay of a suspended render, which assumes the
+same sequence of `use` calls: later `use` calls keep their thenable slot and
+later hooks run under the correct dispatcher.
+The registry is authoritative: a currently cached store supersedes the
+result React returns for a replayed thenable, and an expired entry yields a
+new loading promise on the next retry. Loading errors and calling outside
 `<StoreRegistryProvider>` throw (error-boundary path). Query hooks
 (`useQuery`, `useClientDocument`, `useSyncStatus`) never suspend: they
 compute the initial result synchronously against the loaded store and
