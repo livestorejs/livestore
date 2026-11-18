@@ -53,8 +53,9 @@ during render (`client-document-get-query.ts:47-53`; LS.SYS.INT-R06).
 
 ## Store Acquisition
 
-`useStore` requests the store from the registry on mounted renders rather
-than memoizing its initial promise, so React transitions stay committable.
+`useStore` requests the store from the registry on every render, including
+suspended retries. Mounted renders use synchronous cached stores so React
+transitions stay committable.
 `retain()` runs in `useEffect` _after_ the suspension point, accepting a
 documented timing-gap race when `unusedCacheTime` is below ~100ms (issue
 #916). The returned store is wrapped by
@@ -71,8 +72,10 @@ hooks run. The promise remains available if a later hook in the same
 component suspends. The retention effect clears only the attempt captured
 by the committed render. Subsequent mounted renders use the synchronous
 cached store without `React.use`, keeping transitions committable.
-Changing the registry or store ID does not reuse another store's pending
-promise. Loading errors and calling outside
+The registry is authoritative: a currently cached store supersedes a
+resolved replay promise's store, and a new loading promise replaces the
+attempt when its previous entry expired. Changing the registry or store
+ID does not reuse another store's pending promise. Loading errors and calling outside
 `<StoreRegistryProvider>` throw (error-boundary path). Query hooks
 (`useQuery`, `useClientDocument`, `useSyncStatus`) never suspend: they
 compute the initial result synchronously against the loaded store and

@@ -67,17 +67,20 @@ export const useStore = <
     { registry: StoreRegistry; storeId: string; promise: Promise<Store<TSchema, TContext>> } | undefined
   >(undefined)
   const previous = pending.current
+  const current = storeRegistry.getOrLoadPromise(options)
   const storeOrPromise =
-    previous?.registry === storeRegistry && previous.storeId === options.storeId
+    previous?.registry === storeRegistry && previous.storeId === options.storeId && current instanceof Promise === false
       ? previous.promise
-      : storeRegistry.getOrLoadPromise(options)
+      : current
 
   if (storeOrPromise instanceof Promise && previous?.promise !== storeOrPromise) {
     pending.current = { registry: storeRegistry, storeId: options.storeId, promise: storeOrPromise }
   }
   // A suspended component can be replayed after the registry already has a synchronous Store.
   // Still unwrap its original Promise: React.use restores the mount dispatcher for later hooks.
-  const store = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
+  const loaded = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
+  // The promise preserves replay order; the registry decides which Store is still live.
+  const store = current instanceof Promise ? loaded : current
   const attempt = pending.current
 
   // Retain only after the suspension point, once this render has obtained the store.

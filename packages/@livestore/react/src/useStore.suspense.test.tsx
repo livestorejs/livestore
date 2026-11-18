@@ -234,3 +234,166 @@ it('propagates asynchronous store rejection to the error boundary', async () => 
     await registry.dispose()
   }
 })
+
+it.each([
+  { strictMode: false, pendingReplacement: false },
+  { strictMode: true, pendingReplacement: false },
+  { strictMode: false, pendingReplacement: true },
+  { strictMode: true, pendingReplacement: true },
+])(
+  'revalidates an expired store (StrictMode: $strictMode, replacement pending: $pendingReplacement)',
+  async ({ strictMode, pendingReplacement }) => {
+    const registry = new StoreRegistry()
+    const baseAdapter = makeInMemoryAdapter()
+    const boot = Promise.withResolvers<void>()
+    const later = Promise.withResolvers<string>()
+    const reload = Promise.withResolvers<void>()
+    let loads = 0
+    const adapter: Adapter = (args) =>
+      Effect.andThen(
+        Effect.promise(() => (++loads === 1 ? boot.promise : reload.promise)),
+        baseAdapter(args),
+      )
+    const initial = { storeId: 'expiry-initial', schema, adapter: baseAdapter, disableDevtools: true }
+    const cold = { ...initial, storeId: 'expiry-cold', adapter, unusedCacheTime: 1000 }
+    await registry.getOrLoadPromise(initial)
+    const reachedLater = vi.fn()
+    const observed = vi.fn()
+    const errors = vi.spyOn(console, 'error')
+    const warnings = vi.spyOn(console, 'warn')
+    const recovered: unknown[] = []
+    const Consumer = ({ loading }: { loading: boolean }) => {
+      const store = useStore(loading === true ? cold : initial)
+      if (loading === true) reachedLater(store)
+      const value = loading === true ? React.use(later.promise) : 'initial'
+      observed(store)
+      return <span data-testid="expiry">{`${store.storeId}/${value}`}</span>
+    }
+    const tree = (loading: boolean) => (
+      <StoreRegistryProvider storeRegistry={registry}>
+        <React.Suspense fallback="loading">
+          <Consumer loading={loading} />
+        </React.Suspense>
+      </StoreRegistryProvider>
+    )
+    const view = await act(async () =>
+      render(tree(false), { reactStrictMode: strictMode, onRecoverableError: (error) => recovered.push(error) }),
+    )
+    try {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+      await act(async () => view.rerender(tree(true)))
+      await act(async () => {
+        boot.resolve()
+        await registry.getOrLoadPromise(cold)
+      })
+      expect(reachedLater).toHaveBeenCalled()
+      const expiredStore = registry.getOrLoadPromise(cold)
+      expect(expiredStore).not.toBeInstanceOf(Promise)
+      await act(async () => vi.advanceTimersByTimeAsync(1100))
+      const { replacementPromise } = await act(async () => {
+        const replacementPromise = registry.getOrLoadPromise(cold)
+        expect(replacementPromise).toBeInstanceOf(Promise)
+        expect(registry.getOrLoadPromise(cold)).toBe(replacementPromise)
+        return { replacementPromise }
+      })
+      if (pendingReplacement === true) await act(async () => later.resolve('ready'))
+      const replacement = await act(async () => {
+        reload.resolve()
+        return await replacementPromise
+      })
+      expect(replacement).not.toBe(expiredStore)
+      if (pendingReplacement === false) await act(async () => later.resolve('ready'))
+      expect(loads).toBe(2)
+      expect(observed.mock.lastCall?.[0] === replacement).toBe(true)
+      expect(view.container.textContent).toBe('expiry-cold/ready')
+      expect(errors).not.toHaveBeenCalled()
+      expect(warnings).not.toHaveBeenCalled()
+      expect(recovered).toEqual([])
+    } finally {
+      boot.resolve()
+      reload.resolve()
+      later.resolve('cleanup')
+      await act(async () => view.unmount())
+      vi.useRealTimers()
+      await registry.dispose()
+      errors.mockRestore()
+      warnings.mockRestore()
+    }
+  },
+)
+
+it.each([
+  { disposition: 'unmount', phase: 'boot' },
+  { disposition: 'unmount', phase: 'later' },
+  { disposition: 'abandon', phase: 'boot' },
+  { disposition: 'abandon', phase: 'later' },
+])('does not retain an interrupted attempt ($disposition during $phase)', async ({ disposition, phase }) => {
+  const registry = new StoreRegistry()
+  const retained = vi.spyOn(registry, 'retain')
+  const boot = Promise.withResolvers<void>()
+  const later = Promise.withResolvers<string>()
+  const baseAdapter = makeInMemoryAdapter()
+  const adapter: Adapter = (args) =>
+    Effect.andThen(
+      Effect.promise(() => boot.promise),
+      baseAdapter(args),
+    )
+  const initial = { storeId: 'interrupt-initial', schema, adapter: baseAdapter, disableDevtools: true }
+  const cold = { ...initial, storeId: 'interrupt-cold', adapter, unusedCacheTime: 1000 }
+  const initialStore = await registry.getOrLoadPromise(initial)
+  const observed = vi.fn()
+  const errors = vi.spyOn(console, 'error')
+  const warnings = vi.spyOn(console, 'warn')
+  const recovered: unknown[] = []
+  const Consumer = ({ loading }: { loading: boolean }) => {
+    const store = useStore(loading === true ? cold : initial)
+    if (loading === true) React.use(later.promise)
+    observed(store)
+    return <span>{store.storeId}</span>
+  }
+  const tree = (loading: boolean) => (
+    <StoreRegistryProvider storeRegistry={registry}>
+      <React.Suspense fallback="loading">
+        <Consumer loading={loading} />
+      </React.Suspense>
+    </StoreRegistryProvider>
+  )
+  const view = await act(async () =>
+    render(tree(false), { reactStrictMode: true, onRecoverableError: (error) => recovered.push(error) }),
+  )
+  try {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    await act(async () => React.startTransition(() => view.rerender(tree(true))))
+    if (phase === 'later')
+      await act(async () => {
+        boot.resolve()
+        await registry.getOrLoadPromise(cold)
+      })
+    await act(async () => {
+      if (disposition === 'unmount') view.unmount()
+      else view.rerender(tree(false))
+    })
+    const abandonedStore = await act(async () => {
+      boot.resolve()
+      later.resolve('ready')
+      return await registry.getOrLoadPromise(cold)
+    })
+    expect(observed.mock.lastCall?.[0] === initialStore).toBe(true)
+    if (disposition === 'abandon') expect(view.container.textContent).toBe('interrupt-initial')
+    expect(retained.mock.calls.some(([options]) => options.storeId === cold.storeId)).toBe(false)
+    await act(async () => vi.advanceTimersByTimeAsync(1100))
+    const replacement = await act(async () => registry.getOrLoadPromise(cold))
+    expect(replacement).not.toBe(abandonedStore)
+    expect(errors).not.toHaveBeenCalled()
+    expect(warnings).not.toHaveBeenCalled()
+    expect(recovered).toEqual([])
+  } finally {
+    boot.resolve()
+    later.resolve('cleanup')
+    await act(async () => view.unmount())
+    vi.useRealTimers()
+    await registry.dispose()
+    errors.mockRestore()
+    warnings.mockRestore()
+  }
+})
