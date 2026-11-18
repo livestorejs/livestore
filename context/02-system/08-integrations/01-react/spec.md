@@ -67,10 +67,12 @@ Only store loading suspends. An unloaded store returns a promise consumed
 via `React.use`. A ref keyed by registry and store ID keeps that promise
 through suspended component replay, even if the registry has finished
 loading: consuming it lets React restore the mount dispatcher before later
-hooks run. A successful render clears the ref. Subsequent mounted renders
-use the synchronous cached store without `React.use`, keeping transitions
-committable. Changing the registry or store ID does not reuse another
-store's pending promise. Loading errors and calling outside
+hooks run. The promise remains available if a later hook in the same
+component suspends. The retention effect clears only the attempt captured
+by the committed render. Subsequent mounted renders use the synchronous
+cached store without `React.use`, keeping transitions committable.
+Changing the registry or store ID does not reuse another store's pending
+promise. Loading errors and calling outside
 `<StoreRegistryProvider>` throw (error-boundary path). Query hooks
 (`useQuery`, `useClientDocument`, `useSyncStatus`) never suspend: they
 compute the initial result synchronously against the loaded store and
