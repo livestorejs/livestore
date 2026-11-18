@@ -13,6 +13,12 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 ### Changed
 
+- **React:** `useStore` calls `React.use` on every render, passing a loaded
+  store as an already-fulfilled thenable. This keeps suspended renders
+  replayable: sequential stores stay distinct, a later `use` in the same
+  component keeps its own value, and replay no longer causes hook-order
+  errors. Retries revalidate expired registry entries instead of returning
+  disposed stores, and mounted renders never suspend, so action transitions commit.
 - **DevTools:** Direct-channel startup now waits for slow peers without failing a session after short ping retries. A non-answering peer waits until caller interruption or scope closure. Internal handshake messages no longer reach application listeners ([#262](https://github.com/livestorejs/livestore/issues/262)).
 - **DevTools:** Direct-channel handshakes keep processing mesh control requests while waiting for port readiness, so reloading a peer can replace an abandoned handshake instead of leaving the panel stuck connecting. Reconnecting instances align directly with the peer's channel version instead of rebuilding every skipped generation.
 - **DevTools:** Gracefully closed session channels release their responder registration before stopping consumers, allowing a reloaded panel to connect again without restarting the app, including when its request arrives during teardown.
@@ -42,6 +48,10 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 For maintainers and contributors:
 
+- **DevTools tests:** Persisted multi-tab fixtures use the adapter's shared client identity,
+  while in-memory fixtures assert independent databases and reload behavior. The TodoMVC
+  fixture keeps one store registry per document so aborted route renders cannot
+  boot duplicate stores with the same DevTools mesh node IDs.
 - **npm publishing:** Wait for npm to finish processing the full release group
   before checking publication success. Publishing retries keep the original
   build files, and preparation refuses to replace an existing release artifact

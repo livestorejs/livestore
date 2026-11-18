@@ -63,20 +63,23 @@ export const useStore = <
 ): Store<TSchema, TContext> & ReactApi => {
   const storeRegistry = useStoreRegistry()
 
-  // Called on every render (intentionally not memoized). For already-loaded stores this returns
-  // the Store synchronously, so React.use() is skipped entirely. Caching the initial Promise via
-  // useMemo would cause React.use() to be called with a resolved Promise on subsequent renders,
-  // which blocks React transitions from committing.
-  const storeOrPromise = storeRegistry.getOrLoadPromise(options)
+  // Called on every render (intentionally not memoized): the registry is the source of truth
+  // for which Store is currently live.
+  const current = storeRegistry.getOrLoadPromise(options)
 
-  const store = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
+  // `React.use` is called exactly once on every render, whether or not the store is loaded.
+  // When a suspended render is replayed, React assumes the same sequence of `use` calls: it
+  // assigns thenables to ordered slots and relies on `use` to switch back from the replay
+  // dispatcher. Skipping the call once the registry has become synchronous would hand the
+  // store's slot to a later `use` in the same component and run later hooks under the wrong
+  // dispatcher. A loaded store is passed as an already-fulfilled thenable, which React reads
+  // synchronously, so mounted renders never suspend and transitions stay committable.
+  const used = React.use(current instanceof Promise ? trackLoading(current) : fulfilledThenable(current))
+  // On replay React returns the first attempt's thenable result; a store the registry
+  // currently has always wins over it.
+  const store = current instanceof Promise ? used : current
 
-  // NOTE: retain() must be declared AFTER the React.use() call above. When React.use() suspends
-  // the component, any hooks declared before it get committed while hooks after the suspension
-  // point (including those in the caller) don't. On re-render when the store resolves synchronously,
-  // those late hooks appear for the first time, causing a hook-order violation in strict mode.
-  // By placing useEffect after React.use(), no effect hooks are committed during suspension,
-  // so React treats all effects as fresh mounts on the first successful render.
+  // Retain only after the suspension point, once this render has obtained the store.
   //
   // retain() is called in useEffect (after render), while getOrLoadPromise() is called during
   // render. This creates a timing gap where with very short unusedCacheTime values (e.g., 0),
@@ -87,6 +90,39 @@ export const useStore = <
   React.useEffect(() => storeRegistry.retain(options), [storeRegistry, options])
 
   return withReactApi(store)
+}
+
+/**
+ * One stable thenable per loaded value, with the `status`/`value` fields of React's thenable
+ * convention set, so `React.use` reads the value without suspending.
+ */
+const fulfilledThenables = new WeakMap<object, PromiseLike<unknown>>()
+const trackedLoading = new WeakSet<Promise<unknown>>()
+
+const fulfilledThenable = <T extends object>(value: T): PromiseLike<T> => {
+  const cached = fulfilledThenables.get(value)
+  if (cached !== undefined) return cached as PromiseLike<T>
+  const thenable = Object.assign(Promise.resolve(value), { status: 'fulfilled' as const, value })
+  fulfilledThenables.set(value, thenable)
+  return thenable
+}
+
+/**
+ * Makes a loading promise the thenable of the value it resolves to. A replayed render finds the
+ * store loaded and must hand React the identical thenable it suspended on: React warns about an
+ * uncached promise when a different one shows up in the same `use` slot.
+ */
+const trackLoading = <T extends object>(promise: Promise<T>): Promise<T> => {
+  if (trackedLoading.has(promise) === false) {
+    trackedLoading.add(promise)
+    promise.then(
+      (value) => {
+        fulfilledThenables.set(value, Object.assign(promise, { status: 'fulfilled' as const, value }))
+      },
+      () => {},
+    )
+  }
+  return promise
 }
 
 /**

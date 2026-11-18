@@ -1,6 +1,6 @@
 import 'todomvc-app-css/index.css'
 import type React from 'react'
-import { Suspense, useState } from 'react'
+import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 
 import { StoreRegistry } from '@livestore/livestore'
@@ -13,6 +13,10 @@ import { MainSection } from './components/MainSection.tsx'
 const ErrorFallback = <div>Something went wrong</div>
 const SuspenseFallback = <div>Loading app...</div>
 
+// The fixture owns one registry per document, including retries before a route commits.
+// A registry created during render can leave duplicate stores with identical mesh node IDs.
+const storeRegistry = new StoreRegistry()
+
 const AppBody: React.FC = () => (
   <section className="todoapp">
     <Header />
@@ -22,8 +26,6 @@ const AppBody: React.FC = () => (
 )
 
 export const App: React.FC = () => {
-  const [storeRegistry] = useState(() => new StoreRegistry())
-
   return (
     <ErrorBoundary fallback={ErrorFallback}>
       <Suspense fallback={SuspenseFallback}>

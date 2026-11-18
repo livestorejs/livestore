@@ -213,10 +213,8 @@ describe('experimental useStore', () => {
       fireEvent.click(renderedView.getByTestId('submit'))
     })
 
-    // getOrLoadPromise must be called on each render (not cached via useMemo).
-    // When the initial Promise is cached, React.use() is called with a resolved Promise
-    // on every subsequent render, which blocks React transitions (e.g. useActionState)
-    // from ever committing in browser environments.
+    // getOrLoadPromise must be called on each render (not cached via useMemo), so the
+    // registry stays the source of truth for which Store is live during transition renders.
     expect(getOrLoadSpy).toHaveBeenCalled()
 
     // The transition should commit: state updates and isPending returns to false

@@ -1,6 +1,22 @@
 import type * as PW from '@playwright/test'
 import { errors, expect } from '@playwright/test'
 
+/** Reload creates a new document; wait for its replacement store and fixture UI, not navigation alone. */
+export const reloadAppAndWaitForStore = async (page: PW.Page, storeId: string) => {
+  await page.reload()
+  await page.waitForFunction((id) => globalThis.__debugLiveStore?.[id] !== undefined, storeId)
+  await page.locator('.new-todo').waitFor()
+}
+
+/** Counts must differ from the pre-reload single todo even when in-memory state was cleared. */
+export const addPostReloadTodos = async (page: PW.Page) => {
+  for (const text of ['Created after reload: first', 'Created after reload: second']) {
+    await page.locator('.new-todo').fill(text)
+    await page.locator('.new-todo').press('Enter')
+    await page.locator('.todo-list li label').filter({ hasText: text }).waitFor()
+  }
+}
+
 /**
  * Checks that the DevTools compatibility overlay is displayed with correct content.
  */
@@ -67,25 +83,31 @@ const checkDevtoolsState_ = async (options: {
     tables: string[]
   }
 }) => {
-  const loading = options.devtools.getByText('Loading LiveStore').describe(`${options.label}:Loading LiveStore`)
-  // if (options.expect.alreadyLoaded === false) {
-  //   // Sometimes this case is flaky. TODO improve some day.
-  //   await loading.waitFor({ timeout: 5000 }).catch(() => {})
-  // }
-  await loading.waitFor({ state: 'detached' })
+  await expect(options.devtools.locator('body').describe(`${options.label}:shell`)).toBeVisible()
 
-  await options.devtools
-    .getByRole('tab', { name: 'Database' })
-    .describe(`${options.label}:Database`)
-    .waitFor({ state: 'attached', timeout: 3000 })
+  // Selection requires an advertised session (or a direct-session route). Unlike absence
+  // of a loading label, this cannot succeed on the generic pre-discovery shell.
+  await expect
+    .poll(() => options.devtools.evaluate(() => window.location.pathname), {
+      message: `${options.label}:session-discovered-and-selected`,
+    })
+    .toMatch(/\/(?:web|browser-extension)\/[^/]+\/[^/]+\/[^/]+\/[^/]+\/?$/)
+
+  // The route starts its UI-store boot only after api.connect has returned a session.
+  // Accept the rendered views too, since a fast boot may already have passed the loading stage.
+  const views = options.devtools.getByRole('tablist', { name: 'DevTools views' })
+  const bootStatusPattern =
+    /^(?:Loading LiveStore|Migrating tables|Rehydrating state|Syncing state|LiveStore ready|Warning:)/
+  const connectedBoot = options.devtools.locator('#loading').filter({ hasText: bootStatusPattern })
+  await expect(connectedBoot.or(views).first().describe(`${options.label}:session-connected`)).toBeVisible()
+
+  await expect(
+    options.devtools.getByRole('tab', { name: 'Database' }).describe(`${options.label}:Database-rendered`),
+  ).toBeVisible()
 
   // expect(await options.devtools.getByRole('status', { name: 'Leader Tab' }).isVisible()).toBe(options.expect.leader)
 
-  await options.devtools
-    .getByText('Tables')
-    .describe(`${options.label}:Tables`)
-    .waitFor({ timeout: 2000 })
-    .catch(() => {})
+  await expect(options.devtools.getByText('Tables').describe(`${options.label}:Tables`)).toBeVisible()
 
   for (const table of options.expect.tables) {
     await expect(
