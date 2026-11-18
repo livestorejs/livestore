@@ -13,6 +13,7 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 ### Changed
 
+- **DevTools:** Direct-channel startup now waits for slow peers without failing a session after short ping retries. A non-answering peer waits until caller interruption or scope closure. Internal handshake messages no longer reach application listeners ([#262](https://github.com/livestorejs/livestore/issues/262)).
 - **Documentation:** Published corpus source links use the configured documentation
   origin even when Netlify supplies a different build URL
   ([#1723](https://github.com/livestorejs/livestore/issues/1723)).
