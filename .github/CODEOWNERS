@@ -1,42 +1,63 @@
-# Projection of context/05-contributing/01-collaboration/review-delegation.md.
-# Reverse profile order: last match wins; ownerless entries clear the default.
+# Manual projection of context/05-contributing/01-collaboration/review-delegation.md.
+# Last match wins. Ownerless paths delegate review, not merge authorization.
 * @schickling
 /.github/
-/nix/
-/devenv.*
-/genie/
-/scripts/
-/docs/
-/examples/
 /tests/
 /contributor-docs/
-/pnpm-lock.yaml
-/pnpm-workspace.yaml
-/package.json
-/package.json.genie.ts
-/pnpm-workspace.yaml.genie.ts
-/packages/ @schickling
-/packages/@local/*/package.json
-/packages/@local/*/package.json.genie.ts
+/packages/
+/context/
+/CHANGELOG.md
 **/*.test.ts
 **/*.test.tsx
 **/*.test.js
 **/__tests__/
+# Human gates override every delegation above, including test-file patterns.
+**/vision.md @schickling
+**/requirements.md @schickling
+**/decisions/ @schickling
+**/.decisions/ @schickling
+/context/05-contributing/01-collaboration/review-delegation.md @schickling
+/context/03-delivery/02-release/ @schickling
 /release/ @schickling
-/.github/workflows/release.yml @schickling
-/scripts/src/commands/changesets.ts @schickling
-/scripts/src/commands/release.ts @schickling
-/scripts/src/commands/devtools-artifact.ts @schickling
-/.changeset/*.md @schickling
-/CHANGELOG.md @schickling
-/packages/@livestore/wa-sqlite/CHANGELOG.md @schickling
+/.changeset/ @schickling
+# Credentialed execution surfaces: mono dispatch, setup, plugins, and job predecessors.
+/scripts/ @schickling
+/genie/ @schickling
+/nix/ @schickling
+/devenv.* @schickling
+/docs/ @schickling
+/examples/ @schickling
+/tests/integration/ @schickling
+/tests/sync-provider/src/providers/ @schickling
+/tests/sync-provider/src/prepare-ci.ts @schickling
+/tests/sync-provider/src/types.ts @schickling
+/packages/@livestore/common/src/ @schickling
+/packages/@livestore/common-cf/src/ @schickling
+/packages/@livestore/effect-playwright/src/ @schickling
+/packages/@livestore/utils/src/ @schickling
+/packages/@livestore/utils-dev/src/ @schickling
+/packages/@livestore/webmesh/src/ @schickling
+/packages/@livestore/sync-cf/src/client/ @schickling
+/packages/@livestore/sync-cf/src/common/ @schickling
+/packages/@local/astro-tldraw/src/ @schickling
+/packages/@local/astro-twoslash-code/src/ @schickling
+/packages/@local/shared/src/ @schickling
+# Dependency/install/alias inputs can replace code executed by privileged jobs.
+**/package.json @schickling
+**/tsconfig*.json @schickling
+**/tsconfig*.ts @schickling
+/pnpm* @schickling
+/megarepo.* @schickling
+**/.npmrc @schickling
+**/.env* @schickling
+**/secrets/ @schickling
+**/credentials/ @schickling
+/.infra/ @schickling
 /.github/CODEOWNERS @schickling
 /.github/repo-settings.json @schickling
-/.github/repo-settings.json.genie.ts @schickling
-/.github/workflows/repo-settings.yml @schickling
-/.github/workflows/repo-settings.yml.genie.ts @schickling
-/nix/devenv-modules/tasks/local/github-rulesets.nix @schickling
+/.github/reconcile-app-manifest.json @schickling
 /.github/workflows/ @schickling
 /.github/scripts/ @schickling
 /.github/actions/ @schickling
-/.github/**/*.genie.ts @schickling
+# setup:strict and release-plan generation execute every discovered generator.
+**/*.genie.ts @schickling

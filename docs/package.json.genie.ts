@@ -47,6 +47,7 @@ const runtimeDeps = catalog.compose({
       // TypeDoc requires TypeScript's legacy runtime API, which is absent from TypeScript 7.
       typescript: '6.0.3',
       '@astrojs/check': '0.9.9',
+      '@astrojs/markdown-remark': '7.2.0',
       '@astrojs/netlify': '7.0.13',
       '@astrojs/react': '5.0.7',
       '@astrojs/starlight-tailwind': '5.0.0',

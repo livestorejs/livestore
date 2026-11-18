@@ -14,8 +14,20 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 ### Changed
 
 - **DevTools:** Direct-channel startup now waits for slow peers without failing a session after short ping retries. A non-answering peer waits until caller interruption or scope closure. Internal handshake messages no longer reach application listeners ([#262](https://github.com/livestorejs/livestore/issues/262)).
+- **Documentation:** Published corpus source links use the configured documentation
+  origin even when Netlify supplies a different build URL
+  ([#1723](https://github.com/livestorejs/livestore/issues/1723)).
+- **Effect dependencies:** Updated the aligned Effect 4 dependency cohort from
+  `4.0.3` to `4.1.4`, including its AI, OpenTelemetry, platform, SQLite, and
+  Vitest packages. Applications using Effect should align their dependencies
+  to `4.1.4` or a compatible later 4.x release. With Effect 4.1, successful
+  spans exported through `@effect/opentelemetry` keep the `UNSET` status
+  instead of `OK`. JSON column detection and storage fingerprints were adapted
+  to the new Effect schema representation, so existing state databases are not
+  rebuilt.
 - **DevTools:** DevTools no longer requires a sponsor license ([#1511](https://github.com/livestorejs/livestore/issues/1511)).
 - **DevTools:** Fixed web sessions getting stuck at "Connecting to session" by keeping worker connections alive until the session disconnects ([#1709](https://github.com/livestorejs/livestore/pull/1709)).
+- **Web in-memory adapter:** Kept the optional DevTools shared-worker connection alive for the store's lifetime instead of disconnecting immediately after RPC client creation ([#1710](https://github.com/livestorejs/livestore/issues/1710)).
 - **State storage:** Rebases roll back state through a materialization journal table instead of SQLite changesets carried in event metadata. Because the state system tables changed, existing state databases are rebuilt from the eventlog once after upgrading ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
 - **Query cache:** Cached query results are discarded when a journal or savepoint rollback changes the session database, so reads after a rebase no longer return rolled-back rows ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
 - **Store lifecycle:** Closing the scope a store was created in (for example when a store registry disposes an unused store) now sends events committed in the session to the leader before closing, like `store.shutdown()`. Previously such events could be dropped if the leader had not acknowledged them yet. Disposal can now wait up to one second ([#1437](https://github.com/livestorejs/livestore/issues/1437), [#1659](https://github.com/livestorejs/livestore/pull/1659)).
@@ -27,6 +39,20 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 For maintainers and contributors:
 
+- **npm publishing:** Wait for npm to finish processing the full release group
+  before checking publication success. Publishing retries keep the original
+  build files, and preparation refuses to replace an existing release artifact
+  ([#1728](https://github.com/livestorejs/livestore/pull/1728)).
+
+- **Review delegation:** Package source outside credentialed runtime trees,
+  changelogs, and implementation context allow independent agent review without
+  a required Johannes code-owner approval. Vision, requirements, decisions,
+  releases, install inputs, and credentialed workflow execution retain his gate,
+  including previously ownerless launchers and transitive tooling. The docs
+  changelog renders raw Markdown rather than compiling delegated frontmatter
+  as an executable Astro module
+  ([#1711](https://github.com/livestorejs/livestore/pull/1711),
+  [#1701](https://github.com/livestorejs/livestore/issues/1701)).
 - **Test tooling:** Extension-backed Playwright launches preserve caller-supplied
   Chromium arguments alongside extension flags. The DevTools undock locator
   selects the native button by role instead of matching its presentation host.
@@ -48,6 +74,10 @@ For maintainers and contributors:
 - **Events:** `LiveStoreEvent.Client.EncodedWithMeta` is removed and events are plain values. Sync metadata travels beside events, and leader materializer hashes travel in `PullItem.materializerHashes`. Custom adapters that wrapped pushed events must pass them through unchanged ([#1660](https://github.com/livestorejs/livestore/pull/1660)).
 - **Leader persistence:** A `LeaderPersistence` service makes each leader transition durable as a whole (rollback, materialization, journal, state and backend heads, eventlog inserts) and returns a receipt that the processor publishes ([#1661](https://github.com/livestorejs/livestore/pull/1661)).
 - **Sync processors:** The leader and client-session sync processors are serialized single-owner state machines, as described in [RFC 0004](./contributor-docs/rfcs/0004-serialized-sync-processors.md) ([#1663](https://github.com/livestorejs/livestore/pull/1663)).
+- **Integration testing:** Scope temporary Chromium profiles to each Playwright
+  test and remove them after the browser closes, including launch and test
+  failures. Teardown asserts profile removal; trace evidence remains in
+  `test-results` ([#1722](https://github.com/livestorejs/livestore/pull/1722)).
 
 ## 0.5.0
 
