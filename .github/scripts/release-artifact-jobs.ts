@@ -15,10 +15,10 @@ while IFS=$'\\t' read -r name version filename integrity tag; do
   actual="sha512-$(openssl dgst -sha512 -binary "$ARTIFACT_DIR/$filename" | openssl base64 -A)"
   test "$actual" = "$integrity" || { echo "Tarball integrity mismatch: $filename" >&2; exit 1; }
 done < "$RUNNER_TEMP/publish-plan.tsv"
-registry_integrity() {
+registry_value() {
   local result
-  if result="$(npm view "$1" dist.integrity --json --registry https://registry.npmjs.org 2>"$RUNNER_TEMP/npm-view-error")"; then
-    jq -er 'select(type == "string")' <<< "$result"
+  if result="$(npm view "$1" "$2" --json --prefer-online --fetch-retries=2 --fetch-retry-mintimeout=1000 --fetch-retry-maxtimeout=5000 --fetch-timeout=5000 --registry https://registry.npmjs.org 2>"$RUNNER_TEMP/npm-view-error")"; then
+    jq -r 'select(type == "string")' <<< "$result"
   elif grep -q 'E404' "$RUNNER_TEMP/npm-view-error"; then
     return 0
   else
@@ -28,12 +28,10 @@ registry_integrity() {
 }
 while IFS=$'\\t' read -r name version filename integrity tag; do
   spec="$name@$version"
-  existing="$(registry_integrity "$spec")"
+  existing="$(registry_value "$spec" dist.integrity)"
   if [ -n "$existing" ]; then
     test "$existing" = "$integrity" || { echo "$spec already exists with DIFFERENT integrity" >&2; exit 1; }
-    current="$(npm view "$name" "dist-tags.$tag" --json --registry https://registry.npmjs.org)"
-    test "$(jq -r . <<< "$current")" = "$version" || { echo "$spec has a stale $tag dist-tag; refusing rerun" >&2; exit 1; }
-    echo "$spec already published with matching integrity and tag; skipping"
+    echo "$spec already published with matching integrity; skipping upload"
     continue
   fi
   if ! npm publish "$ARTIFACT_DIR/$filename" --ignore-scripts --provenance --access public --tag "$tag" --registry https://registry.npmjs.org >"$RUNNER_TEMP/npm-publish-log" 2>&1; then
@@ -42,13 +40,28 @@ while IFS=$'\\t' read -r name version filename integrity tag; do
     exit 1
   fi
   cat "$RUNNER_TEMP/npm-publish-log"
-  existing="$(registry_integrity "$spec")"
-  test "$existing" = "$integrity" || {
-    echo "$spec is not public with matching integrity. See context/03-delivery/02-release/release-workflows-runbook.md#npm-visibility-and-staged-publish-recovery." >&2
-    exit 1
-  }
-  current="$(npm view "$name" "dist-tags.$tag" --json --registry https://registry.npmjs.org)"
-  test "$(jq -r . <<< "$current")" = "$version" || { echo "$spec has a stale $tag dist-tag" >&2; exit 1; }
+done < "$RUNNER_TEMP/publish-plan.tsv"
+# npm scans uploads asynchronously. Share one visibility window across the whole release.
+deadline=$((SECONDS + 300))
+while IFS=$'\\t' read -r name version filename integrity tag; do
+  spec="$name@$version"
+  while true; do
+    if existing="$(registry_value "$spec" dist.integrity)"; then
+      if [ -n "$existing" ] && [ "$existing" != "$integrity" ]; then
+        echo "$spec already exists with DIFFERENT integrity" >&2
+        exit 1
+      fi
+      if [ "$existing" = "$integrity" ] && current="$(registry_value "$name" "dist-tags.$tag")" && [ "$current" = "$version" ]; then
+        echo "$spec is public with matching integrity and $tag dist-tag"
+        break
+      fi
+    fi
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      echo "$spec is not public with matching integrity and $tag dist-tag after the shared 5-minute visibility window. See context/03-delivery/02-release/release-workflows-runbook.md#npm-visibility-and-staged-publish-recovery. Rerun only this failed publish job with its original artifact." >&2
+      exit 1
+    fi
+    sleep 10
+  done
 done < "$RUNNER_TEMP/publish-plan.tsv"`
 
 export const releaseArtifactJobs = ({
@@ -81,9 +94,20 @@ npm_tag=snapshot`
     [prepare]: {
       if: condition,
       'runs-on': 'ubuntu-24.04',
-      permissions: { contents: 'read' },
+      permissions: { contents: 'read', actions: 'read' },
       defaults: bashShellDefaults,
       steps: [
+        {
+          name: 'Preserve the original release artifact',
+          if: '${{ github.run_attempt > 1 }}',
+          env: { GH_TOKEN: '${{ github.token }}' },
+          run: `set -euo pipefail
+count="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=npm-release-${suffix}" --jq '.artifacts | length')"
+if [ "$count" -ne 0 ]; then
+  echo "This run already has a prepared release artifact. Do not rebuild or replace it. Rerun only the failed publish or validation job." >&2
+  exit 1
+fi`,
+        },
         { uses: 'actions/checkout@v4', with: { ref: releaseHeadSha, 'persist-credentials': false } },
         ...livestoreSetupSteps.slice(1),
         {
@@ -115,6 +139,7 @@ echo "LIVESTORE_NPM_TAG=$RELEASE_CANDIDATE_NPM_TAG" >> "$GITHUB_ENV"`,
                 if: '${{ !cancelled() }}',
                 with: {
                   name: `devtools-certification-${suffix}`,
+                  overwrite: true,
                   path: 'tests/integration/playwright-report/\ntests/integration/test-results/devtools/',
                   'if-no-files-found': 'ignore',
                 },
@@ -137,6 +162,22 @@ done
 ${stable === true ? 'cp release/release-notes.md "$RELEASE_ARTIFACT_DIR/release-notes.md"' : ''}
 node .github/scripts/release-artifact.mjs create --artifact-dir "$RELEASE_ARTIFACT_DIR" --source-sha "$SOURCE_SHA" --version "$LIVESTORE_RELEASE_VERSION" --npm-tag "$LIVESTORE_NPM_TAG" --topology ${releaseTopologyPath}`,
         },
+        ...(stable === false
+          ? [
+              {
+                name: 'Upload DevTools Chrome snapshot artifact',
+                uses: 'actions/upload-artifact@v4',
+                with: {
+                  name: `livestore-devtools-chrome-0.0.0-snapshot-${releaseHeadSha}`,
+                  overwrite: true,
+                  path: `\${{ runner.temp }}/release-artifact/livestore-devtools-chrome-0.0.0-snapshot-${releaseHeadSha}.zip`,
+                  'if-no-files-found': 'error',
+                  'retention-days': 14,
+                },
+              },
+            ]
+          : []),
+        // Publish the handoff last so an earlier upload failure can safely retry preparation.
         {
           uses: 'actions/upload-artifact@v4',
           with: {
@@ -146,20 +187,6 @@ node .github/scripts/release-artifact.mjs create --artifact-dir "$RELEASE_ARTIFA
             'retention-days': 14,
           },
         },
-        ...(stable === false
-          ? [
-              {
-                name: 'Upload DevTools Chrome snapshot artifact',
-                uses: 'actions/upload-artifact@v4',
-                with: {
-                  name: `livestore-devtools-chrome-0.0.0-snapshot-${releaseHeadSha}`,
-                  path: `\${{ runner.temp }}/release-artifact/livestore-devtools-chrome-0.0.0-snapshot-${releaseHeadSha}.zip`,
-                  'if-no-files-found': 'error',
-                  'retention-days': 14,
-                },
-              },
-            ]
-          : []),
       ],
     },
     [validate]: {

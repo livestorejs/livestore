@@ -38,3 +38,9 @@ hosts the browser-extension `postMessage` bridge (LS.SYS.RT.WEB-R05);
 protocol and surfaces are owned by
 [../../07-devtools/](../../07-devtools/spec.md). Webmesh node names follow
 `Devtools.makeNodeName.client.{session,leader}`.
+
+The in-memory adapter builds its optional shared-worker RPC protocol layer
+in the adapter scope, then provides that context to client construction.
+The protocol stays alive for subsequent session and leader mesh connections
+and is released when the store scope closes, not when client construction
+returns (LS.SYS.RT.WEB-R05).

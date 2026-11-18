@@ -25,6 +25,9 @@ workflow (`05-contributing/`).
   follow-up docs PR referencing the VRS change.
 - Term usage follows the root ontology; `overview/concepts` is a derived
   rendering of it.
+- Published page and machine-readable corpus URLs use the explicit deployment
+  origin (`LIVESTORE_DOCS_SITE_URL`) when provided. Netlify's build URL is the
+  fallback for previews without an explicit deployment target.
 
 ## Information Architecture (LS.DOCS-R06)
 
