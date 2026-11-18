@@ -15,6 +15,9 @@ ProxyChannels and DirectChannels have the following properties (similar to TCP):
 - Ordered messages
 - Reliable (buffers messages and acks each message)
 
+Direct channels probe newly available routes even while the old transport appears connected, so a replacement node with the same name can register its responder. Negative topology-probe responses do not invalidate an already established transport or stop its control processing.
+Responses are accepted only for negotiation request IDs owned by the current internal attempt, before any version handling. Establishment or accepting the first response port retires those IDs. Delayed responses from old generations and established probes are ignored; discarded success-response ports are closed.
+
 ## Available edge connection implementations
 
 - `MessageChannel`

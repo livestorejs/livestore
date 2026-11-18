@@ -40,10 +40,15 @@ The delivery contracts below are stable per kind (LS.SYS.RT.MESH-R01):
   (`remainingHops`). Afterwards the two nodes talk over the acknowledged
   port; the mesh is out of the loop. The port buffers incoming events eagerly.
   An internal ping/pong exchange establishes readiness, awaiting acknowledgements
-  without a short probe deadline or duplicate sends. A non-answering peer waits
-  until caller interruption or scope closure. Internal ping/pong messages are
-  consumed by the transport and never reach application listeners, including
-  messages arriving after readiness. Used session ⇄ leader where the platform allows.
+  without a short probe deadline or duplicate sends. Port readiness waits run
+  within the attempt scope without blocking the mesh control queue. A request
+  from a replacement peer (`sourceId` changed) closes the abandoned attempt
+  even before establishment or version alignment. A higher peer version sets the
+  minimum version for the next attempt directly, rather than rebuilding each
+  skipped generation. Otherwise a non-answering peer waits until caller
+  interruption or scope closure. Internal ping/pong messages are consumed by
+  the transport and never reach application listeners, including messages
+  arriving after readiness. Used session ⇄ leader where the platform allows.
 - **Proxy** — hop-routed `ProxyChannelPayload` packets; each payload is
   individually acked (`ProxyChannelPayloadAck`). The receiver forks the ack
   send (fire-and-forget) so a slow ack cannot block delivery to the listen
@@ -56,7 +61,12 @@ The delivery contracts below are stable per kind (LS.SYS.RT.MESH-R01):
 
 Both ends must call `makeChannel` with the same `channelName` for a channel
 to open; `listenForChannel` is a single-listener stream of incoming channel
-requests.
+requests. A channel's shutdown closes its registration scope, removes its packet
+queue, and releases the listener's deduplication claim before interrupting its
+consumers. Requests arriving during consumer teardown therefore route to a new
+pending registration rather than the discarded queue. A later request for the
+same peer and channel name can register a new responder without recreating the
+mesh node. Closing a direct channel also terminates its application listen stream.
 
 ## Edges and Routing
 
