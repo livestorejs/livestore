@@ -80,3 +80,8 @@ new loading promise on the next retry. Loading errors and calling outside
 (`useQuery`, `useClientDocument`, `useSyncStatus`) never suspend: they
 compute the initial result synchronously against the loaded store and
 subscribe for updates.
+
+Residual window ([#916](https://github.com/livestorejs/livestore/issues/916)):
+if the registry entry expires inside React's immediate-replay window and a
+new load has started, React returns the first attempt's thenable and the hook
+returns the expired store. This window belongs to the registry, not the hook.
