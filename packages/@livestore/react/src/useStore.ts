@@ -78,9 +78,7 @@ export const useStore = <
   // A suspended component can be replayed after the registry already has a synchronous Store.
   // Still unwrap its original Promise: React.use restores the mount dispatcher for later hooks.
   const store = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
-  // Only the suspended attempt needs the Promise. Keeping it after a successful render would
-  // make React.use run on mounted transitions, preventing useActionState updates from committing.
-  pending.current = undefined
+  const attempt = pending.current
 
   // Retain only after the suspension point, once this render has obtained the store.
   //
@@ -90,7 +88,12 @@ export const useStore = <
   // an issue with the default 60s cache time, but it becomes an issue when `unusedCacheTime` is
   // configured to values less than ~100ms.
   // See https://github.com/livestorejs/livestore/issues/916
-  React.useEffect(() => storeRegistry.retain(options), [storeRegistry, options])
+  React.useEffect(() => {
+    // A later hook may suspend too. Keep this attempt until the whole component commits,
+    // without clearing a newer attempt started by an interrupted render.
+    if (pending.current === attempt) pending.current = undefined
+    return storeRegistry.retain(options)
+  }, [storeRegistry, options, attempt])
 
   return withReactApi(store)
 }
