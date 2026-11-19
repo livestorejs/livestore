@@ -13,6 +13,8 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 ### Changed
 
+- **Web adapter:** Concurrent writes that invalidate an OPFS snapshot during tab reload
+  fall back to a leader-provided snapshot instead of failing store boot.
 - **React:** `useStore` calls `React.use` on every render, passing a loaded
   store as an already-fulfilled thenable. This keeps suspended renders
   replayable: sequential stores stay distinct, a later `use` in the same
