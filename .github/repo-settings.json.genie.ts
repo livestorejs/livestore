@@ -19,7 +19,7 @@ export default githubRuleset({
       parameters: {
         ...prReviewsPullRequestRule({
           dismissStaleReviewsOnPush: false,
-          requireCodeOwnerReview: true,
+          requireCodeOwnerReview: false,
         }).parameters,
         require_extra_approval_for_unattributed_changes: true,
       },

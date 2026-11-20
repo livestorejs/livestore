@@ -134,6 +134,7 @@ if (import.meta.main) {
     '.infra/iac/netlify/env.tf',
     '.github/CODEOWNERS',
     '.github/repo-settings.json',
+    '.github/code-owner-review.json',
     '.github/reconcile-app-manifest.json',
     '.github/workflows/ci.yml',
     '.github/workflows/ci.yml.genie.ts',

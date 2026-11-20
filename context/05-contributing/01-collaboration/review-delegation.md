@@ -53,6 +53,7 @@ rules:
       - .infra/**
       - .github/CODEOWNERS
       - .github/repo-settings.json
+      - .github/code-owner-review.json
       - .github/reconcile-app-manifest.json
       - .github/workflows/**
       - .github/scripts/**
@@ -78,7 +79,7 @@ Package source outside credentialed runtime trees, ordinary tests, and changelog
 
 [CODEOWNERS](../../../.github/CODEOWNERS) is a manually maintained projection of this profile, not a genie output. It lists the broad agent paths first and human gates last because GitHub uses the last matching entry. Agent paths use ownerless entries to clear the default owner: naming `@schickling-assistant` would require an approval that the agent PR author cannot provide.
 
-The `main-branch-rules` ruleset requires code-owner review and otherwise requires zero approvals. Ownerless-only changes therefore need no GitHub approval; required checks, resolved review threads, independent agent review, and merge authorization still apply. Human gates include the conservative executable closure of deployment, meeting/service-account, GitHub-write-token, npm/release, and App-key jobs. Re-owning the launcher, setup inputs, and imported tooling also contains part of the existing [#1701](https://github.com/livestorejs/livestore/issues/1701) gap; it is not full job isolation. Repository settings are unchanged.
+The `main-code-owner-review` ruleset requires code-owner approval and gives Bohdan a PR-only bypass. The separate `main-branch-rules` ruleset requires CI and resolved review threads for everyone. Ownerless-only changes therefore need no GitHub approval; required checks, resolved review threads, independent agent review, and merge authorization still apply. Human gates include the conservative executable closure of deployment, meeting/service-account, GitHub-write-token, npm/release, and App-key jobs. Re-owning the launcher, setup inputs, and imported tooling also contains part of the existing [#1701](https://github.com/livestorejs/livestore/issues/1701) gap; it is not full job isolation.
 
 Grafana OTLP telemetry auth is explicitly excluded from that closure: ordinary test code can read and misuse the write-only token exported through `GITHUB_ENV`. This accepted low-impact exception does not apply to Netlify trace uploads: their same-job Playwright predecessors and runtime imports are retained. Published source outside the credential closure may change without Johannes reviewing each source PR; his release approval controls publication of the accumulated artifact, not per-change source review.
 
