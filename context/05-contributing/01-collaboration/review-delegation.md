@@ -1,8 +1,8 @@
 # Review delegation
 
-A delegation rule has `paths` and an `owner` (`agent` or `johannes`); rules are ordered, first match wins, and the final `**` rule is the default. An independent agent's GO replaces Johannes's code review only when every changed file matches an agent rule; all other PRs require Johannes's code review. Merge still follows the repository's integration path and any merge authorization Johannes grants.
+A delegation rule has `paths` and an `owner` (`agent` or `maintainer`); rules are ordered, first match wins, and the final `**` rule is the default. An independent agent's GO replaces Johannes's code review only when every changed file matches an agent rule; all other PRs require review from either Johannes Schickling or Bohdan Ptyts. Merge still follows the repository's integration path and any merge authorization Johannes grants.
 
-Delegated changes must add no complexity: no new abstraction, dependency, module boundary, or public surface. When classification or complexity is uncertain, escalate to Johannes.
+Delegated changes must add no complexity: no new abstraction, dependency, module boundary, or public surface. When classification or complexity is uncertain, escalate to a maintainer.
 
 ## Ordered profile
 
@@ -57,7 +57,7 @@ rules:
       - .github/workflows/**
       - .github/scripts/**
       - .github/actions/**
-    owner: johannes
+    owner: maintainer
   - paths: ['**/*.test.ts', '**/*.test.tsx', '**/*.test.js', '**/__tests__/**']
     owner: agent
   - paths:
@@ -69,10 +69,10 @@ rules:
       - CHANGELOG.md
     owner: agent
   - paths: ['**']
-    owner: johannes
+    owner: maintainer
 ```
 
-Package source outside credentialed runtime trees, ordinary tests, and changelogs are delegated. Install manifests, locks, generators, aliases, dynamic deployment surfaces, and runtime imports reachable from credentialed jobs retain Johannes's approval. `contributor-docs/` contains contributor documentation and RFCs; a document does not authorize the implementation it proposes.
+Package source outside credentialed runtime trees, ordinary tests, and changelogs are delegated. Install manifests, locks, generators, aliases, dynamic deployment surfaces, and runtime imports reachable from credentialed jobs retain maintainer approval. `contributor-docs/` contains contributor documentation and RFCs; a document does not authorize the implementation it proposes.
 
 ## GitHub projection
 

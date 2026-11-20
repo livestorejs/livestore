@@ -151,7 +151,7 @@ if (import.meta.main) {
   const covered = new Set()
   for (const { paths, expected } of [
     { paths: delegated, expected: '' },
-    { paths: retained, expected: '@schickling' },
+    { paths: retained, expected: '@schickling @bohdanbirdie' },
   ]) {
     for (const path of paths) {
       const last = rules.findLast((rule) => rule.matches.test(path))

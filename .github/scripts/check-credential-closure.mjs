@@ -212,7 +212,7 @@ for (const path of packageFiles.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)))
   console.log(`| ${path} | ${closure.get(path)} |`)
 if (process.argv.includes('--inventory') === false) {
   const unowned = [...closure].filter(
-    ([path]) => rules.findLast((rule) => rule.matches.test(path))?.owners !== '@schickling',
+    ([path]) => rules.findLast((rule) => rule.matches.test(path))?.owners !== '@schickling @bohdanbirdie',
   )
   assert.deepEqual(unowned, [], 'Ownerless executable credential inputs (path, importing edge)')
 }
