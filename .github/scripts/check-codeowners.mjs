@@ -134,6 +134,7 @@ if (import.meta.main) {
     '.infra/iac/netlify/env.tf',
     '.github/CODEOWNERS',
     '.github/repo-settings.json',
+    '.github/code-owner-review.json',
     '.github/reconcile-app-manifest.json',
     '.github/workflows/ci.yml',
     '.github/workflows/ci.yml.genie.ts',
@@ -151,7 +152,7 @@ if (import.meta.main) {
   const covered = new Set()
   for (const { paths, expected } of [
     { paths: delegated, expected: '' },
-    { paths: retained, expected: '@schickling' },
+    { paths: retained, expected: '@schickling @bohdanbirdie' },
   ]) {
     for (const path of paths) {
       const last = rules.findLast((rule) => rule.matches.test(path))

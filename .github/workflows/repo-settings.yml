@@ -7,7 +7,12 @@ on:
   push:
     branches: [main]
     paths:
-      [.github/repo-settings.json, .github/workflows/repo-settings.yml, .github/workflows/repo-settings.yml.genie.ts]
+      [
+        .github/code-owner-review.json,
+        .github/repo-settings.json,
+        .github/workflows/repo-settings.yml,
+        .github/workflows/repo-settings.yml.genie.ts,
+      ]
   schedule:
     - cron: 17 6 * * *
   workflow_dispatch: {}
@@ -49,60 +54,52 @@ jobs:
           after=$(gh api --method GET "$endpoint" --jq .approval_policy)
           printf "Fork PR approval after: %s\n" "$after"
           [[ "$after" == "$FORK_PR_APPROVAL_POLICY" ]]
-      - name: Apply ruleset
+      - name: Apply and verify rulesets
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -euo pipefail
-          ruleset_id="$(gh api --paginate "repos/$GITHUB_REPOSITORY/rulesets" --jq '.[] | select(.name == "main-branch-rules") | .id')"
-          if [[ -n "$ruleset_id" ]]; then
-            gh api --method PUT "repos/$GITHUB_REPOSITORY/rulesets/$ruleset_id" --input .github/repo-settings.json
-          else
-            gh api --method POST "repos/$GITHUB_REPOSITORY/rulesets" --input .github/repo-settings.json
-          fi
-      - name: Verify ruleset
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          set -euo pipefail
-          ruleset_file=".github/repo-settings.json"
-          ruleset_id="$(gh api --paginate "repos/$GITHUB_REPOSITORY/rulesets" --jq '.[] | select(.name == "main-branch-rules") | .id')"
-          if [[ -z "$ruleset_id" ]]; then
-            echo "No live ruleset found with name 'main-branch-rules'" >&2
-            exit 1
-          fi
-
           tmp_dir="$(mktemp -d)"
           trap 'rm -rf "$tmp_dir"' EXIT
-          # The App token has administration:write, so always compare bypass_actors.
-          jq_normalize='
-            {
-              name,
-              target,
-              enforcement,
-              bypass_actors: (.bypass_actors // []),
-              conditions,
-              rules: [
-                .rules[]
-                | if .type == "pull_request" then
-                    .parameters |= (
-                      del(.allowed_merge_methods, .required_reviewers)
-                      | if .dismissal_restriction == { allowed_actors: [], enabled: false } then
-                          del(.dismissal_restriction)
-                        else
-                          .
-                        end
-                    )
-                  else
-                    .
-                  end
-              ]
-            }
-          '
-          jq -S "$jq_normalize" "$ruleset_file" > "$tmp_dir/desired.json"
-          gh api "repos/$GITHUB_REPOSITORY/rulesets/$ruleset_id" | jq -S "$jq_normalize" > "$tmp_dir/live.json"
-          if ! diff -u "$tmp_dir/desired.json" "$tmp_dir/live.json"; then
-            echo "Ruleset 'main-branch-rules' drift detected against $ruleset_file." >&2
-            exit 1
-          fi
-          echo "Ruleset 'main-branch-rules' is in sync with $ruleset_file."
+          for ruleset_file in .github/code-owner-review.json .github/repo-settings.json; do
+            ruleset_name="$(jq -r .name "$ruleset_file")"
+            ruleset_id="$(gh api --paginate "repos/$GITHUB_REPOSITORY/rulesets" | jq -r --arg name "$ruleset_name" '.[] | select(.name == $name) | .id')"
+            if [[ -n "$ruleset_id" ]]; then
+              gh api --method PUT "repos/$GITHUB_REPOSITORY/rulesets/$ruleset_id" -H "X-GitHub-Api-Version: 2026-03-10" --input "$ruleset_file"
+            else
+              ruleset_id="$(gh api --jq .id --method POST "repos/$GITHUB_REPOSITORY/rulesets" -H "X-GitHub-Api-Version: 2026-03-10" --input "$ruleset_file")"
+            fi
+
+            # The App token has administration:write, so always compare bypass_actors.
+            jq_normalize='
+              {
+                name,
+                target,
+                enforcement,
+                bypass_actors: (.bypass_actors // []),
+                conditions,
+                rules: [
+                  .rules[]
+                  | if .type == "pull_request" then
+                      .parameters |= (
+                        del(.allowed_merge_methods, .required_reviewers)
+                        | if .dismissal_restriction == { allowed_actors: [], enabled: false } then
+                            del(.dismissal_restriction)
+                          else
+                            .
+                          end
+                      )
+                    else
+                      .
+                    end
+                ]
+              }
+            '
+            jq -S "$jq_normalize" "$ruleset_file" > "$tmp_dir/desired.json"
+            gh api "repos/$GITHUB_REPOSITORY/rulesets/$ruleset_id" -H "X-GitHub-Api-Version: 2026-03-10" | jq -S "$jq_normalize" > "$tmp_dir/live.json"
+            if ! diff -u "$tmp_dir/desired.json" "$tmp_dir/live.json"; then
+              echo "Ruleset '$ruleset_name' drift detected against $ruleset_file." >&2
+              exit 1
+            fi
+            echo "Ruleset '$ruleset_name' is in sync with $ruleset_file."
+          done

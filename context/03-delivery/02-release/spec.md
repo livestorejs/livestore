@@ -203,9 +203,10 @@ policy itself are spec changes to this node.
 
 ## Ruleset Reconciliation
 
-The `main` branch ruleset is kept converged with its committed desired state
-(`.github/repo-settings.json`, whose required-status-check list Genie generates
-from the CI job list) by an org-owned GitHub App that applies it.
+An org-owned GitHub App applies both committed rulesets for `main`. Genie
+generates the required checks in `.github/repo-settings.json` from the CI job
+list. The App applies `.github/code-owner-review.json` first so the approval
+requirement stays in effect while it updates the existing ruleset.
 Decisions and rejected alternatives:
 [.decisions/0001](./.decisions/0001-ruleset-reconciliation.md); GitHub platform
 limits:
@@ -222,11 +223,11 @@ deployment branches are limited to `main`.
 only on `main`, in `github-admin`: on path-filtered pushes, the scheduled
 backstop, or manual dispatch. After checkout without persisted credentials and
 token creation, only inline Bash from the code-owned workflow runs: reconcile
-fork-PR contributor approval, apply the desired ruleset, then verify managed
+fork-PR contributor approval, apply the desired rulesets, then verify managed
 fields and fail with a diff on residual drift. The admin-token comparison
 includes bypass actors and suppresses GitHub-expanded pull-request defaults.
 No Nix/devenv setup, repository scripts, or PR plan job receives the key or token.
-Local `github:rulesets:{sync,plan,check}` tasks remain available independently.
+Local `github:rulesets:{sync,plan,check}` tasks remain available for `main-branch-rules`.
 Ruleset reconciliation does not affect the `ci` conclusion or gate snapshot
 publication.
 
