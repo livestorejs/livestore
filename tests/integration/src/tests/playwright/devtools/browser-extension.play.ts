@@ -503,7 +503,7 @@ test(
           devtools: tab1.liveStoreDevtools,
           label: 'devtools-protocol-mismatch',
           expect: {
-            devtoolsVersion: '0.4', // Partial match for the real DevTools version
+            appDevtoolsProtocolVersion: 999,
             appVersion: fakeAppVersion,
           },
         })
