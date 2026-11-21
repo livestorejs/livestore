@@ -19,7 +19,7 @@ per-session fence for a previously rejected generation. The later event can be
 accepted and delivered first. The session then presents incoming `[B]` and
 pending `[A, B]` to positional merge, which schedules `[B, A', B']` and
 materializes `B` twice
-(`packages/@livestore/common/src/leader-thread/LeaderSyncProcessor.ts:1037-1066`).
+(`packages/@livestore/common/src/leader-thread/LeaderSyncProcessor.ts:1056-1085`).
 
 Evidence: contrib Scenario System finding SF-03 (`many-writer-convergence`),
 the captured `many-writer-396` transition, and the deterministic core regression
@@ -56,3 +56,12 @@ submitting a later suffix directly. Deterministic tests cover advance recovery,
 rebase recovery, the late-response race, receiver rejection, and orderly
 shutdown. The leader→backend `ServerAheadError` path retains its equivalent
 park-until-pull behavior.
+
+## Later Change
+
+[Decision 0003](../.decisions/0003-serialized-sync-processors.md) (2026-10-07)
+replaced the mechanism described above: the parked worker and the FIFO reseed
+are gone. The invariant still holds through the session's
+`awaiting-reconciliation` push state and the leader's validation against the
+tail of its admitted queue (see [spec.md](../spec.md)). This delta stays
+resolved; its code references describe the code as of 2026-07-31.

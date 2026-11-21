@@ -37,15 +37,17 @@ LiveStore operates two SQLite databases by default: a state database (your mater
   - Tracks the schema hash and last update time per event definition. Used to detect incompatible event schema changes during rematerialization.
 - `__livestore_state_head`
   - Stores the latest composite event sequence number reflected by the state database snapshot.
-- `__livestore_session_changeset`
-  - Stores SQLite session changeset blobs keyed by event sequence numbers. Used to efficiently roll back and re‑apply state during rebases.
+- `__livestore_materialization_journal`
+  - Stores the materialization journal: SQLite session changeset blobs (or none, when an event changed nothing) keyed by complete composite event sequence numbers. LiveStore uses these records to roll back affected materializations during a rebase and discards them once the events are confirmed.
+- `__livestore_rebuild`
+  - Marks a state database whose rebuild completed. A state database without this marker is rebuilt from the event log.
 - Your application tables
   - All tables you define via `State.SQLite.table(...)` live in the state database.
 
 ### Eventlog database
 
 - `eventlog`
-  - Append‑only table containing all events (sequence numbers, parent links, event name, encoded args, client/session IDs, schema hash, optional sync metadata). Used to reconstruct state and for sync.
+  - Append‑only table containing all events (sequence numbers, parent links, event name, encoded args, client/session IDs, schema hash, optional sync metadata). Events do not contain state-database rollback changesets. The event log is used to reconstruct state and for sync.
 - `__livestore_sync_status`
   - Stores the current head and optional backend identity for synchronization bookkeeping.
 

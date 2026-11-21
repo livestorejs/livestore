@@ -8,7 +8,7 @@ export default defineConfig({
     // Without this, `vitest run --config scripts/vitest.config.ts` from the workspace root
     // resolves `include` against the root and finds nothing.
     root: import.meta.dirname,
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'src/commands/release-artifact.test.mjs'],
     environment: 'node',
     env: {
       WORKSPACE_ROOT: path.resolve(import.meta.dirname, '..'),

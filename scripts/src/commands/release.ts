@@ -5,10 +5,11 @@ import semver from 'semver'
 
 import { shouldNeverHappen } from '@livestore/utils'
 import { CurrentWorkingDirectory, cmd, cmdText } from '@livestore/utils-dev/node'
-import { Effect, FileSystem, Result, Schedule, Schema } from '@livestore/utils/effect'
+import { Effect, FileSystem, Result, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
+import { runNpmPublish, submitNpmPackage, verifyNpmPackageVisibility } from '../shared/npm-publish.ts'
 
 export type ReleaseSnapshotOptions = {
   readonly cwd: string
@@ -463,8 +464,6 @@ const publishReleasePackages = ({
   tscBin: string
 }) =>
   Effect.gen(function* () {
-    const isCI = process.env.CI === 'true' || process.env.CI === '1'
-
     /**
      * Regenerate all genie-managed files with the release version (writable for pnpm publish).
      * TODO: Replace CLI invocations with genie SDK once skipValidation is available
@@ -513,44 +512,34 @@ const publishReleasePackages = ({
         '--ignore-scripts',
       ]
       if (dryRun === true) publishArgs.push('--dry-run')
-      const versionIsVisible = cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
-        Effect.provide(cwdLayer),
-        Effect.as(true),
-        Effect.catchTag('CmdError', () => Effect.succeed(false)),
-      )
-      yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 ${publishArgs.join(' ')}`, { shell: true }).pipe(
-        Effect.provide(cwdLayer),
-        Effect.catchTag('CmdError', (error) => {
-          if (isCI === false || dryRun === true || isSnapshotVersion(version) === false) return Effect.fail(error)
-
-          return versionIsVisible.pipe(
-            Effect.flatMap((isVisible) => {
-              if (isVisible === true) {
-                return Effect.logWarning(`${pkg}@${version} became visible after a failed publish; continuing`)
-              }
-
-              return Effect.logError(
-                [
-                  `Failed to publish ${pkg}@${version} from CI.`,
-                  'Snapshot publishing must authenticate through npm trusted publishing from .github/workflows/release.yml.',
-                  'Check that npm has this package configured for GitHub Actions trusted publishing and that this job uses a GitHub-hosted runner with id-token: write.',
-                ].join(' '),
-              ).pipe(Effect.andThen(Effect.fail(error)))
-            }),
-          )
-        }),
-      )
-      yield* Effect.log(`${dryRun === true ? 'Dry-ran' : 'Published'} ${pkg}@${version}`)
+      if (dryRun === true) {
+        yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 ${publishArgs.join(' ')}`, { shell: true }).pipe(
+          Effect.provide(cwdLayer),
+        )
+        yield* Effect.log(`Dry-ran ${pkg}@${version}`)
+      } else {
+        yield* submitNpmPackage({
+          packageSpec: `${pkg}@${version}`,
+          publish: runNpmPublish(publishArgs.slice(2), pkgDir),
+          versionIsVisible: cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
+            Effect.provide(cwdLayer),
+            Effect.as(true),
+            Effect.catchTag('CmdError', () => Effect.succeed(false)),
+          ),
+        })
+      }
     }
 
     if (dryRun === false) {
-      yield* Effect.log('Verifying packages are available on the registry...')
       for (const pkg of packages) {
-        yield* cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
-          Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
-          Effect.retry(Schedule.spaced('5 seconds').pipe(Schedule.upTo({ times: 60 }))),
-        )
-        yield* Effect.log(`Verified ${pkg}@${version}`)
+        yield* verifyNpmPackageVisibility({
+          packageSpec: `${pkg}@${version}`,
+          versionIsVisible: cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
+            Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
+            Effect.as(true),
+            Effect.catchTag('CmdError', () => Effect.succeed(false)),
+          ),
+        })
       }
     }
   }).pipe(Effect.ensuring(restoreGeneratedReleaseFiles(cwd)))
@@ -682,6 +671,94 @@ export const releaseSnapshot = Effect.fn(function* ({
   })
 })
 
+/** Build and pack without consulting npm; generated manifests are restored even on failure. */
+const packReleasePackages = Effect.fn('release.packReleasePackages')(function* ({
+  cwd,
+  version,
+  packages,
+  outDir,
+  tscBin,
+}: {
+  cwd: string
+  version: string
+  packages: ReadonlyArray<string>
+  outDir: string
+  tscBin: string
+}) {
+  const tarballs = yield* Effect.gen(function* () {
+    yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 LIVESTORE_RELEASE_VERSION=${version} genie --writeable`, {
+      shell: true,
+    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+    yield* rewriteSnapshotInternalDependencyRanges({ cwd, snapshotPackages: packages, snapshotVersion: version })
+    yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 ${tscBin} --build tsconfig.dev.json --noCheck`, {
+      shell: true,
+    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+
+    return yield* Effect.forEach(packages, (pkg) => packPackageForPublish({ cwd, pkg, version }), {
+      concurrency: 1,
+    })
+  }).pipe(Effect.ensuring(restoreGeneratedReleaseFiles(cwd)))
+
+  yield* Effect.tryPromise({
+    try: async () => {
+      await mkdir(outDir, { recursive: true })
+      for (const tarball of tarballs) {
+        await copyFile(tarball, path.join(outDir, path.basename(tarball)))
+      }
+    },
+    catch: (cause) => new ReleaseError({ message: `Failed to stage release tarballs in ${outDir}`, cause }),
+  })
+
+  yield* Effect.log(`Packed ${tarballs.length} package(s) as ${version} in ${outDir}`)
+})
+
+export const packReleaseArtifact = Effect.fn('release.packReleaseArtifact')(function* ({
+  cwd,
+  version,
+  npmTag,
+  outDir,
+  tscBin = 'tsc',
+}: {
+  cwd: string
+  version: string
+  npmTag: string
+  outDir: string
+  tscBin?: string
+}) {
+  if (semver.valid(version) !== version) {
+    return yield* new ReleaseError({ message: `Invalid npm semver version: ${version}` })
+  }
+  const packages = yield* listSnapshotPackages(cwd)
+  if (packages.length === 0) {
+    return yield* new ReleaseError({ message: 'Release package topology is empty' })
+  }
+  yield* packReleasePackages({ cwd, version, packages, outDir, tscBin })
+  yield* Effect.log(`Release tarballs prepared for npm tag ${npmTag}; no registry access performed`)
+})
+
+export const packReleaseArtifactCommand = Cli.Command.make(
+  'artifact-pack',
+  {
+    version: Cli.Flag.String('version').pipe(Cli.Flag.withDescription('Exact release or snapshot package version')),
+    npmTag: Cli.Flag.String('npm-tag').pipe(Cli.Flag.withDescription('Release artifact npm tag metadata')),
+    outDir: Cli.Flag.String('out-dir').pipe(Cli.Flag.withDescription('Directory to stage core package tarballs')),
+    cwd: Cli.Flag.String('cwd').pipe(
+      Cli.Flag.withDefault(
+        process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
+      ),
+    ),
+    tscBin: Cli.Flag.String('tsc-bin').pipe(Cli.Flag.optional),
+  },
+  ({ version, npmTag, outDir, cwd, tscBin }) =>
+    packReleaseArtifact({
+      version,
+      npmTag,
+      outDir,
+      cwd,
+      ...(tscBin._tag === 'Some' ? { tscBin: tscBin.value } : {}),
+    }),
+)
+
 export const packSnapshot = Effect.fn(function* ({
   gitSha,
   prNumber,
@@ -719,30 +796,7 @@ export const packSnapshot = Effect.fn(function* ({
     catch: (cause) => new ReleaseError({ message: `Failed to prepare snapshot artifact directory ${outDir}`, cause }),
   })
 
-  const tarballs = yield* Effect.gen(function* () {
-    yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 LIVESTORE_RELEASE_VERSION=${version} genie --writeable`, {
-      shell: true,
-    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-    yield* rewriteSnapshotInternalDependencyRanges({ cwd, snapshotPackages: packages, snapshotVersion: version })
-    yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 ${tscBin} --build tsconfig.dev.json --noCheck`, {
-      shell: true,
-    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-
-    return yield* Effect.forEach(packages, (pkg) => packPackageForPublish({ cwd, pkg, version }), {
-      concurrency: 1,
-    })
-  }).pipe(Effect.ensuring(restoreGeneratedReleaseFiles(cwd)))
-
-  yield* Effect.tryPromise({
-    try: async () => {
-      for (const tarball of tarballs) {
-        await copyFile(tarball, path.join(outDir, path.basename(tarball)))
-      }
-    },
-    catch: (cause) => new ReleaseError({ message: `Failed to stage snapshot tarballs in ${outDir}`, cause }),
-  })
-
-  yield* Effect.log(`Packed ${tarballs.length} package(s) as ${version} in ${outDir}`)
+  yield* packReleasePackages({ cwd, version, packages, outDir, tscBin })
 })
 
 export const packSnapshotCommand = Cli.Command.make(
@@ -820,6 +874,7 @@ export const releaseCommand = Cli.Command.make('release').pipe(
     releaseStableCommand,
     releaseSnapshotCommand,
     packSnapshotCommand,
+    packReleaseArtifactCommand,
     releaseNotesExtractCommand,
   ]),
 )

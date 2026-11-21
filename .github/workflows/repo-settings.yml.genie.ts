@@ -1,39 +1,15 @@
 /**
  * Reconciles the `main` branch ruleset from its committed desired-state file
- * (`.github/repo-settings.json`) using an org-owned GitHub App as the privileged
- * identity. Apply-on-merge (path-filtered) + a scheduled backstop converge the
- * live ruleset; pull requests get a non-gating dry-run plan.
- *
- * See `context/repo-ruleset-sync/` for the design, decisions, and the manual
- * (non-IaC) App provisioning steps.
+ * using only code-owned inline steps and an environment-scoped GitHub App key.
+ * See `context/03-delivery/02-release/spec.md` for the reconciliation contract.
  */
-import {
-  bashShellDefaults,
-  defaultActionlintConfig,
-  githubWorkflow,
-  livestoreSetupSteps,
-  runDevenvTasksBefore,
-} from '../../genie/repo.ts'
+import { bashShellDefaults, defaultActionlintConfig, githubWorkflow } from '../../genie/repo.ts'
 
-// App ID of the org-owned `livestore-ruleset-reconciler` GitHub App (see context/repo-ruleset-sync).
+// App ID of the org-owned `livestore-ruleset-reconciler` GitHub App.
 const RECONCILE_APP_ID = '4312996'
 
-/**
- * Mints a GitHub App installation token scoped to least privilege. Without an
- * explicit `permission-*` input the token inherits all of the App's permissions
- * (`administration:write`); the PR `plan` job runs PR-controlled code, so it gets
- * a read-only token, while `reconcile` (which PUTs the ruleset) gets write.
- */
-const appTokenStep = (administration: 'read' | 'write') => ({
-  id: 'app-token',
-  name: 'Mint App token',
-  uses: 'actions/create-github-app-token@v2',
-  with: {
-    'app-id': RECONCILE_APP_ID,
-    'private-key': '${{ secrets.LIVESTORE_RULESET_APP_KEY }}',
-    'permission-administration': administration,
-  },
-})
+// One-off bridge until the Alchemy GitHub stack owns this setting.
+const FORK_PR_APPROVAL_POLICY = 'all_external_contributors'
 
 export default githubWorkflow({
   name: 'Repo settings',
@@ -42,14 +18,11 @@ export default githubWorkflow({
   on: {
     push: {
       branches: ['main'],
-      paths: ['.github/repo-settings.json'],
-    },
-    pull_request: {
       paths: [
+        '.github/code-owner-review.json',
         '.github/repo-settings.json',
-        '.github/repo-settings.json.genie.ts',
-        'genie/ci.ts',
-        '.github/reconcile-app-manifest.json',
+        '.github/workflows/repo-settings.yml',
+        '.github/workflows/repo-settings.yml.genie.ts',
       ],
     },
     schedule: [{ cron: '17 6 * * *' }],
@@ -60,55 +33,95 @@ export default githubWorkflow({
     contents: 'read',
   },
 
-  env: {
-    CI: 'true',
-    FORCE_SETUP: '1',
-  },
-
   jobs: {
     reconcile: {
-      // Only reconcile from `main`. push(main) and schedule already run on main;
-      // this also blocks a `workflow_dispatch` from an unmerged branch (whose
-      // checkout would otherwise apply that branch's repo-settings.json to the
-      // live main ruleset). PRs (ref `refs/pull/N/merge`) are excluded too.
+      // Also block workflow_dispatch from an unmerged branch.
       if: "github.ref == 'refs/heads/main'",
+      environment: 'github-admin',
       'runs-on': 'ubuntu-latest',
       defaults: bashShellDefaults,
       steps: [
-        ...livestoreSetupSteps,
-        appTokenStep('write'),
         {
-          name: 'Apply ruleset',
-          run: runDevenvTasksBefore('github:rulesets:sync'),
-          env: { GH_TOKEN: '${{ steps.app-token.outputs.token }}' },
+          uses: 'actions/checkout@v6',
+          with: { 'persist-credentials': false },
         },
         {
-          name: 'Verify ruleset',
-          run: runDevenvTasksBefore('github:rulesets:check'),
-          env: { GH_TOKEN: '${{ steps.app-token.outputs.token }}' },
-        },
-        {
-          name: 'Check App definition drift',
-          run: runDevenvTasksBefore('github:app:check'),
-          env: {
-            RECONCILE_APP_ID: RECONCILE_APP_ID,
-            RECONCILE_APP_PRIVATE_KEY: '${{ secrets.LIVESTORE_RULESET_APP_KEY }}',
+          id: 'app-token',
+          name: 'Mint App token',
+          uses: 'actions/create-github-app-token@v2',
+          with: {
+            'app-id': RECONCILE_APP_ID,
+            'private-key': '${{ secrets.LIVESTORE_RULESET_APP_KEY }}',
+            'permission-administration': 'write',
           },
         },
-      ],
-    },
-
-    plan: {
-      if: "github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository",
-      'runs-on': 'ubuntu-latest',
-      defaults: bashShellDefaults,
-      steps: [
-        ...livestoreSetupSteps,
-        appTokenStep('read'),
         {
-          name: 'Plan ruleset',
-          run: runDevenvTasksBefore('github:rulesets:plan'),
+          name: 'Reconcile fork PR contributor approval',
+          env: {
+            GH_TOKEN: '${{ steps.app-token.outputs.token }}',
+            GH_REPO: '${{ github.repository }}',
+            FORK_PR_APPROVAL_POLICY,
+          },
+          run: [
+            'endpoint="repos/$GH_REPO/actions/permissions/fork-pr-contributor-approval"',
+            'before=$(gh api --method GET "$endpoint" --jq .approval_policy)',
+            'printf "Fork PR approval before: %s\\n" "$before"',
+            'if [[ "$before" != "$FORK_PR_APPROVAL_POLICY" ]]; then',
+            '  gh api --method PUT "$endpoint" -f approval_policy="$FORK_PR_APPROVAL_POLICY"',
+            'fi',
+            'after=$(gh api --method GET "$endpoint" --jq .approval_policy)',
+            'printf "Fork PR approval after: %s\\n" "$after"',
+            '[[ "$after" == "$FORK_PR_APPROVAL_POLICY" ]]',
+          ].join('\n'),
+        },
+        {
+          name: 'Apply and verify rulesets',
           env: { GH_TOKEN: '${{ steps.app-token.outputs.token }}' },
+          run: `set -euo pipefail
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
+for ruleset_file in .github/code-owner-review.json .github/repo-settings.json; do
+  ruleset_name="$(jq -r .name "$ruleset_file")"
+  ruleset_id="$(gh api --paginate "repos/$GITHUB_REPOSITORY/rulesets" | jq -r --arg name "$ruleset_name" '.[] | select(.name == $name) | .id')"
+  if [[ -n "$ruleset_id" ]]; then
+    gh api --method PUT "repos/$GITHUB_REPOSITORY/rulesets/$ruleset_id" -H "X-GitHub-Api-Version: 2026-03-10" --input "$ruleset_file"
+  else
+    ruleset_id="$(gh api --jq .id --method POST "repos/$GITHUB_REPOSITORY/rulesets" -H "X-GitHub-Api-Version: 2026-03-10" --input "$ruleset_file")"
+  fi
+
+  # The App token has administration:write, so always compare bypass_actors.
+  jq_normalize='
+    {
+      name,
+      target,
+      enforcement,
+      bypass_actors: (.bypass_actors // []),
+      conditions,
+      rules: [
+        .rules[]
+        | if .type == "pull_request" then
+            .parameters |= (
+              del(.allowed_merge_methods, .required_reviewers)
+              | if .dismissal_restriction == { allowed_actors: [], enabled: false } then
+                  del(.dismissal_restriction)
+                else
+                  .
+                end
+            )
+          else
+            .
+          end
+      ]
+    }
+  '
+  jq -S "$jq_normalize" "$ruleset_file" > "$tmp_dir/desired.json"
+  gh api "repos/$GITHUB_REPOSITORY/rulesets/$ruleset_id" -H "X-GitHub-Api-Version: 2026-03-10" | jq -S "$jq_normalize" > "$tmp_dir/live.json"
+  if ! diff -u "$tmp_dir/desired.json" "$tmp_dir/live.json"; then
+    echo "Ruleset '$ruleset_name' drift detected against $ruleset_file." >&2
+    exit 1
+  fi
+  echo "Ruleset '$ruleset_name' is in sync with $ruleset_file."
+done`,
         },
       ],
     },

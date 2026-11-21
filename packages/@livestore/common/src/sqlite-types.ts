@@ -57,7 +57,7 @@ export interface PreparedStatement {
 }
 
 export type SqliteDbSession = {
-  changeset: () => Uint8Array<ArrayBuffer> | undefined
+  changeset: () => Uint8Array<ArrayBuffer> | null
   finish: () => void
 }
 

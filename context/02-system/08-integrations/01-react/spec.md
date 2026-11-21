@@ -11,13 +11,13 @@ Draft.
 
 ## Surface
 
-| Hook / export | File | Purpose |
-| --- | --- | --- |
-| `useStore` | `useStore.ts` | Acquire a store from the registry (suspense-aware boot) |
-| `useQuery` | `useQuery.ts` | Subscribe to any queryable; synchronous first read |
-| `useClientDocument` | `useClientDocument.ts` | Read/update a client document like local state |
-| `useSyncStatus` | `useSyncStatus.ts` | Observe sync/network status |
-| `StoreRegistryContext` | `StoreRegistryContext.tsx` | Scope store resolution per subtree |
+| Hook / export          | File                       | Purpose                                                 |
+| ---------------------- | -------------------------- | ------------------------------------------------------- |
+| `useStore`             | `useStore.ts`              | Acquire a store from the registry (suspense-aware boot) |
+| `useQuery`             | `useQuery.ts`              | Subscribe to any queryable; synchronous first read      |
+| `useClientDocument`    | `useClientDocument.ts`     | Read/update a client document like local state          |
+| `useSyncStatus`        | `useSyncStatus.ts`         | Observe sync/network status                             |
+| `StoreRegistryContext` | `StoreRegistryContext.tsx` | Scope store resolution per subtree                      |
 
 `useRcResource` (`useRcResource.ts`) implements the reference-counted
 resource pattern behind LS.SYS.INT.REACT-R03: caches are bucketed in a
@@ -53,22 +53,35 @@ during render (`client-document-get-query.ts:47-53`; LS.SYS.INT-R06).
 
 ## Store Acquisition
 
-`useStore` calls `storeRegistry.getOrLoadPromise` on every render,
-deliberately un-memoized so React transitions stay committable; `retain()`
-runs in `useEffect` *after* `React.use` to keep hook order stable across
-suspensions, accepting a documented timing-gap race when `unusedCacheTime`
-is below ~100ms (issue #916). The returned store is wrapped by
+`useStore` requests the store from the registry on every render, including
+suspended retries, and always passes the result through `React.use`.
+`retain()` runs in `useEffect` _after_ the suspension point, accepting a
+documented timing-gap race when `unusedCacheTime` is below ~100ms (issue
+#916). The returned store is wrapped by
 `withReactApi`, which attaches `useQuery`/`useClientDocument`/
 `useSyncStatus` as store methods.
 
 ## Suspense Contract
 
-Only store loading suspends. `useStore` calls
-`storeRegistry.getOrLoadPromise` on every render: an unloaded store returns
-a promise consumed via `React.use` (suspending the component); a cached
-store returns synchronously and `React.use` is skipped entirely (this also
-keeps React transitions committable). Store loading errors and calling
-outside `<StoreRegistryProvider>` throw (error-boundary path). Query hooks
+Only store loading suspends. `useStore` calls `React.use` exactly once on
+every render: an unloaded store passes the registry's loading promise
+(suspending the component); a loaded store passes a stable, already-fulfilled
+thenable that React reads synchronously, so mounted renders never suspend and
+transitions stay committable. That thenable is the loading promise itself
+when the hook saw the store load, so a replayed render hands React the
+identical thenable it suspended on. Calling `use` unconditionally keeps the hook
+idempotent across React's replay of a suspended render, which assumes the
+same sequence of `use` calls: later `use` calls keep their thenable slot and
+later hooks run under the correct dispatcher.
+The registry is authoritative: a currently cached store supersedes the
+result React returns for a replayed thenable, and an expired entry yields a
+new loading promise on the next retry. Loading errors and calling outside
+`<StoreRegistryProvider>` throw (error-boundary path). Query hooks
 (`useQuery`, `useClientDocument`, `useSyncStatus`) never suspend: they
 compute the initial result synchronously against the loaded store and
 subscribe for updates.
+
+Residual window ([#916](https://github.com/livestorejs/livestore/issues/916)):
+if the registry entry expires inside React's immediate-replay window and a
+new load has started, React returns the first attempt's thenable and the hook
+returns the expired store. This window belongs to the registry, not the hook.

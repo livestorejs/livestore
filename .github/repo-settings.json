@@ -14,10 +14,11 @@
       "parameters": {
         "required_approving_review_count": 0,
         "dismiss_stale_reviews_on_push": false,
-        "require_code_owner_review": true,
+        "require_code_owner_review": false,
         "require_last_push_approval": false,
         "required_review_thread_resolution": true,
-        "required_reviewers": []
+        "required_reviewers": [],
+        "require_extra_approval_for_unattributed_changes": true
       }
     },
     {

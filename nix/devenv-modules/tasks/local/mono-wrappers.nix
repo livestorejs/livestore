@@ -426,6 +426,7 @@ in
     "examples:deploy:prod" = {
       description = "Deploy examples to production Cloudflare Workers";
       exec = "mono examples deploy --prod";
+      after = [ "pnpm:install" ];
     };
 
     "examples:validate-links" = {
@@ -560,6 +561,18 @@ in
         : "''${PR_NUMBER:?PR_NUMBER is required}"
         : "''${SNAPSHOT_OUT_DIR:?SNAPSHOT_OUT_DIR is required}"
         mono release snapshot-pack --git-sha="$GIT_SHA" --pr-number="$PR_NUMBER" --out-dir="$SNAPSHOT_OUT_DIR"
+      '';
+      after = [ "setup:strict" ];
+    };
+
+    "release:artifact:pack" = {
+      description = "Build and pack release packages without publishing credentials";
+      exec = ''
+        set -euo pipefail
+        mono release artifact-pack \
+          --version "''${RELEASE_CANDIDATE_VERSION:?}" \
+          --npm-tag "''${RELEASE_CANDIDATE_NPM_TAG:?}" \
+          --out-dir "''${RELEASE_ARTIFACT_DIR:?}"
       '';
       after = [ "setup:strict" ];
     };

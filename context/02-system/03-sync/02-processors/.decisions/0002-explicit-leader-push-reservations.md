@@ -1,7 +1,13 @@
 # 0002 — Track leader push reservations until terminal processing
 
-Status: accepted (browser/local-sync-cf reduction and deterministic barrier
-regression, 2026-08-01).
+Status: superseded by
+[0003](./0003-serialized-sync-processors.md) (2026-10-07). Originally accepted
+(browser/local-sync-cf reduction and deterministic barrier regression,
+2026-08-01).
+
+The leader mailbox validates each push against the tail of its admitted local
+queue, so the reservation set, admission semaphore, and queue described below
+no longer exist. Position-only parent comparison survives unchanged.
 
 ## Context
 

@@ -112,11 +112,10 @@ App-authored PR creation and branch updates trigger ordinary `pull_request` and
 `synchronize` CI. The release workflow's PR path filter includes
 `release/release-plan.json`, and `validate-release-plan` runs on PR events, so no
 extra CI or validation dispatch is needed. The built-in job token retains only
-Contents: read and ID token: write for the existing setup; it has no Actions
-write permission. Commits retain the conventional `github-actions[bot]` author
+Contents: read; it has no Actions write or ID token permission. Commits retain
+the conventional `github-actions[bot]` author
 identity to describe the Actions generator without an extra bot-ID lookup;
 the authenticated push and PR actor is the dedicated release App.
-
 
 The preferred flow is:
 
@@ -164,18 +163,12 @@ preserve pending Changesets and therefore do not promote that content to an
 exact version heading. The extracted file is committed to the release-plan PR
 so reviewers see exactly what will land on the GitHub Release page.
 
-The DevTools artifact publish step then uses that file when it creates or
-updates the GitHub Release tag:
+The `finalize-release` job uses the staged release notes when it creates or
+updates the GitHub Release tag. It runs after successful npm publication,
+separately from the npm-credentialed job, and uploads the prepared DevTools
+Chrome ZIP when present.
 
-- On `gh release create`, it passes `--notes-file release/release-notes.md`
-  instead of the legacy hardcoded `Release <version>` body.
-- On subsequent reruns (the release already exists), it also calls
-  `gh release edit --notes-file release/release-notes.md` so a corrected
-  `CHANGELOG.md` section actually lands on the GitHub Release page.
-
-If `release/release-notes.md` is missing at publish time, the publish step
-falls back to the legacy `Release <version>` body and logs a warning. To
-refresh it locally for a planned release:
+To refresh release notes locally for a planned release:
 
 ```bash
 mono release extract-release-notes
@@ -198,10 +191,162 @@ The release-plan PR validates the exact work that will run after merge:
 - `release:devtools-artifact:repack-dryrun:no-install` verifies and repacks the
   public DevTools artifact for the same LiveStore version without publishing it.
 
-After merge to `main`, the push-triggered workflow runs:
+After merge to `main`, the push-triggered workflow runs this containment chain:
 
-- `release:stable:publish`
-- `release:devtools-artifact:publish:no-install`
+1. `prepare-release` builds and packs the core release group with
+   `mono release artifact-pack --version "$VERSION" --npm-tag "$TAG" --out-dir "$OUT"`,
+   then certifies and repacks the selected DevTools artifact into the same
+   `release-artifact` directory.
+2. `validate-release`, without secrets or OIDC, validates the manifest, expected
+   package cohort, archive contents, and SHA-512 integrity.
+3. `publish-release`, in the `npm-publish` environment, rechecks the handoff
+   hashes and publishes the prepared tarballs using shell orchestration and
+   `npm publish --ignore-scripts --provenance`. It does not check out source,
+   install dependencies, build, or invoke `mono`.
+4. `finalize-release` creates or updates the GitHub Release and Chrome ZIP asset
+   outside the npm-credentialed job.
+
+Main snapshots follow `prepare-snapshot-version` →
+`validate-snapshot-version` → `publish-snapshot-version` with the same package
+handoff boundary. Pull-request snapshot promotion is unchanged.
+
+The manifest binds the source SHA, release version, npm tag, exact package names,
+filenames, per-package tags, and SHA-512 SRI digests. Retain the original run and
+artifact when investigating a partial publish. Matching hashes establish that
+the same bytes crossed the job boundary, not that preparation or the build was
+benign. A compromised build can produce malicious bytes and matching hashes.
+
+### npm visibility and staged-publish recovery
+
+Audience: release maintainers who have the original release run and its exact
+commit, version, and npm tag. These steps apply to both the core package
+publisher and the repacked `@livestore/devtools-vite` publisher.
+
+A successful npm upload is not proof that a version is publicly installable.
+Staged versions reserve the same package/version identity as published
+versions, but are not publicly available until approved. A retry can therefore
+receive npm `E409` / `409 Conflict` with `Cannot publish over previously staged
+version` while `npm view <package>@<version> version --json` still cannot find
+the version. Treat that specific conflict as pending visibility, not as a
+successful release or a reason to change the release version. Other publish
+errors are not evidence of staging.
+
+The isolated publishers upload the full package cohort, then poll public
+integrity and requested dist-tags every ten seconds within one shared five-minute
+visibility window. Registry reads prefer online data and retry temporary network
+failures. Already-visible versions with matching integrity skip upload but still
+require the requested dist-tag before verification succeeds. Different public
+bytes fail immediately. A rejected upload or a visibility timeout fails closed
+and points here; there is no credentialed staging-recovery state machine. Do not
+mark the release green or advance production promotion while verification is
+failing. Missing visibility alone does not prove that a maintainer-approvable
+stage exists. A staged version does
+not auto-promote: inspect and approve it using the commands below, or ask the npm
+administrator to allow direct publishing in the trusted-publisher configuration.
+
+#### Find and approve the exact staged version
+
+Use a trusted local terminal, npm CLI 11.15.0 or newer, Node 22.14.0 or newer,
+and a maintainer account with package publish access and 2FA enabled.
+For each missing package, substitute its package name (without `@<version>`)
+and inspect the returned records for the exact intended version and tag:
+
+```bash
+npm stage list <package> --json
+npm stage view <stage-id> --json
+```
+
+Check the record's `id`, `packageName`, `version`, `tag`, `status`, actor, and
+`shasum` against the reviewed release and original run. If needed, use
+`npm stage download <stage-id>` to inspect the tarball. Do not approve an
+unrelated candidate merely because its package name matches.
+
+Once the expected candidate has completed npm's malware scan, a human
+maintainer approves that stage and completes the interactive 2FA challenge:
+
+```bash
+npm stage approve <stage-id>
+```
+
+The npmjs.com package **Staged Packages** tab also supports review and approval
+with 2FA. Approval publishes the staged version. Staging, listing, and viewing
+do not require a 2FA challenge, but approval does. Each staged package version
+needs approval, including each affected package in a release group. Neither
+the release workflow nor an agent should auto-approve or handle the
+maintainer's OTP.
+
+After approval, rerun the failed publish job in the original workflow run,
+retaining its immutable prepared artifact, commit, version, and npm tag.
+Preparation retries check for the existing artifact before checkout or building
+and refuse to replace it. A full workflow rerun can otherwise delete the original
+artifact when uploading another artifact with the same name. Use **Re-run failed
+jobs**, or rerun the individual failed publish job, rather than **Re-run all
+jobs**. If preparation failed before uploading its release artifact, it can be
+retried normally. The release artifact upload is the last preparation step,
+after ancillary uploads such as the separate Chrome snapshot ZIP, so their
+failures do not trip the artifact guard on retry. Ancillary Chrome ZIP and
+certification-report uploads use `overwrite: true` to avoid duplicate-name
+conflicts when preparation retries. The guarded npm release artifact does not.
+
+Do not rerun preparation, dispatch a new run, generate a new release plan, bump the
+version, or rebuild a different candidate to evade the conflict. Rebuilding
+may change bytes (including certification metadata) and must fail the integrity
+comparison against an already-published version. The publishers skip matching
+visible versions and finish the remaining publication/verification work.
+If the stage list is empty, the candidate differs, or the approved version
+remains unavailable, retain the failed state and investigate npm scanning,
+registry/authentication, and the original publish logs. An `E409` can also
+occur without an approvable stage, as reported in
+[npm/cli#9889](https://github.com/npm/cli/issues/9889).
+
+#### Trusted publishing: staging is not an OIDC requirement
+
+OIDC authenticates the CI workflow; it does not itself require human approval
+for every release. npm's current trusted-publisher configuration always allows
+`npm stage publish`, while direct `npm publish` and dist-tag management are
+independent allowed actions. Configurations created after September 3, 2026
+default to staging, with direct publishing opt-in. Older configurations retain
+their documented existing permissions rather than being silently migrated.
+Multiple matching configurations are additive, not restrictive.
+
+For intentionally unattended direct publication, a maintainer must ensure that
+the matching package **Settings → Trusted publishing → Allowed actions**
+permits `npm publish` for the intended repository, workflow, and environment.
+Do not broaden unrelated configurations or introduce a long-lived token to
+bypass an approval gate. Changing allowed actions does not approve or clear an
+already-staged version. Direct OIDC publishing remains the existing code path
+and needs no per-release npm 2FA approval when authorized; choosing staging
+means human 2FA approval for every staged package version.
+
+The inspected npm CLI 11.21.0 implementation does not automatically convert a
+failed direct publish into a stage: `npm publish` uses a package `PUT`, while
+`npm stage publish` uses `POST /-/stage/package/<escaped-package-name>` and
+returns `stageId` (also included in its JSON output). The OIDC helper exchanges
+credentials, not publish mode. Do not infer an automatic CLI stage fallback
+from an upload's exit status or a later staged-version conflict.
+
+For exact stage detection, the CLI's authenticated `npm stage list <package>
+--json` paginates `GET /-/stage?package=<package>&page=0&perPage=100`, collecting
+`items` until `total` is reached. Match `packageName` and `version`, then use
+the record's `id` with `GET /-/stage/<stage-id>` (`npm stage view`). Approval
+uses `POST /-/stage/<stage-id>/approve` with the CLI's interactive 2FA handling.
+These are implementation references, not a substitute for public visibility
+verification or a reason to add approval to CI.
+
+Primary references:
+
+- [npm staged publishing](https://docs.npmjs.com/staged-publishing/) and
+  [`npm stage` CLI commands](https://docs.npmjs.com/cli/v11/commands/npm-stage).
+- [Trusted-publisher allowed actions and configuration defaults](https://docs.npmjs.com/trusted-publishers/).
+- [Staged publishing announcement (May 22, 2026)](https://github.blog/changelog/2026-05-22-staged-publishing-and-new-install-time-controls-for-npm/)
+  and [multiple publishers, opt-in direct publish, and scan-gated approval (September 3, 2026)](https://github.blog/changelog/2026-09-03-multiple-trusted-publishing-configurations-for-npm/).
+- npm CLI 11.21.0 implementation:
+  [publish mode and stage output](https://github.com/npm/cli/blob/v11.21.0/lib/commands/publish.js),
+  [registry publish routes](https://github.com/npm/cli/blob/v11.21.0/workspaces/libnpmpublish/lib/publish.js),
+  [OIDC exchange](https://github.com/npm/cli/blob/v11.21.0/lib/utils/oidc.js),
+  [stage listing](https://github.com/npm/cli/blob/v11.21.0/lib/commands/stage/list.js),
+  [stage details](https://github.com/npm/cli/blob/v11.21.0/lib/commands/stage/view.js),
+  and [2FA approval](https://github.com/npm/cli/blob/v11.21.0/lib/commands/stage/approve.js).
 
 ### Promote stable production surfaces
 

@@ -13,9 +13,9 @@ surface per LS-R15).
 
 ## Acceptable Tradeoffs
 
-- **LS.SUST-T01 Sponsorware devtools:** Distributing devtools under a
-  sponsor license (rather than fully open) is accepted as a funding
-  mechanism. Opening much of the devtools UI as a component kit is roadmap
+- **LS.SUST-T01 Free devtools, separate source availability:** Devtools are
+  free to use without a license, trial, sponsorship, or sign-in requirement.
+  Opening much of the devtools UI as a component kit is roadmap
   (root [roadmap.md](../roadmap.md)).
 
 ## Requirements
@@ -25,13 +25,13 @@ surface per LS-R15).
 - **LS.SUST-R02 Sponsor funding:** The project is funded through
   sponsorship (GitHub Sponsors, partner sponsors) — not venture capital and
   not a first-party hosting service. `refines: LS-A05`
-- **LS.SUST-R03 Devtools as sponsor benefit:** Devtools licenses are granted
-  through sponsorship; free licenses are available to students on request.
+- **LS.SUST-R03 Free devtools access:** Devtools are available to everyone
+  without a license, trial, sponsorship, or sign-in requirement.
 - **LS.SUST-R04 No hosting lock-in:** Sync is served via partner services
   and self-hosting; the project does not operate a first-party hosted sync
   service. `refines: LS-R08`
 - **LS.SUST-R05 Published benefits:** Sponsor benefits are published and
-  honored via the sponsor dashboard (devtools license, sponsor-only Discord,
+  honored via the sponsor dashboard (sponsor-only Discord,
   office hours, prioritized fixes/requests).
 - **LS.SUST-R06 Brand stewardship:** The LiveStore name and logo are
   stewarded by the project creator; use by forks and contrib packages is

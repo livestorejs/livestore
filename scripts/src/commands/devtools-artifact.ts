@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import {
+  copyFileSync,
   createWriteStream,
   existsSync,
   mkdtempSync,
@@ -18,6 +19,10 @@ import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 
 import { supportedDevtoolsProtocolVersions } from '@livestore/common'
+import { Effect } from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
+
+import { runNpmPublish, submitNpmPackage, verifyNpmPackageVisibility } from '../shared/npm-publish.ts'
 
 type CompatibleLivestore =
   | { readonly kind: 'range'; readonly range: string }
@@ -99,7 +104,7 @@ export type ArtifactManifest = ArtifactManifestV1 | ArtifactManifestV2
 const usage = `Usage:
   bun scripts/src/commands/devtools-artifact.ts verify (--manifest <file> | --metadata <url-or-file> --tarball <url-or-file>)
   bun scripts/src/commands/devtools-artifact.ts certify --manifest <file> --version <version> --out <file> [--evidence <text>]
-  bun scripts/src/commands/devtools-artifact.ts repack --manifest <file> --version <version> [--certification <file>|--allow-uncertified] [--dry-run|--publish]
+  bun scripts/src/commands/devtools-artifact.ts repack --manifest <file> --version <version> [--certification <file>|--allow-uncertified] [--out-dir <dir>] [--dry-run|--publish]
 
 Options:
   --manifest <file>        Checked-in public artifact manifest.
@@ -108,8 +113,9 @@ Options:
   --chrome-zip <url-or-file> Public Chrome extension ZIP URL or local path
   --version <version>       LiveStore release-group package version for repack
   --certification <file>    Ephemeral release-candidate certification produced by the liveness gate
-  --out-dir <dir>           Output directory for verified/repacked artifacts
+  --out-dir <dir>           Output directory; repack stages only final tarball and versioned Chrome ZIP
   --out <file>              Certification output path for the certify command
+                            Without --dry-run or --publish, repack never consults the npm registry
   --dry-run                 Run npm publish dry-run for the repacked package
   --publish                 Publish the repacked package to npm
 `
@@ -648,7 +654,12 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
     publish: hasFlag(flags, 'publish'),
   })
 
-  const { metadata, tarballPath, chromeZipPath, workDir, manifest } = await verifyArtifact(flags)
+  // Keep downloaded source tarballs and unpacked files outside the release artifact
+  // directory: its top level must contain only the final publishable package.
+  const outDir = readFlag(flags, 'out-dir')
+  const inputFlags = new Map(flags)
+  inputFlags.delete('out-dir')
+  const { metadata, tarballPath, chromeZipPath, workDir, manifest } = await verifyArtifact(inputFlags)
   // The public DevTools artifact describes what was built; it does not decide which
   // LiveStore releases may ship it. LiveStore releases much more frequently than
   // DevTools artifacts, so release-channel repack/publish requires a CI proof
@@ -730,22 +741,23 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
     }
   }
   if (hasFlag(flags, 'publish') === true) {
-    const alreadyPublished = packageVersionExists(metadata.packageName, version)
-    const publishArgs = ['npm', 'publish', '--tag', publishTag, '--access', 'public']
+    const publishArgs = ['--tag', publishTag, '--access', 'public']
     if (process.env.GITHUB_ACTIONS === 'true') publishArgs.push('--provenance')
     publishArgs.push(repackedPath)
-    if (alreadyPublished === true) {
-      console.warn(`${metadata.packageName}@${version} already published, skipping npm publish`)
-    } else {
-      try {
-        run(publishArgs, { cwd: workDir })
-      } catch (error) {
-        if (packageVersionExists(metadata.packageName, version) === false) {
-          throw error
-        }
-        console.warn(`${metadata.packageName}@${version} became visible after npm publish failed; continuing`)
-      }
-    }
+    const versionIsVisible = Effect.sync(() => packageVersionExists(metadata.packageName, version))
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        yield* submitNpmPackage({
+          packageSpec: `${metadata.packageName}@${version}`,
+          publish: runNpmPublish(publishArgs, workDir),
+          versionIsVisible,
+        })
+        yield* verifyNpmPackageVisibility({
+          packageSpec: `${metadata.packageName}@${version}`,
+          versionIsVisible,
+        })
+      }).pipe(Effect.provide(PlatformNode.NodeServices.layer)),
+    )
     if (chromeZipPath !== undefined) {
       const chromeZipAssetPath = materializeChromeZipAsset(version, chromeZipPath, workDir)
       if (isSnapshotVersion(version) === true) {
@@ -754,6 +766,29 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
         publishChromeZipReleaseAsset(version, chromeZipAssetPath)
       }
     }
+  }
+
+  const chromeZipAssetPath =
+    chromeZipPath === undefined ? undefined : materializeChromeZipAsset(version, chromeZipPath, workDir)
+  if (outDir !== undefined) {
+    const absoluteOutDir = path.resolve(outDir)
+    mkdirSync(absoluteOutDir, { recursive: true })
+    const stagedRepackedPath = path.join(absoluteOutDir, path.basename(repackedPath))
+    copyFileSync(repackedPath, stagedRepackedPath)
+    const stagedChromeZipPath =
+      chromeZipAssetPath === undefined ? undefined : path.join(absoluteOutDir, path.basename(chromeZipAssetPath))
+    if (chromeZipAssetPath !== undefined && stagedChromeZipPath !== undefined) {
+      copyFileSync(chromeZipAssetPath, stagedChromeZipPath)
+    }
+    console.log(
+      JSON.stringify(
+        { repackedPath: stagedRepackedPath, sha256: sha256(stagedRepackedPath), chromeZipPath: stagedChromeZipPath },
+        null,
+        2,
+      ),
+    )
+    rmSync(workDir, { recursive: true, force: true })
+    return
   }
 
   console.log(JSON.stringify({ repackedPath, sha256: sha256(repackedPath), chromeZipPath }, null, 2))

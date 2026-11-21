@@ -7,7 +7,7 @@ LiveStore 0.5 uses **stable Effect 4**. Applications on LiveStore 0.4 and Effect
 
 ## 1. Upgrade the dependency cohort together
 
-Upgrade all `@livestore/*` packages used by your application to the same 0.5 release, including framework bindings, adapters and sync packages. Install `effect@^4.0.0`. Effect 3 and Effect 4 beta/RC releases do **not** satisfy this range. Until 0.5 is published, use the matching [development builds](/misc/package-management/) instead of mixing stable 0.4 packages with the new cohort.
+Upgrade all `@livestore/*` packages used by your application to the same stable 0.5 release, including framework bindings, adapters and sync packages. Install `effect@^4.0.0`. Effect 3 and Effect 4 beta/RC releases do **not** satisfy this range. Do not mix stable 0.4 packages with the 0.5 cohort. See [package management](/misc/package-management/) for release channels and installation guidance.
 
 For applications that use them, the remaining `@effect/opentelemetry`, `@effect/platform-browser`, `@effect/platform-bun`, `@effect/platform-node`, `@effect/platform-node-shared` and `@effect/vitest` peers also use `^4.0.0`. Check the peer dependencies of each package you install. Do not force an Effect-3-only dependency onto Effect 4 with an override: upgrade or replace it first. Confirm your lockfile resolves a compatible Effect version across your application, browser workers and server code.
 

@@ -78,7 +78,7 @@ export const execSql = (sqliteDb: SqliteDb, sql: string, bind: BindValues) => {
     Effect.asVoid,
     // Effect.logDuration(`@livestore/common:execSql:${sql}`),
     Effect.withSpan(`@livestore/common:execSql`, {
-      attributes: { 'span.label': sql, sql, bindValueKeys: Object.keys(bindValues) },
+      attributes: { 'span.label': sql, sql, bindValueKeys: bindValueKeysAttribute(bindValues) },
     }),
   )
 }
@@ -91,7 +91,7 @@ export const selectSql = <T>(sqliteDb: SqliteDb, sql: string, bind: BindValues) 
       new SqliteError({ cause, query: { bindValues, sql }, code: (cause as WaSqlite.SQLiteError).code }),
   }).pipe(
     Effect.withSpan(`@livestore/common:selectSql`, {
-      attributes: { 'span.label': sql, sql, bindValueKeys: Object.keys(bindValues) },
+      attributes: { 'span.label': sql, sql, bindValueKeys: bindValueKeysAttribute(bindValues) },
     }),
   )
 }
@@ -109,8 +109,14 @@ export const execSqlPrepared = (sqliteDb: SqliteDb, sql: string, bindValues: Pre
       attributes: {
         'span.label': sql,
         sql,
-        bindValueKeys: Object.keys(bindValues),
+        bindValueKeys: bindValueKeysAttribute(bindValues),
       },
     }),
   )
 }
+
+/**
+ * Span attributes that are not strings, numbers or booleans are JSON-formatted on every span. These helpers run for
+ * each journal and head write, so the keys are joined into a string up front.
+ */
+const bindValueKeysAttribute = (bindValues: object) => Object.keys(bindValues).join(', ')
