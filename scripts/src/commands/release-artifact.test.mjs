@@ -1,6 +1,11 @@
+import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
 
 import { describe, expect, it } from '@effect/vitest'
+import { parse } from 'yaml'
+
+import { Effect, FileSystem } from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
 
 import {
   createManifest,
@@ -245,4 +250,28 @@ describe('packed package inspection', () => {
     expect(() => parsePackedPackage(bytes, 512)).toThrow(/larger than|size|length/i)
     expect(parsePackedPackage(bytes, 4096)).toEqual({ name: '@livestore/livestore', version: '0.5.0' })
   })
+})
+
+describe('release preparation version scope', () => {
+  it.effect('keeps the version override out of both core setup paths', () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      const workflow = parse(
+        yield* fs.readFileString(fileURLToPath(new URL('../../../.github/workflows/release.yml', import.meta.url))),
+      )
+      for (const suffix of ['release', 'snapshot-version']) {
+        const steps = workflow.jobs[`prepare-${suffix}`].steps
+        const packIndex = steps.findIndex((step) => step.name === 'Build and pack core packages')
+        const devtoolsIndex = steps.findIndex((step) => step.name === 'Select DevTools release candidate')
+        expect(packIndex).toBeGreaterThan(0)
+        expect(devtoolsIndex).toBeGreaterThan(packIndex)
+        const beforePack = JSON.stringify(steps.slice(0, packIndex + 1))
+        // Setup writes read-only manifests. Generating the candidate version there
+        // would leave the later unchanged `genie --writeable` unable to unlock them.
+        expect(beforePack).not.toContain('LIVESTORE_RELEASE_VERSION')
+        expect(beforePack).toContain('RELEASE_CANDIDATE_VERSION=$version')
+        expect(steps[devtoolsIndex].run).toContain('LIVESTORE_RELEASE_VERSION=$RELEASE_CANDIDATE_VERSION')
+      }
+    }).pipe(Effect.provide(PlatformNode.NodeServices.layer)),
+  )
 })

@@ -56,6 +56,7 @@ on:
       - scripts/src/commands/changesets.ts
       - .github/scripts/release-artifact.mjs
       - scripts/src/commands/release-artifact.test.mjs
+      - scripts/src/commands/release-publish.test.ts
       - .github/scripts/release-artifact-jobs.ts
       - scripts/src/commands/docs.ts
       - scripts/src/shared/netlify.ts
@@ -1433,10 +1434,22 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+      actions: read
     defaults:
       run:
         shell: bash
     steps:
+      - name: Preserve the original release artifact
+        if: ${{ github.run_attempt > 1 }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          count="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=npm-release-release" --jq '.artifacts | length')"
+          if [ "$count" -ne 0 ]; then
+            echo "This run already has a prepared release artifact. Do not rebuild or replace it. Rerun only the failed publish or validation job." >&2
+            exit 1
+          fi
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
@@ -1562,13 +1575,17 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           version="$(jq -er '.version' release/release-plan.json)"
           npm_tag="$(jq -er '.npmTag' release/release-plan.json)"
-          echo "LIVESTORE_RELEASE_VERSION=$version" >> "$GITHUB_ENV"
-          echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
+          echo "RELEASE_CANDIDATE_VERSION=$version" >> "$GITHUB_ENV"
+          echo "RELEASE_CANDIDATE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
           echo "RELEASE_ARTIFACT_DIR=$RUNNER_TEMP/release-artifact" >> "$GITHUB_ENV"
       - name: Build and pack core packages
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run release:artifact:pack' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false ${PIPELINE_RUN_PREFIX:+$PIPELINE_RUN_PREFIX }"${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:artifact:pack'
+      - name: Select DevTools release candidate
+        run: |
+          echo "LIVESTORE_RELEASE_VERSION=$RELEASE_CANDIDATE_VERSION" >> "$GITHUB_ENV"
+          echo "LIVESTORE_NPM_TAG=$RELEASE_CANDIDATE_NPM_TAG" >> "$GITHUB_ENV"
       - name: Certify DevTools artifact liveness
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
@@ -1577,6 +1594,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: devtools-certification-release
+          overwrite: true
           path: |
             tests/integration/playwright-report/
             tests/integration/test-results/devtools/
@@ -1677,10 +1695,10 @@ jobs:
             actual="sha512-$(openssl dgst -sha512 -binary "$ARTIFACT_DIR/$filename" | openssl base64 -A)"
             test "$actual" = "$integrity" || { echo "Tarball integrity mismatch: $filename" >&2; exit 1; }
           done < "$RUNNER_TEMP/publish-plan.tsv"
-          registry_integrity() {
+          registry_value() {
             local result
-            if result="$(npm view "$1" dist.integrity --json --registry https://registry.npmjs.org 2>"$RUNNER_TEMP/npm-view-error")"; then
-              jq -er 'select(type == "string")' <<< "$result"
+            if result="$(npm view "$1" "$2" --json --prefer-online --fetch-retries=2 --fetch-retry-mintimeout=1000 --fetch-retry-maxtimeout=5000 --fetch-timeout=5000 --registry https://registry.npmjs.org 2>"$RUNNER_TEMP/npm-view-error")"; then
+              jq -r 'select(type == "string")' <<< "$result"
             elif grep -q 'E404' "$RUNNER_TEMP/npm-view-error"; then
               return 0
             else
@@ -1690,12 +1708,10 @@ jobs:
           }
           while IFS=$'\t' read -r name version filename integrity tag; do
             spec="$name@$version"
-            existing="$(registry_integrity "$spec")"
+            existing="$(registry_value "$spec" dist.integrity)"
             if [ -n "$existing" ]; then
               test "$existing" = "$integrity" || { echo "$spec already exists with DIFFERENT integrity" >&2; exit 1; }
-              current="$(npm view "$name" "dist-tags.$tag" --json --registry https://registry.npmjs.org)"
-              test "$(jq -r . <<< "$current")" = "$version" || { echo "$spec has a stale $tag dist-tag; refusing rerun" >&2; exit 1; }
-              echo "$spec already published with matching integrity and tag; skipping"
+              echo "$spec already published with matching integrity; skipping upload"
               continue
             fi
             if ! npm publish "$ARTIFACT_DIR/$filename" --ignore-scripts --provenance --access public --tag "$tag" --registry https://registry.npmjs.org >"$RUNNER_TEMP/npm-publish-log" 2>&1; then
@@ -1704,13 +1720,28 @@ jobs:
               exit 1
             fi
             cat "$RUNNER_TEMP/npm-publish-log"
-            existing="$(registry_integrity "$spec")"
-            test "$existing" = "$integrity" || {
-              echo "$spec is not public with matching integrity. See context/03-delivery/02-release/release-workflows-runbook.md#npm-visibility-and-staged-publish-recovery." >&2
-              exit 1
-            }
-            current="$(npm view "$name" "dist-tags.$tag" --json --registry https://registry.npmjs.org)"
-            test "$(jq -r . <<< "$current")" = "$version" || { echo "$spec has a stale $tag dist-tag" >&2; exit 1; }
+          done < "$RUNNER_TEMP/publish-plan.tsv"
+          # npm scans uploads asynchronously. Share one visibility window across the whole release.
+          deadline=$((SECONDS + 300))
+          while IFS=$'\t' read -r name version filename integrity tag; do
+            spec="$name@$version"
+            while true; do
+              if existing="$(registry_value "$spec" dist.integrity)"; then
+                if [ -n "$existing" ] && [ "$existing" != "$integrity" ]; then
+                  echo "$spec already exists with DIFFERENT integrity" >&2
+                  exit 1
+                fi
+                if [ "$existing" = "$integrity" ] && current="$(registry_value "$name" "dist-tags.$tag")" && [ "$current" = "$version" ]; then
+                  echo "$spec is public with matching integrity and $tag dist-tag"
+                  break
+                fi
+              fi
+              if [ "$SECONDS" -ge "$deadline" ]; then
+                echo "$spec is not public with matching integrity and $tag dist-tag after the shared 5-minute visibility window. See context/03-delivery/02-release/release-workflows-runbook.md#npm-visibility-and-staged-publish-recovery. Rerun only this failed publish job with its original artifact." >&2
+                exit 1
+              fi
+              sleep 10
+            done
           done < "$RUNNER_TEMP/publish-plan.tsv"
   finalize-release:
     needs: [prepare-release, validate-release, publish-release]
@@ -1759,10 +1790,22 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+      actions: read
     defaults:
       run:
         shell: bash
     steps:
+      - name: Preserve the original release artifact
+        if: ${{ github.run_attempt > 1 }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          count="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=npm-release-snapshot-version" --jq '.artifacts | length')"
+          if [ "$count" -ne 0 ]; then
+            echo "This run already has a prepared release artifact. Do not rebuild or replace it. Rerun only the failed publish or validation job." >&2
+            exit 1
+          fi
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
@@ -1888,13 +1931,17 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           version="0.0.0-snapshot-$SOURCE_SHA"
           npm_tag=snapshot
-          echo "LIVESTORE_RELEASE_VERSION=$version" >> "$GITHUB_ENV"
-          echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
+          echo "RELEASE_CANDIDATE_VERSION=$version" >> "$GITHUB_ENV"
+          echo "RELEASE_CANDIDATE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
           echo "RELEASE_ARTIFACT_DIR=$RUNNER_TEMP/release-artifact" >> "$GITHUB_ENV"
       - name: Build and pack core packages
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run release:artifact:pack' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false ${PIPELINE_RUN_PREFIX:+$PIPELINE_RUN_PREFIX }"${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:artifact:pack'
+      - name: Select DevTools release candidate
+        run: |
+          echo "LIVESTORE_RELEASE_VERSION=$RELEASE_CANDIDATE_VERSION" >> "$GITHUB_ENV"
+          echo "LIVESTORE_NPM_TAG=$RELEASE_CANDIDATE_NPM_TAG" >> "$GITHUB_ENV"
       - name: Pack DevTools without publishing
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
@@ -1912,17 +1959,18 @@ jobs:
           done
 
           node .github/scripts/release-artifact.mjs create --artifact-dir "$RELEASE_ARTIFACT_DIR" --source-sha "$SOURCE_SHA" --version "$LIVESTORE_RELEASE_VERSION" --npm-tag "$LIVESTORE_NPM_TAG" --topology scripts/src/generated/release-topology.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: npm-release-snapshot-version
-          path: '${{ runner.temp }}/release-artifact/'
-          if-no-files-found: error
-          retention-days: 14
       - name: Upload DevTools Chrome snapshot artifact
         uses: actions/upload-artifact@v4
         with:
           name: 'livestore-devtools-chrome-0.0.0-snapshot-${{ github.event.workflow_run.head_sha || github.sha }}'
+          overwrite: true
           path: '${{ runner.temp }}/release-artifact/livestore-devtools-chrome-0.0.0-snapshot-${{ github.event.workflow_run.head_sha || github.sha }}.zip'
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-release-snapshot-version
+          path: '${{ runner.temp }}/release-artifact/'
           if-no-files-found: error
           retention-days: 14
   validate-snapshot-version:
@@ -1998,10 +2046,10 @@ jobs:
             actual="sha512-$(openssl dgst -sha512 -binary "$ARTIFACT_DIR/$filename" | openssl base64 -A)"
             test "$actual" = "$integrity" || { echo "Tarball integrity mismatch: $filename" >&2; exit 1; }
           done < "$RUNNER_TEMP/publish-plan.tsv"
-          registry_integrity() {
+          registry_value() {
             local result
-            if result="$(npm view "$1" dist.integrity --json --registry https://registry.npmjs.org 2>"$RUNNER_TEMP/npm-view-error")"; then
-              jq -er 'select(type == "string")' <<< "$result"
+            if result="$(npm view "$1" "$2" --json --prefer-online --fetch-retries=2 --fetch-retry-mintimeout=1000 --fetch-retry-maxtimeout=5000 --fetch-timeout=5000 --registry https://registry.npmjs.org 2>"$RUNNER_TEMP/npm-view-error")"; then
+              jq -r 'select(type == "string")' <<< "$result"
             elif grep -q 'E404' "$RUNNER_TEMP/npm-view-error"; then
               return 0
             else
@@ -2011,12 +2059,10 @@ jobs:
           }
           while IFS=$'\t' read -r name version filename integrity tag; do
             spec="$name@$version"
-            existing="$(registry_integrity "$spec")"
+            existing="$(registry_value "$spec" dist.integrity)"
             if [ -n "$existing" ]; then
               test "$existing" = "$integrity" || { echo "$spec already exists with DIFFERENT integrity" >&2; exit 1; }
-              current="$(npm view "$name" "dist-tags.$tag" --json --registry https://registry.npmjs.org)"
-              test "$(jq -r . <<< "$current")" = "$version" || { echo "$spec has a stale $tag dist-tag; refusing rerun" >&2; exit 1; }
-              echo "$spec already published with matching integrity and tag; skipping"
+              echo "$spec already published with matching integrity; skipping upload"
               continue
             fi
             if ! npm publish "$ARTIFACT_DIR/$filename" --ignore-scripts --provenance --access public --tag "$tag" --registry https://registry.npmjs.org >"$RUNNER_TEMP/npm-publish-log" 2>&1; then
@@ -2025,11 +2071,26 @@ jobs:
               exit 1
             fi
             cat "$RUNNER_TEMP/npm-publish-log"
-            existing="$(registry_integrity "$spec")"
-            test "$existing" = "$integrity" || {
-              echo "$spec is not public with matching integrity. See context/03-delivery/02-release/release-workflows-runbook.md#npm-visibility-and-staged-publish-recovery." >&2
-              exit 1
-            }
-            current="$(npm view "$name" "dist-tags.$tag" --json --registry https://registry.npmjs.org)"
-            test "$(jq -r . <<< "$current")" = "$version" || { echo "$spec has a stale $tag dist-tag" >&2; exit 1; }
+          done < "$RUNNER_TEMP/publish-plan.tsv"
+          # npm scans uploads asynchronously. Share one visibility window across the whole release.
+          deadline=$((SECONDS + 300))
+          while IFS=$'\t' read -r name version filename integrity tag; do
+            spec="$name@$version"
+            while true; do
+              if existing="$(registry_value "$spec" dist.integrity)"; then
+                if [ -n "$existing" ] && [ "$existing" != "$integrity" ]; then
+                  echo "$spec already exists with DIFFERENT integrity" >&2
+                  exit 1
+                fi
+                if [ "$existing" = "$integrity" ] && current="$(registry_value "$name" "dist-tags.$tag")" && [ "$current" = "$version" ]; then
+                  echo "$spec is public with matching integrity and $tag dist-tag"
+                  break
+                fi
+              fi
+              if [ "$SECONDS" -ge "$deadline" ]; then
+                echo "$spec is not public with matching integrity and $tag dist-tag after the shared 5-minute visibility window. See context/03-delivery/02-release/release-workflows-runbook.md#npm-visibility-and-staged-publish-recovery. Rerun only this failed publish job with its original artifact." >&2
+                exit 1
+              fi
+              sleep 10
+            done
           done < "$RUNNER_TEMP/publish-plan.tsv"

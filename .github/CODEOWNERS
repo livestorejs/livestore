@@ -1,42 +1,64 @@
-# Projection of context/05-contributing/01-collaboration/review-delegation.md.
-# Reverse profile order: last match wins; ownerless entries clear the default.
-* @schickling
+# Manual projection of context/05-contributing/01-collaboration/review-delegation.md.
+# Last match wins. Ownerless paths delegate review, not merge authorization.
+* @schickling @bohdanbirdie
 /.github/
-/nix/
-/devenv.*
-/genie/
-/scripts/
-/docs/
-/examples/
 /tests/
 /contributor-docs/
-/pnpm-lock.yaml
-/pnpm-workspace.yaml
-/package.json
-/package.json.genie.ts
-/pnpm-workspace.yaml.genie.ts
-/packages/ @schickling
-/packages/@local/*/package.json
-/packages/@local/*/package.json.genie.ts
+/packages/
+/context/
+/CHANGELOG.md
 **/*.test.ts
 **/*.test.tsx
 **/*.test.js
 **/__tests__/
-/release/ @schickling
-/.github/workflows/release.yml @schickling
-/scripts/src/commands/changesets.ts @schickling
-/scripts/src/commands/release.ts @schickling
-/scripts/src/commands/devtools-artifact.ts @schickling
-/.changeset/*.md @schickling
-/CHANGELOG.md @schickling
-/packages/@livestore/wa-sqlite/CHANGELOG.md @schickling
-/.github/CODEOWNERS @schickling
-/.github/repo-settings.json @schickling
-/.github/repo-settings.json.genie.ts @schickling
-/.github/workflows/repo-settings.yml @schickling
-/.github/workflows/repo-settings.yml.genie.ts @schickling
-/nix/devenv-modules/tasks/local/github-rulesets.nix @schickling
-/.github/workflows/ @schickling
-/.github/scripts/ @schickling
-/.github/actions/ @schickling
-/.github/**/*.genie.ts @schickling
+# Human gates override every delegation above, including test-file patterns.
+**/vision.md @schickling @bohdanbirdie
+**/requirements.md @schickling @bohdanbirdie
+**/decisions/ @schickling @bohdanbirdie
+**/.decisions/ @schickling @bohdanbirdie
+/context/05-contributing/01-collaboration/review-delegation.md @schickling @bohdanbirdie
+/context/03-delivery/02-release/ @schickling @bohdanbirdie
+/release/ @schickling @bohdanbirdie
+/.changeset/ @schickling @bohdanbirdie
+# Credentialed execution surfaces: mono dispatch, setup, plugins, and job predecessors.
+/scripts/ @schickling @bohdanbirdie
+/genie/ @schickling @bohdanbirdie
+/nix/ @schickling @bohdanbirdie
+/devenv.* @schickling @bohdanbirdie
+/docs/ @schickling @bohdanbirdie
+/examples/ @schickling @bohdanbirdie
+/tests/integration/ @schickling @bohdanbirdie
+/tests/sync-provider/src/providers/ @schickling @bohdanbirdie
+/tests/sync-provider/src/prepare-ci.ts @schickling @bohdanbirdie
+/tests/sync-provider/src/types.ts @schickling @bohdanbirdie
+/packages/@livestore/common/src/ @schickling @bohdanbirdie
+/packages/@livestore/common-cf/src/ @schickling @bohdanbirdie
+/packages/@livestore/effect-playwright/src/ @schickling @bohdanbirdie
+/packages/@livestore/utils/src/ @schickling @bohdanbirdie
+/packages/@livestore/utils-dev/src/ @schickling @bohdanbirdie
+/packages/@livestore/webmesh/src/ @schickling @bohdanbirdie
+/packages/@livestore/sync-cf/src/client/ @schickling @bohdanbirdie
+/packages/@livestore/sync-cf/src/common/ @schickling @bohdanbirdie
+/packages/@local/astro-tldraw/src/ @schickling @bohdanbirdie
+/packages/@local/astro-twoslash-code/src/ @schickling @bohdanbirdie
+/packages/@local/shared/src/ @schickling @bohdanbirdie
+# Dependency/install/alias inputs can replace code executed by privileged jobs.
+**/package.json @schickling @bohdanbirdie
+**/tsconfig*.json @schickling @bohdanbirdie
+**/tsconfig*.ts @schickling @bohdanbirdie
+/pnpm* @schickling @bohdanbirdie
+/megarepo.* @schickling @bohdanbirdie
+**/.npmrc @schickling @bohdanbirdie
+**/.env* @schickling @bohdanbirdie
+**/secrets/ @schickling @bohdanbirdie
+**/credentials/ @schickling @bohdanbirdie
+/.infra/ @schickling @bohdanbirdie
+/.github/CODEOWNERS @schickling @bohdanbirdie
+/.github/repo-settings.json @schickling @bohdanbirdie
+/.github/code-owner-review.json @schickling @bohdanbirdie
+/.github/reconcile-app-manifest.json @schickling @bohdanbirdie
+/.github/workflows/ @schickling @bohdanbirdie
+/.github/scripts/ @schickling @bohdanbirdie
+/.github/actions/ @schickling @bohdanbirdie
+# setup:strict and release-plan generation execute every discovered generator.
+**/*.genie.ts @schickling @bohdanbirdie

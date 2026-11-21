@@ -15,6 +15,7 @@ export default githubWorkflow({
   jobs: {
     reconcile: {
       if: "github.ref == 'refs/heads/main'",
+      environment: 'github-admin',
       'runs-on': 'ubuntu-latest',
       defaults: bashShellDefaults,
       steps: [
