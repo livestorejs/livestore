@@ -39,15 +39,15 @@ export const checkProtocolMismatchOverlay = async (options: {
       .describe(`${options.label}:protocol-mismatch-title`),
   ).toBeVisible()
 
-  await expect(
-    overlay.getByText('DevTools protocol:', { exact: true }).locator('..').locator('code'),
-  ).toHaveText(String(devtoolsProtocolVersion))
-  await expect(
-    overlay.getByText('App protocol:', { exact: true }).locator('..').locator('code'),
-  ).toHaveText(String(options.expect.appDevtoolsProtocolVersion))
-  await expect(
-    overlay.getByText('DevTools version:', { exact: true }).locator('..').locator('code'),
-  ).toHaveText(/^\d+\.\d+\.\d+(?:[-+].*)?$/)
+  await expect(overlay.getByText('DevTools protocol:', { exact: true }).locator('..').locator('code')).toHaveText(
+    String(devtoolsProtocolVersion),
+  )
+  await expect(overlay.getByText('App protocol:', { exact: true }).locator('..').locator('code')).toHaveText(
+    String(options.expect.appDevtoolsProtocolVersion),
+  )
+  await expect(overlay.getByText('DevTools version:', { exact: true }).locator('..').locator('code')).toHaveText(
+    /^\d+\.\d+\.\d+(?:[-+].*)?$/,
+  )
 
   await expect(
     options.devtools
