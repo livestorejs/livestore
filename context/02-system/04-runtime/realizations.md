@@ -11,6 +11,7 @@ Referencing mechanism per
 | Node | [contrib `adapter-node`](https://github.com/livestorejs/livestore-contrib/tree/main/packages/%40livestore/adapter-node) · intent: contrib `context/adapters/node/` | no adapter suite yet |
 | Expo | [contrib `adapter-expo`](https://github.com/livestorejs/livestore-contrib/tree/main/packages/%40livestore/adapter-expo) · intent: contrib `context/adapters/expo/` | no adapter suite yet |
 | Tauri / Electron | no dedicated package (embed via web/node adapters) | — |
+| Rust (native client, not an adapter) | [contrib `rust/`](https://github.com/livestorejs/livestore-contrib/tree/main/rust) · intent: contrib `context/clients/rust/` | ports of core's Vitest tests, parity report in contrib `rust/parity/` |
 
 The shared adapter conformance suite is contracted but unbuilt
 (LS.SYS.VER.CONF-R03; see
