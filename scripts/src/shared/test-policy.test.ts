@@ -8,6 +8,7 @@ import { Effect, Exit } from '@livestore/utils/effect'
 
 import {
   blocking,
+  type QuarantineEntry,
   type QuarantineKey,
   quarantineLedger,
   quarantineLedgerJsonPath,
@@ -21,7 +22,8 @@ describe('quarantine ledger', () => {
   it('records a target, reason, issue and a well-formed expiry for every entry', () => {
     // `ci-tools quarantine validate` enforces this in CI against the generated JSON. Asserting
     // it here too keeps a malformed entry from reaching that check as a confusing failure.
-    for (const [key, entry] of Object.entries(quarantineLedger)) {
+    const entries: Record<string, QuarantineEntry> = quarantineLedger
+    for (const [key, entry] of Object.entries(entries)) {
       expect(entry.target, `${key}.target`).not.toBe('')
       expect(entry.reason, `${key}.reason`).not.toBe('')
       expect(entry.issue, `${key}.issue`).toMatch(/^https:\/\/github\.com\//)
@@ -56,7 +58,7 @@ describe('runTestTarget', () => {
   it('swallows a declared quarantine failure, and announces it with the ledger entry', async () => {
     // The mechanism's whole point. The stub stands in for the real `ci-tools` so the wiring —
     // argv, ledger path, key, label — is exercised without depending on the binary being built.
-    const { key, entry } = firstLedgerEntry()
+    const { key, entry } = fixtureQuarantine
     const calls = stubCiTools({ exitCode: 0 })
 
     const exit = await Effect.runPromiseExit(
@@ -72,7 +74,7 @@ describe('runTestTarget', () => {
   it('fails when the announcement does, rather than tolerating a failure with no signal', async () => {
     // Losing the signal while still suppressing the failure is the outcome the whole mechanism
     // exists to prevent, so a broken announcer must be loud.
-    const { key, entry } = firstLedgerEntry()
+    const { key, entry } = fixtureQuarantine
     const calls = stubCiTools({ exitCode: 1 })
 
     const exit = await Effect.runPromiseExit(
@@ -98,11 +100,17 @@ describe('runTestTarget', () => {
 
 let originalPath: string | undefined
 
-/** The ledger is non-empty by construction; a quarantine test with nothing to test is a bug. */
-const firstLedgerEntry = () => {
-  const key = (Object.keys(quarantineLedger) as QuarantineKey[])[0]
-  if (key === undefined) throw new Error('quarantineLedger is empty; these tests need an entry to exercise.')
-  return { key, entry: quarantineLedger[key] }
+// These unit tests stub the announcer and verify its argv, not ledger validation.
+// A synthetic key keeps that wiring test independent of the production ledger,
+// whose valid steady state is empty (`QuarantineKey` is then `never`).
+const fixtureQuarantine = {
+  key: 'fixture-suite' as QuarantineKey,
+  entry: {
+    target: 'tests:fixture',
+    reason: 'Exercise the quarantine announcer wiring.',
+    issue: 'https://github.com/livestorejs/livestore/issues/1489',
+    expires: '2099-01-01',
+  } satisfies QuarantineEntry,
 }
 
 /**

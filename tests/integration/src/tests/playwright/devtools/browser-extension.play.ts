@@ -17,9 +17,7 @@ import {
   Schema,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 
-import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.ts'
 import { makePersistentContextPath } from '../shared-test.ts'
 import { makeDevtoolsFixtureUrl } from './fixture-url.ts'
 import {
@@ -193,20 +191,11 @@ const runTest =
   }
 
 const getExtensionPath = Effect.gen(function* () {
-  const fileSystem = yield* FileSystem.FileSystem
-
-  const extensionPathFromEnv = process.env.LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
-  if (extensionPathFromEnv !== undefined) {
-    yield* Effect.logInfo(`Using extension path from env LIVESTORE_DEVTOOLS_CHROME_DIST_PATH: ${extensionPathFromEnv}`)
-    return extensionPathFromEnv
+  const extensionPath = process.env.LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
+  if (extensionPath === undefined) {
+    return yield* new TestError({ message: 'Run mono test integration devtools to prepare the pinned Chrome artifact' })
   }
-
-  const defaultExtensionPath = LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
-  if ((yield* fileSystem.exists(defaultExtensionPath)) === false) {
-    yield* Effect.logInfo(`Downloading Chrome extension to ${defaultExtensionPath}`)
-    yield* downloadChromeExtension({ targetDir: defaultExtensionPath })
-  }
-  return defaultExtensionPath
+  return extensionPath
 }).pipe(
   Effect.tap((extensionPath) =>
     Effect.gen(function* () {
@@ -579,7 +568,7 @@ test(
           devtools: tab1.liveStoreDevtools,
           label: 'devtools-protocol-mismatch',
           expect: {
-            devtoolsVersion: '0.4', // Partial match for the real DevTools version
+            appDevtoolsProtocolVersion: 999,
             appVersion: fakeAppVersion,
           },
         })

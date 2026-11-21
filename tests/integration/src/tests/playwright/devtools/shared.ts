@@ -1,6 +1,8 @@
 import type * as PW from '@playwright/test'
 import { errors, expect } from '@playwright/test'
 
+import { devtoolsProtocolVersion } from '@livestore/common'
+
 /** Reload creates a new document; wait for its replacement store and fixture UI, not navigation alone. */
 export const reloadAppAndWaitForStore = async (page: PW.Page, storeId: string) => {
   await page.reload()
@@ -24,7 +26,7 @@ export const checkProtocolMismatchOverlay = async (options: {
   devtools: PW.Frame | PW.Page
   label: string
   expect: {
-    devtoolsVersion: string
+    appDevtoolsProtocolVersion: number
     appVersion: string
   }
 }) => {
@@ -33,16 +35,19 @@ export const checkProtocolMismatchOverlay = async (options: {
 
   await expect(
     options.devtools
-      .getByText('Version Mismatch', { exact: false })
+      .getByText('LiveStore DevTools Compatibility Mismatch', { exact: true })
       .describe(`${options.label}:protocol-mismatch-title`),
   ).toBeVisible()
 
-  await expect(
-    options.devtools
-      .locator('code')
-      .filter({ hasText: options.expect.devtoolsVersion })
-      .describe(`${options.label}:devtools-version`),
-  ).toBeVisible()
+  await expect(overlay.getByText('DevTools protocol:', { exact: true }).locator('..').locator('code')).toHaveText(
+    String(devtoolsProtocolVersion),
+  )
+  await expect(overlay.getByText('App protocol:', { exact: true }).locator('..').locator('code')).toHaveText(
+    String(options.expect.appDevtoolsProtocolVersion),
+  )
+  await expect(overlay.getByText('DevTools version:', { exact: true }).locator('..').locator('code')).toHaveText(
+    /^\d+\.\d+\.\d+(?:[-+].*)?$/,
+  )
 
   await expect(
     options.devtools

@@ -390,11 +390,11 @@ const shutdownTab = Effect.fn('shutdown-tab')(function* (tab: PW.Page, options?:
 
   const didShutdown = yield* Playwright.withPage(
     () =>
-      tab.evaluate((storeId) => {
+      tab.evaluate(async (storeId) => {
         const store = (window as any).__debugLiveStore?.[storeId]
         if (store === undefined) return false
 
-        store.shutdown()
+        await store.shutdownPromise()
         return true
       }, appStoreId),
     { label: 'shutdown' },
@@ -402,10 +402,6 @@ const shutdownTab = Effect.fn('shutdown-tab')(function* (tab: PW.Page, options?:
 
   if (didShutdown === false && options?.expectStore !== false) {
     return yield* Effect.die(new Error('Expected LiveStore debug store to be available for shutdown'))
-  }
-
-  if (didShutdown === true) {
-    yield* Playwright.withPage(() => tab.getByText('LiveStore Shutdown').waitFor())
   }
 })
 
@@ -432,15 +428,11 @@ test(
           // Click on the session in devtools to connect
           await tab1.devtools.locator(`a:text("${tabName}:${tabName}")`).describe('devtools:click-session').click()
 
-          const devtoolsVersion: string = await tab1.devtools.evaluate(() => {
-            return (window as any).__LIVESTORE_DEVTOOLS_VERSION__ ?? 'unknown'
-          })
-
           await checkProtocolMismatchOverlay({
             devtools: tab1.devtools,
             label: 'devtools-protocol-mismatch',
             expect: {
-              devtoolsVersion: devtoolsVersion !== 'unknown' ? devtoolsVersion : '0.4', // Partial match
+              appDevtoolsProtocolVersion: 999,
               appVersion: fakeAppVersion,
             },
           })
