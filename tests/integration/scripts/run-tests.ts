@@ -55,6 +55,9 @@ const viteDevServer = ({
         ).pipe(Effect.orDie),
         LSD_DEVTOOLS_LOCAL_PREVIEW: useDevtoolsLocalPreview === true ? '1' : undefined,
         LIVESTORE_DEVTOOLS_VITE_ENTRY: devtoolsViteEntry,
+        // Automated fixtures must not export to an inherited, server-only collector.
+        // Keep interactive dev-server tracing available for local debugging.
+        ...(useWorkspacePort === false ? { VITE_OTEL_EXPORTER_OTLP_ENDPOINT: '' } : {}),
       },
     }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)), Effect.forkScoped)
 

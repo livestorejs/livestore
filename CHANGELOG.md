@@ -50,6 +50,9 @@ features. Try the development build with `npm install @livestore/livestore@dev`.
 
 For maintainers and contributors:
 
+- **Browser integration tests:** Automated fixture servers disable inherited browser
+  OTLP exports so a local collector's CORS policy cannot fail DevTools tests.
+  Interactive dev-server tracing remains available ([#1709](https://github.com/livestorejs/livestore/pull/1709)).
 - **DevTools tests:** Persisted multi-tab fixtures use the adapter's shared client identity,
   while in-memory fixtures assert independent databases and reload behavior. The TodoMVC
   fixture keeps one store registry per document so aborted route renders cannot

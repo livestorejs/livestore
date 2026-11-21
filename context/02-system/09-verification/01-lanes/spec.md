@@ -25,6 +25,12 @@ The DevTools browser cell is blocking. It exercises the workspace runtime agains
 the manifest-selected Vite tarball and Chrome ZIP, verified through the release
 artifact verifier rather than independently selected published package versions.
 
+Automated browser fixture servers disable browser OTLP export rather than
+inheriting the developer shell's server-side collector endpoint. Console errors
+remain test failures; collector availability or CORS configuration is not a
+prerequisite for this lane. Interactive `--mode dev-server` retains shell tracing
+configuration for debugging.
+
 ## Lane / CI Correspondence
 
 Each lane maps 1:1 to its CI job (LS.SYS.VER.LANE-R03); the table above matches
