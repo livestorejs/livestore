@@ -6,10 +6,10 @@
 > for more info. LiveStore is following a semver-like release strategy where
 > breaking changes are released in minor versions before the 1.0 release.
 
-## Unreleased
+## 0.5.1
 
-See the [development documentation](https://docs.livestore.dev) for current
-features. Try the development build with `npm install @livestore/livestore@dev`.
+See the [documentation](https://docs.livestore.dev) for current features.
+Install this release with `npm install @livestore/livestore@0.5.1`.
 
 ### Changed
 
