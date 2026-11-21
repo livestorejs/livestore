@@ -43,7 +43,15 @@ pub struct TodoCreated {
 
 The schema registers each event with its materializer, with `Schema::builder().materialize::<TodoCreated, _>(...)`. The [TodoMVC schema](https://github.com/livestorejs/livestore-contrib/tree/main/rust/crates/livestore-todomvc) is a full example.
 
-A commit accepts only these typed events, so you cannot commit an unknown event name or args of the wrong shape.
+A commit accepts only these typed events, so you cannot commit an unknown event name or args of the wrong shape:
+
+```rust
+store.commit(TodoCreated { id: "t1".into(), text: "Buy milk".into() })?;   // one event
+store.commit((created, completed))?;                                       // a batch of mixed types
+store.commit(todos)?;                                                      // a Vec of events
+```
+
+Unlike the TypeScript API, there is no batch builder: build the batch, then commit it.
 
 ## Example
 
@@ -67,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let store = create_store(StoreOptions::new(schema(), adapter.build(), "my-store")).await?;
 
-    store.commit([TodoCreated { id: "t1".into(), text: "Buy milk".into() }])?;
+    store.commit(TodoCreated { id: "t1".into(), text: "Buy milk".into() })?;
 
     let todos = query_db(QueryInput::sql("SELECT id, text FROM todos"));
     let _sub = store.subscribe(&todos, |rows| println!("{rows:?}"), &SubscribeOptions::default());
