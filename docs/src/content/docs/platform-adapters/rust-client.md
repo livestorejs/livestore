@@ -18,10 +18,32 @@ The crates are not on crates.io yet. Add them as git dependencies and pin a comm
 ```toml
 [dependencies]
 livestore = { git = "https://github.com/livestorejs/livestore-contrib", rev = "<commit>" }
+livestore-schema = { git = "https://github.com/livestorejs/livestore-contrib", rev = "<commit>" }
 livestore-sync = { git = "https://github.com/livestorejs/livestore-contrib", rev = "<commit>" }
 livestore-sync-cf = { git = "https://github.com/livestorejs/livestore-contrib", rev = "<commit>" }
+serde = { version = "1", features = ["derive"] }
 tokio = { version = "1.47", features = ["rt-multi-thread", "macros"] }
 ```
+
+## Events
+
+Each event is a struct. `#[derive(Event)]` builds its definition, including the args schema, from the struct:
+
+```rust
+use livestore_schema::Event;
+use serde::{Deserialize, Serialize};
+
+#[derive(Event, Serialize, Deserialize)]
+#[event(name = "v1.TodoCreated")]
+pub struct TodoCreated {
+    pub id: String,
+    pub text: String,
+}
+```
+
+The schema registers each event with its materializer, with `Schema::builder().materialize::<TodoCreated, _>(...)`. The [TodoMVC schema](https://github.com/livestorejs/livestore-contrib/tree/main/rust/crates/livestore-todomvc) is a full example.
+
+A commit accepts only these typed events, so you cannot commit an unknown event name or args of the wrong shape.
 
 ## Example
 
@@ -30,7 +52,6 @@ use std::sync::Arc;
 use livestore::{InMemoryAdapter, QueryInput, StoreOptions, SubscribeOptions, create_store, query_db};
 use livestore_sync::{Storage, SyncOptions};
 use livestore_sync_cf::{make_ws_sync, transport::ClientOptions};
-use serde_json::json;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -46,7 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let store = create_store(StoreOptions::new(schema(), adapter.build(), "my-store")).await?;
 
-    store.commit([("v1.TodoCreated".to_owned(), json!({"id": "t1", "text": "Buy milk"}))])?;
+    store.commit([TodoCreated { id: "t1".into(), text: "Buy milk".into() }])?;
 
     let todos = query_db(QueryInput::sql("SELECT id, text FROM todos"));
     let _sub = store.subscribe(&todos, |rows| println!("{rows:?}"), &SubscribeOptions::default());
@@ -56,7 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-`schema()` is your app's schema, defined with the `livestore-schema` crate. The [TodoMVC schema](https://github.com/livestorejs/livestore-contrib/tree/main/rust/crates/livestore-todomvc) is a full example.
+`schema()` is your app's schema.
 
 ## How it runs
 
