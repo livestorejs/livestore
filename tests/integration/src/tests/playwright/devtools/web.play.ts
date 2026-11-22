@@ -188,10 +188,12 @@ const runTest =
           yield* Effect.tryPromise(async () => {
             // The fixture changes the runtime in every app realm, not just handshake
             // metadata. Selecting this real session must boot the artifact's own UI store.
-            await expect(tab1.page.locator('html')).toHaveAttribute(
-              'data-live-store-version',
-              '0.0.0-devtools-version-skew',
-            )
+            if (process.env.LIVESTORE_TEST_DEVTOOLS_VERSION_SKEW === '1') {
+              await expect(tab1.page.locator('html')).toHaveAttribute(
+                'data-live-store-version',
+                '0.0.0-devtools-version-skew',
+              )
+            }
             await expect(tab1.page.locator('html')).toHaveAttribute('data-devtools-protocol-version', '1')
             const el = tab1.page.locator('.new-todo').describe('tab-1:new-todo')
             await el.waitFor({ timeout: 3000 })
