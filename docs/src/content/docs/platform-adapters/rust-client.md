@@ -7,7 +7,7 @@ sidebar:
     variant: caution
 ---
 
-The Rust client is a native LiveStore client written in Rust. It is not an adapter for the TypeScript client: it is a port of the store, the leader and the sync logic. It syncs with the same Cloudflare sync backend as the web client, so Rust apps and web apps can share a store.
+The Rust client is an experimental, native LiveStore client written in Rust. It is not an adapter for the TypeScript client: it is a port of the store, the leader and the sync logic. Like any other client, it syncs through a sync backend, so Rust apps and web apps can share a store. For now, only the Cloudflare sync backend is available.
 
 The code lives in [`livestore-contrib/rust`](https://github.com/livestorejs/livestore-contrib/tree/main/rust).
 
