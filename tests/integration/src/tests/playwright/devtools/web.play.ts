@@ -1,6 +1,6 @@
 import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
-import { test } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 import * as Playwright from '@livestore/effect-playwright'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
@@ -175,7 +175,7 @@ const runTest =
 
 ;(['persisted', 'inmemory'] as const).forEach((adapter) => {
   test(
-    `single tab (adapter=${adapter})`,
+    `single tab with package version skew (adapter=${adapter})`,
     runTest(
       Effect.gen(function* () {
         const tab1 = yield* makeTabPair(
@@ -186,6 +186,15 @@ const runTest =
 
         yield* Effect.gen(function* () {
           yield* Effect.tryPromise(async () => {
+            // The fixture changes the runtime in every app realm, not just handshake
+            // metadata. Selecting this real session must boot the artifact's own UI store.
+            if (process.env.LIVESTORE_TEST_DEVTOOLS_VERSION_SKEW === '1') {
+              await expect(tab1.page.locator('html')).toHaveAttribute(
+                'data-live-store-version',
+                '0.0.0-devtools-version-skew',
+              )
+            }
+            await expect(tab1.page.locator('html')).toHaveAttribute('data-devtools-protocol-version', '1')
             const el = tab1.page.locator('.new-todo').describe('tab-1:new-todo')
             await el.waitFor({ timeout: 3000 })
 

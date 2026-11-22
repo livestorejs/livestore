@@ -200,6 +200,11 @@ in
         fi
 
         mono test integration "$suite"
+        if [ "$suite" = devtools ]; then
+          LIVESTORE_TEST_DEVTOOLS_VERSION_SKEW=1 \
+            PLAYWRIGHT_HTML_OUTPUT_DIR=playwright-report/version-skew \
+            bun tests/integration/scripts/run-tests.ts devtools --grep 'package version skew' --workers 1
+        fi
       '';
       after = [ "setup:strict" ];
     };

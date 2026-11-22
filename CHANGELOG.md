@@ -38,6 +38,7 @@ Install this release with `npm install @livestore/livestore@0.5.1`.
   rebuilt.
 - **DevTools:** DevTools no longer requires a sponsor license ([#1511](https://github.com/livestorejs/livestore/issues/1511)).
 - **DevTools:** Fixed web sessions getting stuck at "Connecting to session" by keeping worker connections alive until the session disconnects ([#1709](https://github.com/livestorejs/livestore/pull/1709)).
+- **DevTools:** Updated the artifact to boot its UI-state store independently of the app's LiveStore package version while retaining protocol compatibility. This also includes the persisted reload snapshot repair ([#1739](https://github.com/livestorejs/livestore/issues/1739), [#1740](https://github.com/livestorejs/livestore/pull/1740), [producer fix](https://github.com/overengineeringstudio/overeng/pull/243)).
 - **Web in-memory adapter:** Kept the optional DevTools shared-worker connection alive for the store's lifetime instead of disconnecting immediately after RPC client creation ([#1710](https://github.com/livestorejs/livestore/issues/1710)).
 - **State storage:** Rebases roll back state through a materialization journal table instead of SQLite changesets carried in event metadata. Because the state system tables changed, existing state databases are rebuilt from the eventlog once after upgrading ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
 - **Query cache:** Cached query results are discarded when a journal or savepoint rollback changes the session database, so reads after a rebase no longer return rolled-back rows ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
@@ -50,6 +51,9 @@ Install this release with `npm install @livestore/livestore@0.5.1`.
 
 For maintainers and contributors:
 
+- **DevTools tests:** Keep the normal-version browser suite and run two additional
+  real-session web scenarios with deliberate app/worker package-version skew
+  ([#1740](https://github.com/livestorejs/livestore/pull/1740)).
 - **Browser integration tests:** Automated fixture servers disable inherited browser
   OTLP exports so a local collector's CORS policy cannot fail DevTools tests.
   Interactive dev-server tracing remains available ([#1709](https://github.com/livestorejs/livestore/pull/1709)).
