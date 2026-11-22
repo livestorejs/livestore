@@ -2,20 +2,20 @@ import path from 'node:path'
 
 import { UnknownError } from '@livestore/common'
 import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
-import { Effect, FileSystem, Layer, Logger, OtelTracer, References, Schema } from '@livestore/utils/effect'
+import { Effect, FileSystem, Layer, Logger, Option, OtelTracer, References, Schema } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 
 const cwd = path.resolve(import.meta.dirname, '..')
 
-const prepareDevtools = (outDir: string) =>
+const prepareDevtools = (outDir: string, manifest = path.resolve(cwd, '../../release/devtools-artifact.json')) =>
   Effect.gen(function* () {
     yield* cmd([
       'bun',
       path.resolve(cwd, '../../scripts/src/commands/devtools-artifact.ts'),
       'prepare-integration',
       '--manifest',
-      path.resolve(cwd, '../../release/devtools-artifact.json'),
+      path.resolve(manifest),
       '--out-dir',
       outDir,
     ])
@@ -143,7 +143,14 @@ export const setupDevtools = Cli.Command.make(
 export const runDevtoolsTest = Effect.fn('test:devtools')(function* ({
   mode,
   localDevtoolsPreview,
-}: IntegrationTestOptions) {
+  artifactManifest,
+  workers,
+  grep,
+}: IntegrationTestOptions & {
+  artifactManifest: string
+  workers: Option.Option<string>
+  grep: Option.Option<string>
+}) {
   yield* Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     // Keep the extracted plugin beneath this workspace's node_modules so its external
@@ -152,7 +159,7 @@ export const runDevtoolsTest = Effect.fn('test:devtools')(function* ({
       directory: path.join(cwd, 'node_modules'),
       prefix: '.devtools-',
     })
-    const artifact = yield* prepareDevtools(outDir)
+    const artifact = yield* prepareDevtools(outDir, artifactManifest)
     const { devPort } = yield* viteDevServer({
       app: 'todomvc',
       useWorkspacePort: mode === 'dev-server',
@@ -169,7 +176,15 @@ export const runDevtoolsTest = Effect.fn('test:devtools')(function* ({
       return yield* Effect.never
     } else {
       yield* cmd(
-        ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/devtools/*'],
+        [
+          'pnpm',
+          'playwright',
+          'test',
+          mode === 'ui' ? '--ui' : undefined,
+          'src/tests/playwright/devtools/*',
+          ...Option.match(workers, { onNone: () => [], onSome: (value) => ['--workers', value] }),
+          ...Option.match(grep, { onNone: () => [], onSome: (value) => ['--grep', value] }),
+        ],
         {
           env: {
             FORCE_PLAYWRIGHT_VIA_CLI: '1',
@@ -191,6 +206,12 @@ export const devtoolsTest = Cli.Command.make(
   {
     mode: modeOption,
     localDevtoolsPreview: localDevtoolsPreviewOption,
+    artifactManifest: Cli.Flag.String('artifact-manifest').pipe(
+      Cli.Flag.withDefault(path.resolve(cwd, '../../release/devtools-artifact.json')),
+      Cli.Flag.withDescription('Artifact manifest to verify and extract (also accepts local asset paths)'),
+    ),
+    workers: Cli.Flag.String('workers').pipe(Cli.Flag.optional),
+    grep: Cli.Flag.String('grep').pipe(Cli.Flag.optional),
   },
   runDevtoolsTest,
 )
