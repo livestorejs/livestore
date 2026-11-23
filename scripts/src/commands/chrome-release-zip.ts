@@ -13,9 +13,9 @@ export const chromeManifestFields = (version: string): { name: string; version: 
     const last = prerelease.split('.').at(-1) ?? ''
     // These channels carry Git hashes, not build counters, even when the hash is all digits.
     const hashBased = prerelease.startsWith('ci.release-validation.') || prerelease.startsWith('snapshot-')
-    components.push(hashBased === false && /^\d+$/.test(last) ? Number(last) : 1)
+    components.push(hashBased === false && /^\d+$/.test(last) === true ? Number(last) : 1)
   }
-  if (components.some((part) => part > 65535) || components.every((part) => part === 0)) {
+  if (components.some((part) => part > 65535) === true || components.every((part) => part === 0) === true) {
     throw new Error(`Release version cannot be represented by Chrome: ${version}`)
   }
   return {
@@ -53,7 +53,7 @@ export const materializeChromeZipAsset = (version: string, chromeZipPath: string
     root === '' ||
     entries.some(
       (entry) => !entry.startsWith(`${root}/`) || entry.split('/').some((part) => part === '..' || part === '.'),
-    ) ||
+    ) === true ||
     entries.filter((entry) => entry === `${root}/manifest.json`).length !== 1
   ) {
     throw new Error('Chrome ZIP must contain one top-level directory and manifest.json')
