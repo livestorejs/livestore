@@ -6,6 +6,7 @@ sidebar:
 ---
 
 import { Tabs, TabItem, Code } from '@astrojs/starlight/components';
+import { versionNpmSuffix } from '../../../data/data.ts'
 
 In this step, you're going to introduce a [sync](/building-with-livestore/syncing) backend. This sync backend will:
 
@@ -26,13 +27,13 @@ Run the following command in your terminal:
 
   <TabItem label="bun">
 
-    <Code code={`bun add @livestore/sync-cf@0.4.0-dev.14`} lang="sh" />
+    <Code code={`bun add @livestore/sync-cf${versionNpmSuffix}`} lang="sh" />
 
   </TabItem>
 
   <TabItem label="pnpm">
 
-    <Code code={`pnpm add @livestore/sync-cf@0.4.0-dev.14`} lang="sh" />
+    <Code code={`pnpm add @livestore/sync-cf${versionNpmSuffix}`} lang="sh" />
 
   </TabItem>
 
