@@ -88,6 +88,15 @@ export default pnpmWorkspaceYaml.root({
   minimumReleaseAgeExclude: [
     ...commonPnpmPolicySettings.minimumReleaseAgeExclude,
     ...effectV4MinimumReleaseAgeExclude,
+    // The already-published stable cohort is the reviewed production promotion source.
+    '@livestore/adapter-web@0.5.1',
+    '@livestore/common-cf@0.5.1',
+    '@livestore/common@0.5.1',
+    '@livestore/devtools-vite@0.5.1',
+    '@livestore/sqlite-wasm@0.5.1',
+    '@livestore/utils@0.5.1',
+    '@livestore/wa-sqlite@0.5.1',
+    '@livestore/webmesh@0.5.1',
   ],
   /** Relaxed until @livestore/devtools-vite publishes with updated Effect peer ranges */
   strictPeerDependencies: false,

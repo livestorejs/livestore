@@ -104,6 +104,14 @@ minimumReleaseAgeExclude:
   - '@effect/platform-node-shared@4.1.4'
   - '@effect/sql-sqlite-node@4.1.4'
   - '@effect/vitest@4.1.4'
+  - '@livestore/adapter-web@0.5.1'
+  - '@livestore/common-cf@0.5.1'
+  - '@livestore/common@0.5.1'
+  - '@livestore/devtools-vite@0.5.1'
+  - '@livestore/sqlite-wasm@0.5.1'
+  - '@livestore/utils@0.5.1'
+  - '@livestore/wa-sqlite@0.5.1'
+  - '@livestore/webmesh@0.5.1'
 
 supportedArchitectures:
   os: [linux, darwin]

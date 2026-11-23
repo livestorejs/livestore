@@ -6,6 +6,14 @@
 > for more info. LiveStore is following a semver-like release strategy where
 > breaking changes are released in minor versions before the 1.0 release.
 
+## Unreleased
+
+### Changed
+
+- **Stable documentation and examples:** Promote the published 0.5.1 source and
+  pin embedded DevTools to `@livestore/devtools-vite@0.5.1` rather than the
+  pre-release build retained in the release source.
+
 ## 0.5.1
 
 See the [documentation](https://docs.livestore.dev) for current features.
