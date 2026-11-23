@@ -19,6 +19,30 @@ describe('chromeManifestFields', () => {
       '0.0.0-snapshot-abc123',
       { name: 'LiveStore Devtools (Dev Build)', version: '0.0.0.1', version_name: '0.0.0-snapshot-abc123' },
     ],
+    [
+      '0.0.0-ci.release-validation.123456789012',
+      {
+        name: 'LiveStore Devtools (Dev Build)',
+        version: '0.0.0.1',
+        version_name: '0.0.0-ci.release-validation.123456789012',
+      },
+    ],
+    [
+      '0.0.0-ci.release-validation.abcdef123456',
+      {
+        name: 'LiveStore Devtools (Dev Build)',
+        version: '0.0.0.1',
+        version_name: '0.0.0-ci.release-validation.abcdef123456',
+      },
+    ],
+    [
+      '0.0.0-snapshot-pr.123.123456789012',
+      {
+        name: 'LiveStore Devtools (Dev Build)',
+        version: '0.0.0.1',
+        version_name: '0.0.0-snapshot-pr.123.123456789012',
+      },
+    ],
     ['0.5.1+build.7', { name: 'LiveStore Devtools', version: '0.5.1', version_name: '0.5.1+build.7' }],
   ])('maps %s to Chrome fields', (version, expected) => {
     expect(chromeManifestFields(version)).toEqual(expected)

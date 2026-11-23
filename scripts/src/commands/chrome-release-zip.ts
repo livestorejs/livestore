@@ -11,8 +11,9 @@ export const chromeManifestFields = (version: string): { name: string; version: 
   const prerelease = match[4]
   if (prerelease !== undefined) {
     const last = prerelease.split('.').at(-1) ?? ''
-    // Hash-based snapshots have no numeric build counter. version_name retains their identity.
-    components.push(/^\d+$/.test(last) ? Number(last) : 1)
+    // These channels carry Git hashes, not build counters, even when the hash is all digits.
+    const hashBased = prerelease.startsWith('ci.release-validation.') || prerelease.startsWith('snapshot-')
+    components.push(hashBased === false && /^\d+$/.test(last) ? Number(last) : 1)
   }
   if (components.some((part) => part > 65535) || components.every((part) => part === 0)) {
     throw new Error(`Release version cannot be represented by Chrome: ${version}`)
