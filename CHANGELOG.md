@@ -6,6 +6,19 @@
 > for more info. LiveStore is following a semver-like release strategy where
 > breaking changes are released in minor versions before the 1.0 release.
 
+## Unreleased
+
+See the [development documentation](https://docs.livestore.dev) for current features.
+Install the development build with `npm install @livestore/livestore@dev`.
+
+### Bug Fixes
+
+- **DevTools:** Chrome extension release ZIPs now use the release version in
+  their directory name and extension manifest instead of retaining the pinned
+  artifact's version. Stable releases use the `LiveStore Devtools` name.
+  Prereleases use `LiveStore Devtools (Dev Build)` and retain their full version in `version_name`
+  ([#1744](https://github.com/livestorejs/livestore/pull/1744)).
+
 ## 0.5.1
 
 See the [documentation](https://docs.livestore.dev) for current features.
