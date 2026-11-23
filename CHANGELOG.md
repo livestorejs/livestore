@@ -15,7 +15,8 @@ Install the development build with `npm install @livestore/livestore@dev`.
 
 - **DevTools:** Chrome extension release ZIPs now use the release version in
   their directory name and extension manifest instead of retaining the pinned
-  artifact's version. Prereleases retain their full version in `version_name`
+  artifact's version. Stable releases use the `LiveStore Devtools` name.
+  Prereleases use `LiveStore Devtools (Dev Build)` and retain their full version in `version_name`
   ([#1744](https://github.com/livestorejs/livestore/pull/1744)).
 
 ## 0.5.1

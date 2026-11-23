@@ -3,8 +3,8 @@ import { mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-/** Chrome accepts at most four integer components, each in the range 0..65535. */
-export const chromeManifestVersion = (version: string): { version: string; version_name?: string } => {
+/** Release-facing fields mirror the producer's names and Chrome's numeric version constraints. */
+export const chromeManifestFields = (version: string): { name: string; version: string; version_name?: string } => {
   const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(version)
   if (match === null) throw new Error(`Invalid release version: ${version}`)
   const components = match.slice(1, 4).map(Number)
@@ -18,27 +18,33 @@ export const chromeManifestVersion = (version: string): { version: string; versi
     throw new Error(`Release version cannot be represented by Chrome: ${version}`)
   }
   return {
+    // overeng: devtools-chrome/src-assets/manifest.json and vite.config.js.
+    name: `LiveStore Devtools${prerelease === undefined ? '' : ' (Dev Build)'}`,
     version: components.join('.'),
     ...(version === components.join('.') ? {} : { version_name: version }),
   }
 }
 
-/** Read the packaged manifest back, so a stale or incorrectly packaged version fails preparation. */
+/** Read the packaged manifest back, so stale release labels fail preparation. */
 export const assertChromeZipVersion = (assetPath: string, version: string) => {
-  const expected = chromeManifestVersion(version)
+  const expected = chromeManifestFields(version)
   const manifest = JSON.parse(
     execFileSync('unzip', ['-p', assetPath, `livestore-devtools-chrome-${version}/manifest.json`], {
       encoding: 'utf8',
     }),
   ) as Record<string, unknown>
-  if (manifest.version !== expected.version || manifest.version_name !== expected.version_name) {
-    throw new Error(`Chrome ZIP manifest version does not match release ${version}`)
+  if (
+    manifest.version !== expected.version ||
+    manifest.version_name !== expected.version_name ||
+    manifest.name !== expected.name
+  ) {
+    throw new Error(`Chrome ZIP manifest does not match release ${version}`)
   }
 }
 
-/** Reuse the certified payload, changing only its directory prefix and manifest version fields. */
+/** Reuse the certified payload, changing only its directory prefix and release-facing manifest fields. */
 export const materializeChromeZipAsset = (version: string, chromeZipPath: string, workDir: string) => {
-  const stampedVersion = chromeManifestVersion(version)
+  const stampedFields = chromeManifestFields(version)
   const entries = execFileSync('zipinfo', ['-1', chromeZipPath], { encoding: 'utf8' }).trim().split('\n')
   const root = entries[0]?.split('/')[0]
   if (
@@ -59,7 +65,7 @@ export const materializeChromeZipAsset = (version: string, chromeZipPath: string
     const manifestPath = path.join(unpackDir, root, 'manifest.json')
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, unknown>
     delete manifest.version_name
-    Object.assign(manifest, stampedVersion)
+    Object.assign(manifest, stampedFields)
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
     renameSync(path.join(unpackDir, root), path.join(unpackDir, releaseRoot))
     // zip updates existing archives, so discard an earlier output to avoid stale entries.

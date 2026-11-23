@@ -45,10 +45,12 @@ Stable versions retain their three numeric components. Prereleases append
 their final numeric identifier as a fourth component (or `1` for hash-based
 snapshots), with the full release string in `version_name`. Components must
 fit Chrome's 0 to 65535 range and cannot all be zero. Preparation reads back
-the packaged manifest and fails if its version fields do not match.
-All other file contents, including the producer-selected extension name,
-remain unchanged. The producer owns stable versus development naming through
-its `LIVESTORE_DEVTOOLS_CHROME_VERSION` build mode.
+the packaged manifest and fails if its version or name fields do not match.
+The release name is `LiveStore Devtools` for stable versions and
+`LiveStore Devtools (Dev Build)` for prereleases, using the producer's exact
+strings. All other manifest fields and file contents remain unchanged.
+Description, icons, and payload references retain the producer's build
+identity rather than being rebuilt for each LiveStore release.
 
 ### Cadence Invariant
 
