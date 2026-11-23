@@ -305,7 +305,7 @@ echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"`,
         },
         {
           name: 'Certify DevTools artifact liveness',
-          run: runDevenvTasksBefore('release:devtools-artifact:certify-liveness:no-install'),
+          run: runDevenvTasksBefore('release:devtools-artifact:certify-liveness'),
         },
         devtoolsCertificationArtifactsStep,
         {
