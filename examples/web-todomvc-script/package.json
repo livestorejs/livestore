@@ -4,6 +4,9 @@
   "type": "module",
   "private": true,
   "dependencies": {
+    "@effect/opentelemetry": "4.1.4",
+    "@effect/platform-browser": "4.1.4",
+    "effect": "4.1.4",
     "@livestore/adapter-web": "0.5.1",
     "@livestore/livestore": "0.5.1",
     "@livestore/peer-deps": "0.5.1",

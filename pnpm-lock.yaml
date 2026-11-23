@@ -504,6 +504,12 @@ importers:
       '@cloudflare/workers-types':
         specifier: 4.20251118.0
         version: 4.20251118.0
+      '@effect/opentelemetry':
+        specifier: 4.1.4
+        version: 4.1.4(@opentelemetry/api-logs@0.217.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.7.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.41.1)(effect@4.1.4)
+      '@effect/platform-browser':
+        specifier: 4.1.4
+        version: 4.1.4(effect@4.1.4)
       '@livestore/adapter-cloudflare':
         specifier: 0.5.1
         version: link:../../packages/@livestore/adapter-cloudflare
@@ -525,6 +531,9 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 0.5.1
         version: link:../../packages/@livestore/wa-sqlite
+      effect:
+        specifier: 4.1.4
+        version: 4.1.4
       react:
         specifier: 19.2.3
         version: 19.2.3
@@ -565,6 +574,12 @@ importers:
 
   examples/web-linearlite:
     dependencies:
+      '@effect/opentelemetry':
+        specifier: 4.1.4
+        version: 4.1.4(@opentelemetry/api-logs@0.217.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.7.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.41.1)(effect@4.1.4)
+      '@effect/platform-browser':
+        specifier: 4.1.4
+        version: 4.1.4(effect@4.1.4)
       '@headlessui/react':
         specifier: 2.2.7
         version: 2.2.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -637,6 +652,9 @@ importers:
       classnames:
         specifier: 2.5.1
         version: 2.5.1
+      effect:
+        specifier: 4.1.4
+        version: 4.1.4
       fractional-indexing:
         specifier: 3.2.0
         version: 3.2.0
@@ -728,6 +746,12 @@ importers:
 
   examples/web-todomvc:
     dependencies:
+      '@effect/opentelemetry':
+        specifier: 4.1.4
+        version: 4.1.4(@opentelemetry/api-logs@0.217.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.7.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.41.1)(effect@4.1.4)
+      '@effect/platform-browser':
+        specifier: 4.1.4
+        version: 4.1.4(effect@4.1.4)
       '@livestore/adapter-web':
         specifier: 0.5.1
         version: link:../../packages/@livestore/adapter-web
@@ -746,6 +770,9 @@ importers:
       '@overengineering/fps-meter':
         specifier: 0.2.4
         version: 0.2.4(react@19.2.3)
+      effect:
+        specifier: 4.1.4
+        version: 4.1.4
       react:
         specifier: 19.2.3
         version: 19.2.3
@@ -792,6 +819,12 @@ importers:
 
   examples/web-todomvc-script:
     dependencies:
+      '@effect/opentelemetry':
+        specifier: 4.1.4
+        version: 4.1.4(@opentelemetry/api-logs@0.217.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.7.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.41.1)(effect@4.1.4)
+      '@effect/platform-browser':
+        specifier: 4.1.4
+        version: 4.1.4(effect@4.1.4)
       '@livestore/adapter-web':
         specifier: 0.5.1
         version: link:../../packages/@livestore/adapter-web
@@ -807,6 +840,9 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 0.5.1
         version: link:../../packages/@livestore/wa-sqlite
+      effect:
+        specifier: 4.1.4
+        version: 4.1.4
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.12
@@ -832,6 +868,12 @@ importers:
 
   examples/web-todomvc-sync-cf:
     dependencies:
+      '@effect/opentelemetry':
+        specifier: 4.1.4
+        version: 4.1.4(@opentelemetry/api-logs@0.217.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.7.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.41.1)(effect@4.1.4)
+      '@effect/platform-browser':
+        specifier: 4.1.4
+        version: 4.1.4(effect@4.1.4)
       '@livestore/adapter-web':
         specifier: 0.5.1
         version: link:../../packages/@livestore/adapter-web
@@ -853,6 +895,9 @@ importers:
       '@overengineering/fps-meter':
         specifier: 0.2.4
         version: 0.2.4(react@19.2.3)
+      effect:
+        specifier: 4.1.4
+        version: 4.1.4
       react:
         specifier: 19.2.3
         version: 19.2.3
