@@ -6,6 +6,15 @@
 > for more info. LiveStore is following a semver-like release strategy where
 > breaking changes are released in minor versions before the 1.0 release.
 
+## Unreleased
+
+See the [development documentation](https://docs.livestore.dev) for upcoming changes.
+
+### Changed
+
+- **Examples and documentation:** Use published DevTools 0.5.1, including license-free
+  startup and version-skew fixes ([#1739](https://github.com/livestorejs/livestore/issues/1739)).
+
 ## 0.5.1
 
 See the [documentation](https://docs.livestore.dev) for current features.
