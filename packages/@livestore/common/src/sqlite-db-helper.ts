@@ -58,37 +58,35 @@ export const makeSelect = <T>(
 export const withSavepoint: {
   (db: SqliteDb): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | SqliteError, R>
   <A, E, R>(self: Effect.Effect<A, E, R>, db: SqliteDb): Effect.Effect<A, E | SqliteError, R>
-} = Function.dual(
-  2,
-  <A, E, R>(self: Effect.Effect<A, E, R>, db: SqliteDb): Effect.Effect<A, E | SqliteError, R> =>
-    Effect.uninterruptibleMask((restore) =>
-      Effect.sync(generateSavepointName).pipe(
-        Effect.flatMap((savepointName) => {
-          const savepointSql = `SAVEPOINT ${savepointName}`
-          const releaseSql = `RELEASE SAVEPOINT ${savepointName}`
+} = Function.dual(2, <A, E, R>(self: Effect.Effect<A, E, R>, db: SqliteDb): Effect.Effect<A, E | SqliteError, R> =>
+  Effect.uninterruptibleMask((restore) =>
+    Effect.sync(generateSavepointName).pipe(
+      Effect.flatMap((savepointName) => {
+        const savepointSql = `SAVEPOINT ${savepointName}`
+        const releaseSql = `RELEASE SAVEPOINT ${savepointName}`
 
-          return executeSavepointSql(db, savepointSql).pipe(
-            // Cleanup is installed only after SQLite successfully creates the savepoint.
-            Effect.andThen(
-              restore(self).pipe(
-                Effect.exit,
-                Effect.flatMap((exit) => {
-                  const cleanup =
-                    Exit.isSuccess(exit) === true
-                      ? executeSavepointSql(db, releaseSql)
-                      : executeSavepointSql(db, `ROLLBACK TO SAVEPOINT ${savepointName}`).pipe(
-                          Effect.andThen(executeSavepointSql(db, releaseSql)),
-                        )
+        return executeSavepointSql(db, savepointSql).pipe(
+          // Cleanup is installed only after SQLite successfully creates the savepoint.
+          Effect.andThen(
+            restore(self).pipe(
+              Effect.exit,
+              Effect.flatMap((exit) => {
+                const cleanup =
+                  Exit.isSuccess(exit) === true
+                    ? executeSavepointSql(db, releaseSql)
+                    : executeSavepointSql(db, `ROLLBACK TO SAVEPOINT ${savepointName}`).pipe(
+                        Effect.andThen(executeSavepointSql(db, releaseSql)),
+                      )
 
-                  // Cleanup failures supersede the wrapped exit because the connection state is uncertain.
-                  return cleanup.pipe(Effect.andThen(exit))
-                }),
-              ),
+                // Cleanup failures supersede the wrapped exit because the connection state is uncertain.
+                return cleanup.pipe(Effect.andThen(exit))
+              }),
             ),
-          )
-        }),
-      ),
+          ),
+        )
+      }),
     ),
+  ),
 )
 
 let nextSavepointId = 0
