@@ -32,6 +32,8 @@ LiveStore DevTools is free for everyone. No license, trial, sponsorship, or sign
 
 Requires the `@livestore/devtools-vite` package to be installed and configured in your Vite config:
 
+With pnpm's `auto-install-peers=false`, also install `effect@4.1.4`, `@effect/platform-browser@4.1.4`, and `@effect/opentelemetry@4.1.4`, the plugin's peer dependencies.
+
 <ViteConfigSnippet />
 
 The devtools can be opened in a separate tab (via e.g. `localhost:3000/_livestore/web). You should see the Devtools URL logged in the browser console when running the app.
