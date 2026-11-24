@@ -4,19 +4,35 @@
 
 set -euo pipefail
 
+source "${BASH_SOURCE[0]%/*}/prefetch-locked-inputs.sh"
+
 DEVENV_GC_ROOT_DIR="${RUNNER_TEMP:-/tmp}/genie-nix-gc-roots"
 DEVENV_GC_ROOT_ID=$(printf '%s' "${GITHUB_RUN_ID:-local-$$}-${GITHUB_RUN_ATTEMPT:-0}-${GITHUB_JOB:-job}" | tr -c 'A-Za-z0-9._-' '_')
 DEVENV_GC_ROOT="$DEVENV_GC_ROOT_DIR/devenv-$DEVENV_GC_ROOT_ID"
 
 resolve_devenv_once() {
   mkdir -p "$DEVENV_GC_ROOT_DIR"
-  nix build \
+  # Stream even while evaluation is blocked; keep cancellation evidence in the artifact.
+  local build_rc build_stderr tee_pid
+  exec {build_stderr}> >(tee -a "$log" >&2)
+  tee_pid=$!
+  if nix build \
     --accept-flake-config \
     --option extra-substituters https://devenv.cachix.org \
     --option extra-trusted-public-keys devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= \
     --out-link "$DEVENV_GC_ROOT" \
     --print-out-paths \
-    "github:cachix/devenv/$DEVENV_REV#devenv"
+    "github:cachix/devenv/$DEVENV_REV#devenv" \
+    2>&"$build_stderr"
+  then
+    build_rc=0
+  else
+    build_rc=$?
+  fi
+  # Drain only this tee before parsing repair markers; do not wait for prefetch.
+  exec {build_stderr}>&-
+  wait "$tee_pid" || true
+  return "$build_rc"
 }
 
 resolve_devenv() {
@@ -24,18 +40,14 @@ resolve_devenv() {
   local log
   local rc
 
-  log=$(mktemp)
-  if resolve_devenv_once 2>"$log"; then
-    cat "$log" >&2
-    rm -f "$log"
+  log=$(mktemp "$DIAG_ROOT/resolve-devenv.nix-build.XXXXXX.log")
+  if resolve_devenv_once; then
     return 0
   else
     rc=$?
   fi
-  cat "$log" >&2
   invalid_path=$(grep -E -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not( a)? valid( store path)?" "$log" |
     head -1 | grep -o "/nix/store/[^']*" || true)
-  rm -f "$log"
   [ -n "$invalid_path" ] || return "$rc"
 
   echo "::warning::devenv resolution hit an invalid Nix store path; clearing the client eval cache and retrying once: $invalid_path" >&2
@@ -82,6 +94,14 @@ main() {
     nix --version || true
   } > "$DIAG_ROOT/environment.txt" 2>&1
 
+  # Keep all warming inside this operation and its existing timeout boundary.
+  local prefetch_pid
+  prefetch_locked_inputs "$lock_file" "$DIAG_ROOT/locked-input-prefetch" &
+  prefetch_pid="$!"
+  trap '[ -z "${prefetch_pid:-}" ] || { kill "$prefetch_pid" 2>/dev/null || true; wait "$prefetch_pid" 2>/dev/null || true; }' EXIT
+  trap 'exit 143' TERM
+  trap 'exit 130' INT
+
   if ! DEVENV_OUT="$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2))"; then
     echo "::error::resolve_devenv failed. Last 30 lines of log:" >&2
     tail -30 "$DIAG_ROOT/resolve-devenv.log" >&2 || true
@@ -108,6 +128,9 @@ main() {
 
   printf 'DEVENV_REV=%s\nDEVENV_GC_ROOT=%s\nDEVENV_BIN=%s\n' \
     "$DEVENV_REV" "$DEVENV_GC_ROOT" "$DEVENV_BIN" >> "$GITHUB_ENV"
+  wait "$prefetch_pid" || true
+  prefetch_pid=''
+  trap - EXIT TERM INT
   "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
 }
 

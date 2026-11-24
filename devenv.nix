@@ -350,6 +350,7 @@ in
       let
         lint =
           (taskModules.lint-oxc {
+            inherit pnpmPkg;
             lintPaths = [
               "packages"
               "tests"
@@ -383,19 +384,6 @@ in
             { inherit lib pkgs config; };
       in
       lint
-      // {
-        tasks = lint.tasks // {
-          "lint:check:lockfile" = lint.tasks."lint:check:lockfile" // {
-            # Temporary until the Effect 4.1.0 migration takes effect-utils#2228 (3b661131).
-            # Frozen nix/devenv-modules/tasks/shared/lint-oxc.nix:82-89 omits pnpmPkg.
-            # Keep the guard first while exposing its pinned native to storage discovery.
-            exec = ''
-              export PATH="$PATH:${pnpmPkg}/bin"
-            ''
-            + lint.tasks."lint:check:lockfile".exec;
-          };
-        };
-      }
     )
     (taskModules.pnpm {
       packages = pnpmPackages;

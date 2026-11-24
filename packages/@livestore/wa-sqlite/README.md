@@ -81,8 +81,8 @@ The default build produces ES6 modules + WASM, [synchronous and asynchronous](ht
 Javascript wrappers for core SQLITE C API functions (and some others) are provided. Some convenience functions are also provided to reduce boilerplate. Here is sample code to load the library and call the API:
 
 ```javascript
-import SQLiteESMFactory from 'wa-sqlite/dist/wa-sqlite.mjs'
 import * as SQLite from 'wa-sqlite'
+import SQLiteESMFactory from 'wa-sqlite/dist/wa-sqlite.mjs'
 
 async function hello() {
   const module = await SQLiteESMFactory()

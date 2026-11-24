@@ -59,6 +59,7 @@ The `src/cli/test-fixtures/catalog/` directory provides a minimal set of snippet
 ```ts
 // astro.config.ts
 import { defineConfig } from 'astro/config'
+
 import { createAstroTwoslashCodeIntegration } from '@local/astro-twoslash-code/integration'
 
 const snippetRuntime = {

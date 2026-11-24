@@ -20,41 +20,155 @@ import {
   validateManifest,
 } from './pr-snapshot-artifact.mjs'
 
+// Pinned actions render their release comment before the step's name.
+const findStep = (text, name, from = 0) => {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const pattern = new RegExp(
+    `^([ \\t]*)- (?:#[^\\r\\n]*\\r?\\n\\1  )?name: ${escapedName}[ \\t]*\\r?$`,
+    'gm',
+  )
+  for (const match of text.matchAll(pattern)) {
+    const marker = match.index + match[1].length
+    if (marker >= from) return marker
+  }
+  return -1
+}
+
+test('step lookup matches exact names and returns list markers at or after the offset', () => {
+  const workflow = `steps:
+      - name: Checkout (trusted).*
+      - name: Checkout (trusted).* extra
+      - name: Checkout (trusted).*
+`
+  const first = workflow.indexOf('- name:')
+  const last = workflow.lastIndexOf('- name:')
+  assert.equal(findStep(workflow, 'Checkout (trusted).*'), first)
+  assert.equal(findStep(workflow, 'Checkout (trusted).*', first), first)
+  assert.equal(findStep(workflow, 'Checkout (trusted).*', first + 1), last)
+  assert.equal(findStep(workflow, 'Checkout (trusted).*', last + 1), -1)
+  assert.equal(findStep(workflow, 'Checkout'), -1)
+})
+
+test('checkout trust assertion handles pinned-action comments without accepting github.sha', () => {
+  for (const comment of ['', '# v4.4.0\n        ']) {
+    const workflow = `steps:
+      - ${comment}name: Checkout trusted validator only
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: \${{ github.workflow_sha }}
+      - # v4.4.0
+        name: Use pinned Node validator runtime
+        with:
+          ref: \${{ github.workflow_sha }}
+`
+    const checkoutStart = findStep(workflow, 'Checkout trusted validator only')
+    const checkoutEnd = findStep(workflow, 'Use pinned Node validator runtime', checkoutStart)
+    assert.equal(checkoutStart, workflow.indexOf('- '))
+    assert.equal(checkoutEnd, workflow.indexOf('- # v4.4.0', checkoutStart + 1))
+    const checkout = workflow.slice(checkoutStart, checkoutEnd)
+    assert.match(checkout, /ref: \$\{\{ github\.workflow_sha \}\}/)
+    assert.doesNotMatch(checkout, /github\.sha|head-sha/)
+
+    const untrustedWorkflow = workflow.replace('ref: ${{ github.workflow_sha }}', 'ref: ${{ github.sha }}')
+    const untrustedStart = findStep(untrustedWorkflow, 'Checkout trusted validator only')
+    const untrustedEnd = findStep(untrustedWorkflow, 'Use pinned Node validator runtime', untrustedStart)
+    assert.throws(
+      () =>
+        assert.match(
+          untrustedWorkflow.slice(untrustedStart, untrustedEnd),
+          /ref: \$\{\{ github\.workflow_sha \}\}/,
+        ),
+      assert.AssertionError,
+    )
+  }
+})
+
 const assertPackPrSnapshotGuard = (workflow) => {
   const lines = workflow.split('\n')
   const start = lines.findIndex((line) => line === '  pack-pr-snapshot:')
   assert.notEqual(start, -1, 'pack-pr-snapshot job must exist')
   const remaining = lines.slice(start + 1)
   const end = remaining.findIndex((line) => /^(?: {2}[\w-]+:|[^\s#])/.test(line))
-  const job = [lines[start], ...remaining.slice(0, end === -1 ? undefined : end)].join('\n')
-  assert.match(job, /pack-pr-snapshot:\n    if: github\.event_name == 'pull_request'/)
-  const condition = job.match(/^ {4}if:[^\n]*(?:\n {6}[^\n]*)*/m)
-  assert.ok(condition, 'pack-pr-snapshot must have a top-level if')
-  assert.doesNotMatch(condition[0], /head\.repo\.full_name == github\.repository/)
+  const jobLines = remaining.slice(0, end === -1 ? undefined : end)
+  const ifStart = jobLines.findIndex((line) => /^ {4}if:/.test(line))
+  assert.notEqual(ifStart, -1, 'pack-pr-snapshot must have a job-level if condition')
+  const ifRemaining = jobLines.slice(ifStart + 1)
+  const ifEnd = ifRemaining.findIndex(
+    (line) => /^ {0,4}\S/.test(line) && line.trimStart().startsWith('#') === false,
+  )
+  const condition = [
+    jobLines[ifStart].replace(/^ {4}if:[ \t]*/, ''),
+    ...ifRemaining.slice(0, ifEnd === -1 ? undefined : ifEnd),
+  ].join('\n')
+  assert.match(condition, /github\.event_name\s*==\s*'pull_request'/)
+  assert.doesNotMatch(condition, /head\.repo\.full_name\s*==\s*github\.repository/)
 }
 
 test('snapshot guard assertion ignores later jobs and stops at the end of the jobs map', () => {
-  const snapshotJob = "jobs:\n  pack-pr-snapshot:\n    if: github.event_name == 'pull_request'\n    steps: []\n"
+  const snapshotJob = `jobs:
+  pack-pr-snapshot:
+    if: github.event_name == 'pull_request'
+    steps: []
+`
   assert.doesNotThrow(() =>
-    assertPackPrSnapshotGuard(snapshotJob + '  later-job:\n    if: github.event.pull_request.head.repo.full_name == github.repository\n'),
+    assertPackPrSnapshotGuard(`${snapshotJob}  later-job:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+`),
   )
   assert.doesNotThrow(() =>
-    assertPackPrSnapshotGuard(snapshotJob + 'env:\n  SAME_REPO: head.repo.full_name == github.repository\n'),
+    assertPackPrSnapshotGuard(`${snapshotJob}env:
+  SAME_REPO: head.repo.full_name == github.repository
+`),
   )
   assert.doesNotThrow(() => assertPackPrSnapshotGuard(snapshotJob))
+})
+
+test('snapshot guard assertion accepts a trusted-privilege runs-on label', () => {
+  assert.doesNotThrow(() =>
+    assertPackPrSnapshotGuard(`jobs:
+  pack-pr-snapshot:
+    if: github.event_name == 'pull_request'
+    runs-on:
+      - "namespace-profile-linux-x86-64;\${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }}"
+    steps: []
+`),
+  )
+})
+
+test('snapshot guard assertion reads a folded job-level if independently of field order', () => {
+  assert.doesNotThrow(() =>
+    assertPackPrSnapshotGuard(`jobs:
+  pack-pr-snapshot:
+    runs-on:
+      - "namespace-profile-linux-x86-64;\${{ github.event.pull_request.head.repo.full_name == github.repository }}"
+    if: >-
+      github.event_name == 'pull_request'
+    steps: []
+`),
+  )
+  assert.throws(
+    () =>
+      assertPackPrSnapshotGuard(`jobs:
+  pack-pr-snapshot:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name ==
+        github.repository
+    runs-on: ubuntu-24.04
+`),
+    assert.AssertionError,
+  )
 })
 
 test('snapshot guard assertion rejects a same-repo guard in the snapshot job itself', () => {
   assert.throws(
     () =>
-      assertPackPrSnapshotGuard("jobs:\n  pack-pr-snapshot:\n    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository\n    steps: []\n"),
+      assertPackPrSnapshotGuard(`jobs:
+  pack-pr-snapshot:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    steps: []
+`),
     assert.AssertionError,
-  )
-})
-
-test('snapshot guard assertion allows a same-repo condition in trusted runner configuration', () => {
-  assert.doesNotThrow(() =>
-    assertPackPrSnapshotGuard("jobs:\n  pack-pr-snapshot:\n    if: github.event_name == 'pull_request'\n    runs-on: [\"namespace-profile-linux-x86-64;github.run-id=\u0024{{ github.run_id }}\u0024{{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && ';container.privileged=true' || '' }};job.priority=3\"]\n    steps: []\n"),
   )
 })
 
@@ -349,11 +463,8 @@ test('generated promotion workflow is anchored to trusted main', async () => {
   assert.match(dispatch, /cohort_failed=true.*scan_failed=true.*continue/s)
   assert.match(dispatch, /if \[ "\$scan_failed" = true \]; then\s+exit 1/s)
 
-  const checkoutStart = workflow.indexOf('- name: Checkout trusted validator only')
-  const checkoutEnd = workflow.indexOf(
-    '\n      - name: Use pinned Node validator runtime',
-    checkoutStart,
-  )
+  const checkoutStart = findStep(workflow, 'Checkout trusted validator only')
+  const checkoutEnd = findStep(workflow, 'Use pinned Node validator runtime', checkoutStart)
   assert.notEqual(checkoutStart, -1)
   assert.notEqual(checkoutEnd, -1)
   const checkout = workflow.slice(checkoutStart, checkoutEnd)
@@ -377,9 +488,10 @@ test('generated promotion workflow is anchored to trusted main', async () => {
 
   const publish = workflow.slice(publishStart, nextJobStart)
   assert.match(publish, /pull-requests: read/)
-  const publishNodeSetupStart = publish.indexOf('- name: Use pinned npm trusted-publishing client')
-  const publishNodeSetupEnd = publish.indexOf(
-    '\n      - name: Download validated promotion artifact',
+  const publishNodeSetupStart = findStep(publish, 'Use pinned npm trusted-publishing client')
+  const publishNodeSetupEnd = findStep(
+    publish,
+    'Download validated promotion artifact',
     publishNodeSetupStart,
   )
   assert.notEqual(publishNodeSetupStart, -1)

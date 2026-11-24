@@ -170,10 +170,8 @@ export const concatWithLastElement: {
 export const emitIfEmpty: {
   <A>(fallbackValue: A): <E, R>(stream: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>
   <A, E, R>(stream: Stream.Stream<A, E, R>, fallbackValue: A): Stream.Stream<A, E, R>
-} = Function.dual(
-  2,
-  <A, E, R>(stream: Stream.Stream<A, E, R>, fallbackValue: A): Stream.Stream<A, E, R> =>
-    concatWithLastElement(stream, (lastElement) =>
-      lastElement._tag === 'None' ? Stream.make(fallbackValue) : Stream.empty,
-    ),
+} = Function.dual(2, <A, E, R>(stream: Stream.Stream<A, E, R>, fallbackValue: A): Stream.Stream<A, E, R> =>
+  concatWithLastElement(stream, (lastElement) =>
+    lastElement._tag === 'None' ? Stream.make(fallbackValue) : Stream.empty,
+  ),
 )
