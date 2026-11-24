@@ -43,6 +43,27 @@ The pure core lives in [01-syncstate/](./01-syncstate/spec.md); the two
 drivers that feed it (queues, batching, retry, cursors) in
 [02-processors/](./02-processors/spec.md).
 
+## Two drivers, two variations
+
+Each driver runs that machine with one owner, but neither is a classical
+state machine (pure transitions, slow work handed back as output, one
+queued message at a time, no answer to the sender):
+
+| Classical rule | Leader | Client session |
+| --- | --- | --- |
+| Transitions are pure | Writes to disk via `LeaderPersistence` | Writes to SQLite itself |
+| Slow work is returned as output | Starts background work itself | Hands it to the runner |
+| Queued, and a turn never waits | Mailbox; a turn may wait | No queue; a turn never waits |
+| Sender gets no answer | Acknowledged later | Answered immediately |
+
+The leader is a mailbox machine whose turns may do slow work: it waits for
+the durable write inside the turn, and backend I/O reports back as new
+messages. The session cannot queue, because `store.commit` must return with
+the change applied, so every turn finishes on the spot and a runner does all
+the waiting, reporting back as messages. In both, a late answer from
+superseded work is ignored. Details:
+[02-processors/](./02-processors/spec.md).
+
 ## Failure is a normal input
 
 Being offline, being behind (`ServerAheadError`), pushing a stale generation

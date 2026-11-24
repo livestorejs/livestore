@@ -2,6 +2,7 @@ import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 import { makeInMemoryAdapter, makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
+import { devtoolsProtocolVersion, liveStoreVersion } from '@livestore/common'
 import { useStore } from '@livestore/react'
 import { omitUndefineds } from '@livestore/utils'
 
@@ -14,6 +15,8 @@ const resetPersistence = import.meta.env.DEV && searchParams.get('reset') !== nu
 const sessionId = searchParams.get('sessionId')
 const clientId = searchParams.get('clientId')
 const adapterKind = (searchParams.get('adapter') ?? 'persisted') as 'persisted' | 'inmemory'
+document.documentElement.dataset.liveStoreVersion = liveStoreVersion
+document.documentElement.dataset.devtoolsProtocolVersion = String(devtoolsProtocolVersion)
 
 if (resetPersistence === true) {
   searchParams.delete('reset')

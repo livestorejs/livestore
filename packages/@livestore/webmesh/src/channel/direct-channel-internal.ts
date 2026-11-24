@@ -7,6 +7,7 @@ import {
   Fiber,
   Predicate,
   Queue,
+  Result,
   Schema,
   Scope,
   Stream,
@@ -50,11 +51,13 @@ export const makeDirectChannelInternal = ({
   channelVersion,
   scope,
   sourceId,
+  onHigherVersion,
 }: MakeDirectChannelArgs & {
   channelVersion: number
   /** We're passing in the closeable scope from the wrapping direct channel */
   scope: Scope.Closeable
   sourceId: string
+  onHigherVersion: (version: number) => void
 }): Effect.Effect<
   WebChannel.WebChannel<any, any>,
   typeof MeshSchema.DirectChannelResponseNoTransferables.Type,
@@ -97,6 +100,9 @@ export const makeDirectChannelInternal = ({
     const channelStateRef: { current: ChannelState } = {
       current: { _tag: 'Initial' },
     }
+    // Request IDs are unique to this negotiation attempt. The shared input queue
+    // can still contain responses to older generations or established probes.
+    const pendingRequestIds = new Set<string>()
 
     const processMessagePacket = ({ packet, respondToSender }: MessageQueueItem) =>
       Effect.gen(function* () {
@@ -118,18 +124,36 @@ export const makeDirectChannelInternal = ({
         // )
 
         if (channelState._tag === 'Initial') return shouldNeverHappen()
+        if (
+          packet._tag !== 'DirectChannelRequest' &&
+          (channelState._tag === 'Established' || pendingRequestIds.has(packet.reqId) === false)
+        ) {
+          // We own a transferred response port even when its request is obsolete.
+          if (packet._tag === 'DirectChannelResponseSuccess') yield* Effect.sync(() => packet.port.close())
+          return
+        }
 
         if (packet._tag === 'DirectChannelResponseNoTransferables') {
           yield* Deferred.fail(deferred, packet)
           return 'close'
         }
 
+        if (
+          packet._tag === 'DirectChannelRequest' &&
+          'otherSourceId' in channelState &&
+          packet.sourceId !== channelState.otherSourceId
+        ) {
+          // A peer can disappear before establishment, leaving an abandoned MessagePort.
+          yield* Effect.spanEvent(`force-new-channel`)
+          yield* Scope.close(scope, Exit.succeed('force-new-channel'))
+          return 'close'
+        }
         // If the other side has a higher version, we need to close this channel and
         // recreate it with the new version
         if (packet.channelVersion > channelVersion) {
           yield* Effect.spanEvent(`incoming packet has higher version (${packet.channelVersion}), closing channel`)
+          onHigherVersion(packet.channelVersion)
           yield* Scope.close(scope, Exit.succeed('higher-version-expected'))
-          // TODO include expected version in the error so the channel gets recreated with the new version
           return 'close'
         }
 
@@ -150,21 +174,10 @@ export const makeDirectChannelInternal = ({
             `incoming packet has lower version (${packet.channelVersion}), sending request to reconnect (${newPacket.id})`,
           )
 
+          if (channelState._tag !== 'Established') pendingRequestIds.add(newPacket.id)
           yield* sendPacket(newPacket)
 
           return
-        }
-
-        if (channelState._tag === 'Established' && packet._tag === 'DirectChannelRequest') {
-          if (packet.sourceId === channelState.otherSourceId) {
-            return
-          } else {
-            // In case the instance of the source has changed, we need to close the channel
-            // and reconnect with a new channel
-            yield* Effect.spanEvent(`force-new-channel`)
-            yield* Scope.close(scope, Exit.succeed('force-new-channel'))
-            return 'close'
-          }
         }
 
         switch (packet._tag) {
@@ -192,6 +205,7 @@ export const makeDirectChannelInternal = ({
                 `Re-sending new request (${newRequestPacket.id}) for incoming request (${packet.id})`,
               )
 
+              pendingRequestIds.add(newRequestPacket.id)
               yield* sendPacket(newRequestPacket)
             }
 
@@ -226,20 +240,23 @@ export const makeDirectChannelInternal = ({
 
               channelStateRef.current = { _tag: 'winner:ResponseSent', channel, otherSourceId: packet.sourceId }
 
-              // Now we wait for the other side to respond via the channel
-              yield* channel.listen.pipe(
-                Stream.mapEffect(Effect.fromResult),
-                Stream.filter(Schema.is(MeshSchema.DirectChannelPing)),
-                Stream.take(1),
-                Stream.runDrain,
-              )
+              // Keep processing mesh requests while waiting on the port: a replacement peer
+              // must be able to cancel this handshake without sending on the abandoned port.
+              yield* Effect.gen(function* () {
+                yield* channel.listen.pipe(
+                  Stream.mapEffect(Effect.fromResult),
+                  Stream.filter(Schema.is(MeshSchema.DirectChannelPing)),
+                  Stream.take(1),
+                  Stream.runDrain,
+                )
 
-              yield* channel.send(MeshSchema.DirectChannelPong.make({}))
+                yield* channel.send(MeshSchema.DirectChannelPong.make({}))
 
-              yield* Effect.spanEvent(`winner side: established`)
-              channelStateRef.current = { _tag: 'Established', otherSourceId: packet.sourceId }
-
-              yield* Deferred.succeed(deferred, channel)
+                yield* Effect.spanEvent(`winner side: established`)
+                channelStateRef.current = { _tag: 'Established', otherSourceId: packet.sourceId }
+                pendingRequestIds.clear()
+                yield* Deferred.succeed(deferred, channel)
+              }).pipe(Effect.forkIn(scope))
             } else {
               yield* Effect.spanEvent(`loser side: waiting for response`)
               // Wait for `DirectChannelResponseSuccess` packet
@@ -254,6 +271,9 @@ export const makeDirectChannelInternal = ({
                 `Expected to find direct channel response from ${target}, but was in ${channelState._tag} state`,
               )
             }
+            // The first correlated port owns this attempt. Late responses from
+            // alternate routes must not create a second readiness handshake.
+            pendingRequestIds.clear()
 
             // See direct-channel notes above
             const channel = yield* WebChannel.messagePortChannelWithAck({
@@ -262,28 +282,25 @@ export const makeDirectChannelInternal = ({
               debugId: channelVersion,
             }).pipe(Effect.andThen(WebChannel.toOpenChannel))
 
-            const waitForPongFiber = yield* channel.listen.pipe(
-              Stream.mapEffect(Effect.fromResult),
-              Stream.filter(Schema.is(MeshSchema.DirectChannelPong)),
-              Stream.take(1),
-              Stream.runDrain,
-              Effect.forkChild,
-            )
+            yield* Effect.gen(function* () {
+              const waitForPongFiber = yield* channel.listen.pipe(
+                Stream.mapEffect(Effect.fromResult),
+                Stream.filter(Schema.is(MeshSchema.DirectChannelPong)),
+                Stream.take(1),
+                Stream.runDrain,
+                Effect.forkChild,
+              )
 
-            // There seems to be some scenario where the initial ping message is lost.
-            // As a workaround until we find the root cause, we're retrying the ping a few times.
-            // TODO write a test that reproduces this issue and fix the root cause ()
-            // https://github.com/livestorejs/livestore/issues/262
-            yield* channel
-              .send(MeshSchema.DirectChannelPing.make({}))
-              .pipe(Effect.timeout(10), Effect.retry({ times: 2 }))
+              // Port readiness is not a deadline: only scope closure or a replacement peer
+              // cancels this handshake. The mesh control queue remains available meanwhile.
+              yield* channel.send(MeshSchema.DirectChannelPing.make({}))
+              yield* Fiber.join(waitForPongFiber)
 
-            yield* Fiber.join(waitForPongFiber)
-
-            yield* Effect.spanEvent(`loser side: established`)
-            channelStateRef.current = { _tag: 'Established', otherSourceId: channelState.otherSourceId }
-
-            yield* Deferred.succeed(deferred, channel)
+              yield* Effect.spanEvent(`loser side: established`)
+              channelStateRef.current = { _tag: 'Established', otherSourceId: channelState.otherSourceId }
+              pendingRequestIds.clear()
+              yield* Deferred.succeed(deferred, channel)
+            }).pipe(Effect.forkIn(scope))
 
             return
           }
@@ -324,6 +341,7 @@ export const makeDirectChannelInternal = ({
         return yield* Effect.fail(noTransferableResponse)
       }
 
+      pendingRequestIds.add(packet.id)
       yield* sendPacket(packet)
       yield* Effect.spanEvent(`initial edge request sent (${packet.id})`)
     })
@@ -345,6 +363,14 @@ export const makeDirectChannelInternal = ({
     }).pipe(Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
 
     const channel = yield* Deferred.await(deferred)
+    const isHandshakeMessage = Schema.is(Schema.Union([MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong]))
 
-    return channel
+    return {
+      ...channel,
+      schema: schema_,
+      // Handshake messages belong to the transport, including any late duplicates.
+      listen: channel.listen.pipe(
+        Stream.filter((message) => Result.isFailure(message) || !isHandshakeMessage(message.success)),
+      ),
+    }
   }).pipe(Effect.withSpanScoped(`makeDirectChannel:${channelVersion}`))

@@ -118,17 +118,16 @@ resolution path used by the fixture it runs — including transitive paths such 
 the one under `@livestore/adapter-node`; replacing only an unused top-level
 `node_modules` entry is not sufficient proof.
 
-Direct web session liveness is still required in the normal Playwright DevTools
-suite, but it is not claimed as exact-artifact release proof because that suite
-exercises the current workspace package graph rather than the repacked
-`@livestore/devtools-vite` artifact selected by the LiveStore manifest.
+The normal Playwright DevTools suite uses the current workspace runtime package
+graph with the exact Vite and Chrome UI artifacts selected by
+`release/devtools-artifact.json`. Both downloads pass the same checksum,
+metadata, and protocol verification as release artifacts before browser tests run.
+This complements release liveness certification; it does not replace proof that
+the repacked npm package serves the bundle through Vite.
 
-The liveness scenario must also be independent of developer-machine sponsor
-activation state. Public DevTools artifacts enforce the sponsor/license gate
-by default, but release certification runs with the explicit
-`LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false` test override so CI verifies
-connectivity and protocol compatibility rather than a maintainer's local
-license cache.
+DevTools artifacts do not require a sponsor license. Release certification runs
+without a license-enforcement override and verifies connectivity and protocol
+compatibility independently of developer-machine activation state.
 
 ### Durable-State Rule
 

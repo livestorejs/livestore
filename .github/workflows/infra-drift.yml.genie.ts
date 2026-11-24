@@ -21,7 +21,6 @@ import {
   livestoreSetupSteps,
   nixDiagnosticsArtifactStep,
   runDevenvTasksBefore,
-  savePnpmStateStep,
 } from '../../genie/repo.ts'
 
 export default githubWorkflow({
@@ -54,7 +53,6 @@ export default githubWorkflow({
             TF_VAR_mxbai_api_key: '${{ secrets.MXBAI_API_KEY }}',
           },
         },
-        savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
         nixDiagnosticsArtifactStep(),
       ],
     },

@@ -67,6 +67,7 @@ const rootWorkspaceBase = packageJson.aggregateFromPackages({
 })
 
 const rootWorkspaceExtraFields = {
+  packageManager: 'pnpm@12.17.0',
   scripts: {
     changeset: 'changeset',
     'changeset:status': 'changeset status',
@@ -89,6 +90,7 @@ const rootWorkspace = {
     return `${JSON.stringify(
       {
         ...generated,
+        packageManager: rootWorkspaceExtraFields.packageManager,
         scripts: {
           ...generated.scripts,
           ...rootWorkspaceExtraFields.scripts,

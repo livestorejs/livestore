@@ -200,6 +200,11 @@ in
         fi
 
         mono test integration "$suite"
+        if [ "$suite" = devtools ]; then
+          LIVESTORE_TEST_DEVTOOLS_VERSION_SKEW=1 \
+            PLAYWRIGHT_HTML_OUTPUT_DIR=playwright-report/version-skew \
+            bun tests/integration/scripts/run-tests.ts devtools --grep 'package version skew' --workers 1
+        fi
       '';
       after = [ "setup:strict" ];
     };
@@ -561,6 +566,18 @@ in
         : "''${PR_NUMBER:?PR_NUMBER is required}"
         : "''${SNAPSHOT_OUT_DIR:?SNAPSHOT_OUT_DIR is required}"
         mono release snapshot-pack --git-sha="$GIT_SHA" --pr-number="$PR_NUMBER" --out-dir="$SNAPSHOT_OUT_DIR"
+      '';
+      after = [ "setup:strict" ];
+    };
+
+    "release:artifact:pack" = {
+      description = "Build and pack release packages without publishing credentials";
+      exec = ''
+        set -euo pipefail
+        mono release artifact-pack \
+          --version "''${RELEASE_CANDIDATE_VERSION:?}" \
+          --npm-tag "''${RELEASE_CANDIDATE_NPM_TAG:?}" \
+          --out-dir "''${RELEASE_ARTIFACT_DIR:?}"
       '';
       after = [ "setup:strict" ];
     };

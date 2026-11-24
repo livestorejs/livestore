@@ -17,14 +17,6 @@
     after = [ "setup:strict" ];
   };
 
-  # Drift-check the live GitHub App definition against .github/reconcile-app-manifest.json.
-  # Requires RECONCILE_APP_ID and RECONCILE_APP_PRIVATE_KEY.
-  tasks."github:app:check" = {
-    description = "Check the reconcile GitHub App definition against the committed manifest";
-    exec = "mono github app check";
-    after = [ "setup:strict" ];
-  };
-
   tasks."github:rulesets:check" = {
     description = "Check live GitHub repository rulesets against generated source files";
     exec = ''

@@ -1,7 +1,7 @@
 import { Devtools, liveStoreVersion } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { isDevEnv } from '@livestore/utils'
-import { Effect, Stream } from '@livestore/utils/effect'
+import { Effect } from '@livestore/utils/effect'
 import { WebChannelBrowser } from '@livestore/utils/effect/browser'
 import * as Webmesh from '@livestore/webmesh'
 import * as WebmeshWorker from '@livestore/webmesh/worker'
@@ -79,14 +79,9 @@ export const connectWebmeshNodeClientSession = Effect.fn(function* ({
     yield* Effect.gen(function* () {
       const clientSessionStaticChannel = yield* DevtoolsWeb.makeStaticClientSessionChannel.clientSession
 
-      yield* clientSessionStaticChannel.send(
+      const { tabId } = yield* DevtoolsWeb.requestContentscriptMain(
+        clientSessionStaticChannel,
         DevtoolsWeb.ClientSessionContentscriptMainReq.make({ clientId, sessionId, storeId }),
-      )
-
-      const { tabId } = yield* clientSessionStaticChannel.listen.pipe(
-        Stream.mapEffect(Effect.fromResult),
-        Stream.runHead,
-        Effect.flatMap(Effect.fromOption),
       )
 
       const contentscriptMainNodeName = DevtoolsWeb.makeBrowserExtensionNodeName.contentscriptMain(tabId)

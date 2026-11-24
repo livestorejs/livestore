@@ -2,11 +2,9 @@ import path from 'node:path'
 
 import { UnknownError } from '@livestore/common'
 import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
-import { Effect, FetchHttpClient, Layer, Logger, OtelTracer, References, Schema } from '@livestore/utils/effect'
+import { Effect, FileSystem, Layer, Logger, Option, OtelTracer, References, Schema } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
-
-import { downloadChromeExtension } from './download-chrome-extension.ts'
 
 const cwd = path.resolve(import.meta.dirname, '..')
 
@@ -20,31 +18,6 @@ type IntegrationTestOptions = {
   readonly mode: 'headless' | 'ui' | 'dev-server'
   readonly localDevtoolsPreview: boolean
 }
-
-const viteDevServer = ({
-  useWorkspacePort,
-  useDevtoolsLocalPreview,
-}: {
-  app: 'todomvc'
-  useWorkspacePort: boolean
-  useDevtoolsLocalPreview: boolean
-}) =>
-  Effect.gen(function* () {
-    const devPort =
-      useWorkspacePort === true ? '4444' : yield* getFreePort.pipe(Effect.map(String), UnknownError.mapToUnknownError)
-
-    yield* cmd(`./node_modules/.bin/vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`, {
-      env: {
-        // Relative to vite config
-        TEST_LIVESTORE_SCHEMA_PATH_JSON: yield* Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown))(
-          './devtools/todomvc/livestore/schema.ts',
-        ).pipe(Effect.orDie),
-        LSD_DEVTOOLS_LOCAL_PREVIEW: useDevtoolsLocalPreview === true ? '1' : undefined,
-      },
-    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)), Effect.forkScoped)
-
-    return { devPort }
-  })
 
 export const runMiscTest = Effect.fn('test:misc')(function* ({ mode, localDevtoolsPreview }: IntegrationTestOptions) {
   yield* Effect.gen(function* () {
@@ -118,25 +91,35 @@ export const setupDevtools = Cli.Command.make(
   'setup-devtools',
   {},
   Effect.fn(function* () {
-    const targetDir = LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
-
-    yield* downloadChromeExtension({
-      targetDir,
-    }).pipe(Effect.provide(Layer.mergeAll(FetchHttpClient.layer, PlatformNode.NodeServices.layer)))
-
-    yield* Effect.logInfo(`Chrome extension downloaded to ${targetDir}`)
+    yield* prepareDevtools(path.dirname(LIVESTORE_DEVTOOLS_CHROME_DIST_PATH))
   }, UnknownError.mapToUnknownError),
 )
 
 export const runDevtoolsTest = Effect.fn('test:devtools')(function* ({
   mode,
   localDevtoolsPreview,
-}: IntegrationTestOptions) {
+  artifactManifest = path.resolve(cwd, '../../release/devtools-artifact.json'),
+  workers = Option.none(),
+  grep = Option.none(),
+}: IntegrationTestOptions & {
+  artifactManifest?: string
+  workers?: Option.Option<string>
+  grep?: Option.Option<string>
+}) {
   yield* Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    // Keep the extracted plugin beneath this workspace's node_modules so its external
+    // dependencies resolve through the same graph as the browser fixture.
+    const outDir = yield* fs.makeTempDirectoryScoped({
+      directory: path.join(cwd, 'node_modules'),
+      prefix: '.devtools-',
+    })
+    const artifact = yield* prepareDevtools(outDir, artifactManifest)
     const { devPort } = yield* viteDevServer({
       app: 'todomvc',
       useWorkspacePort: mode === 'dev-server',
       useDevtoolsLocalPreview: localDevtoolsPreview,
+      devtoolsViteEntry: artifact.viteEntry,
     })
 
     const spanContext = yield* OtelTracer.currentOtelSpan.pipe(
@@ -148,15 +131,25 @@ export const runDevtoolsTest = Effect.fn('test:devtools')(function* ({
       return yield* Effect.never
     } else {
       yield* cmd(
-        ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/devtools/*'],
+        [
+          'pnpm',
+          'playwright',
+          'test',
+          mode === 'ui' ? '--ui' : undefined,
+          'src/tests/playwright/devtools/*',
+          ...Option.match(workers, { onNone: () => [], onSome: (value) => ['--workers', value] }),
+          ...Option.match(grep, { onNone: () => [], onSome: (value) => ['--grep', value] }),
+        ],
         {
           env: {
             FORCE_PLAYWRIGHT_VIA_CLI: '1',
-            PLAYWRIGHT_SUITE: 'devtools',
+            PLAYWRIGHT_SUITE:
+              process.env.LIVESTORE_TEST_DEVTOOLS_VERSION_SKEW === '1' ? 'devtools-version-skew' : 'devtools',
             PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
             PLAYWRIGHT_UI: mode === 'ui' ? '1' : '0',
             LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
             SPAN_CONTEXT_JSON: spanContext,
+            LIVESTORE_DEVTOOLS_CHROME_DIST_PATH: artifact.chromeDir,
           },
         },
       ).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
@@ -169,6 +162,12 @@ export const devtoolsTest = Cli.Command.make(
   {
     mode: modeOption,
     localDevtoolsPreview: localDevtoolsPreviewOption,
+    artifactManifest: Cli.Flag.String('artifact-manifest').pipe(
+      Cli.Flag.withDefault(path.resolve(cwd, '../../release/devtools-artifact.json')),
+      Cli.Flag.withDescription('Artifact manifest to verify and extract (also accepts local asset paths)'),
+    ),
+    workers: Cli.Flag.String('workers').pipe(Cli.Flag.optional),
+    grep: Cli.Flag.String('grep').pipe(Cli.Flag.optional),
   },
   runDevtoolsTest,
 )
@@ -176,6 +175,51 @@ export const devtoolsTest = Cli.Command.make(
 export const commands = [miscTest, todomvcTest, devtoolsTest, setupDevtools] as const
 
 export const command = Cli.Command.make('integration-misc').pipe(Cli.Command.withSubcommands(commands))
+
+const prepareDevtools = (outDir: string, manifest = path.resolve(cwd, '../../release/devtools-artifact.json')) =>
+  Effect.gen(function* () {
+    yield* cmd([
+      'bun',
+      path.resolve(cwd, '../../scripts/src/commands/devtools-artifact.ts'),
+      'prepare-integration',
+      '--manifest',
+      path.resolve(manifest),
+      '--out-dir',
+      outDir,
+    ])
+    return { viteEntry: path.join(outDir, 'package/dist/plugin.js'), chromeDir: path.join(outDir, 'chrome') }
+  }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+
+const viteDevServer = ({
+  useWorkspacePort,
+  useDevtoolsLocalPreview,
+  devtoolsViteEntry,
+}: {
+  app: 'todomvc'
+  useWorkspacePort: boolean
+  useDevtoolsLocalPreview: boolean
+  devtoolsViteEntry?: string
+}) =>
+  Effect.gen(function* () {
+    const devPort =
+      useWorkspacePort === true ? '4444' : yield* getFreePort.pipe(Effect.map(String), UnknownError.mapToUnknownError)
+
+    yield* cmd(`./node_modules/.bin/vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`, {
+      env: {
+        // Relative to vite config
+        TEST_LIVESTORE_SCHEMA_PATH_JSON: yield* Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown))(
+          './devtools/todomvc/livestore/schema.ts',
+        ).pipe(Effect.orDie),
+        LSD_DEVTOOLS_LOCAL_PREVIEW: useDevtoolsLocalPreview === true ? '1' : undefined,
+        LIVESTORE_DEVTOOLS_VITE_ENTRY: devtoolsViteEntry,
+        // Automated fixtures must not export to an inherited, server-only collector.
+        // Keep interactive dev-server tracing available for local debugging.
+        ...(useWorkspacePort === false ? { VITE_OTEL_EXPORTER_OTLP_ENDPOINT: '' } : {}),
+      },
+    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)), Effect.forkScoped)
+
+    return { devPort }
+  })
 
 if (import.meta.main === true) {
   Cli.Command.run(command, {

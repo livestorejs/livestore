@@ -39,6 +39,13 @@ than a per-repo secret.
 
 ## Define the App As-Code Via a Committed Manifest + Drift-Check
 
+**Amended 2026-11-03:** The committed manifest remains authoritative, but
+App-definition verification is now manual. The repository CLI no longer receives
+the App private key or mints JWTs for `GET /app`; only the dedicated
+token-minting action receives the key. The automated App-definition drift-check
+described in the original rationale below has been removed. Ruleset
+reconciliation and its installation-token drift check remain automated.
+
 The App's definition is a committed [App Manifest](../.reference/github-app-platform-constraints.md)
 (name, `default_permissions`, `default_events`, no webhook). A drift-check reads
 the live App via `GET /app` and diffs it against the manifest — symmetric with

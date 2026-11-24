@@ -1,16 +1,20 @@
-import fs from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
-
 import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
-import { test } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 import * as Playwright from '@livestore/effect-playwright'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { type Scope, Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
 
-import { checkConnectionRemainsActive, checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
+import { makePersistentContextPath } from '../shared-test.ts'
+import { makeDevtoolsFixtureUrl } from './fixture-url.ts'
+import {
+  addPostReloadTodos,
+  checkConnectionRemainsActive,
+  checkDevtoolsState,
+  checkProtocolMismatchOverlay,
+  reloadAppAndWaitForStore,
+} from './shared.ts'
 
 const usedPages = new Set<PW.Page>()
 const appStoreId = 'app-root'
@@ -87,9 +91,7 @@ const makeTabPair = (
     usedPages.add(page)
     yield* Effect.addFinalizer(() => Effect.sync(() => usedPages.delete(page)))
 
-    yield* Effect.tryPromise(() =>
-      page.goto(`${url}/devtools/todomvc?sessionId=${tabName}&clientId=${tabName}&adapter=${adapter}`),
-    )
+    yield* Effect.tryPromise(() => page.goto(makeDevtoolsFixtureUrl(`${url}/devtools/todomvc`, tabName, adapter)))
 
     // Skip OTel span linking when testing DevTools protocol mismatch (app may not initialize properly)
     if (options?.appDevtoolsProtocolVersionOverride == null && options?.skipOtelSpanLink !== true) {
@@ -137,7 +139,7 @@ const makeTabPair = (
   })
 
 const PWLive = Effect.gen(function* () {
-  const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
+  const persistentContextPath = yield* makePersistentContextPath
 
   return Playwright.browserContextLayer({ persistentContextPath })
 }).pipe(Layer.unwrap)
@@ -173,7 +175,7 @@ const runTest =
 
 ;(['persisted', 'inmemory'] as const).forEach((adapter) => {
   test(
-    `single tab (adapter=${adapter})`,
+    `single tab with package version skew (adapter=${adapter})`,
     runTest(
       Effect.gen(function* () {
         const tab1 = yield* makeTabPair(
@@ -184,6 +186,15 @@ const runTest =
 
         yield* Effect.gen(function* () {
           yield* Effect.tryPromise(async () => {
+            // The fixture changes the runtime in every app realm, not just handshake
+            // metadata. Selecting this real session must boot the artifact's own UI store.
+            if (process.env.LIVESTORE_TEST_DEVTOOLS_VERSION_SKEW === '1') {
+              await expect(tab1.page.locator('html')).toHaveAttribute(
+                'data-live-store-version',
+                '0.0.0-devtools-version-skew',
+              )
+            }
+            await expect(tab1.page.locator('html')).toHaveAttribute('data-devtools-protocol-version', '1')
             const el = tab1.page.locator('.new-todo').describe('tab-1:new-todo')
             await el.waitFor({ timeout: 3000 })
 
@@ -207,11 +218,12 @@ const runTest =
             })
 
             await test.step('devtools-tab-1:reload', async () => {
-              await tab1.page.reload()
+              await reloadAppAndWaitForStore(tab1.page, appStoreId)
+              await addPostReloadTodos(tab1.page)
             })
 
-            // Why: In-memory adapter is volatile; events aren’t persisted, so after reload the eventlog is empty and todos reset to 0.
-            const tablesAfterReload = adapter === 'inmemory' ? ['uiState (1)', 'todos (0)'] : tables
+            // Only the replacement app can create these two todos; stale pre-reload UI has one.
+            const tablesAfterReload = ['uiState (1)', adapter === 'inmemory' ? 'todos (2)' : 'todos (3)']
 
             await checkDevtoolsState({
               devtools: tab1.devtools,
@@ -309,19 +321,21 @@ const runTest =
                   ),
               ])
 
-              await tab1.page.reload()
+              await reloadAppAndWaitForStore(tab1.page, appStoreId)
+              await addPostReloadTodos(tab1.page)
+              const tablesAfterReload = ['uiState (2)', 'todos (3)']
 
               await Promise.all([
                 tab1.page.locator('.todo-list li label:text("Buy milk")').describe('tab-1:Buy milk').waitFor(),
                 checkDevtoolsState({
                   devtools: tab1.devtools,
                   label: 'devtools-tab-1',
-                  expect: { leader: false, alreadyLoaded: true, tables },
+                  expect: { leader: false, alreadyLoaded: true, tables: tablesAfterReload },
                 }),
                 checkDevtoolsState({
                   devtools: tab2.devtools,
                   label: 'devtools-tab-2',
-                  expect: { leader: true, alreadyLoaded: true, tables },
+                  expect: { leader: true, alreadyLoaded: true, tables: tablesAfterReload },
                 }),
               ])
             })
@@ -385,11 +399,11 @@ const shutdownTab = Effect.fn('shutdown-tab')(function* (tab: PW.Page, options?:
 
   const didShutdown = yield* Playwright.withPage(
     () =>
-      tab.evaluate((storeId) => {
+      tab.evaluate(async (storeId) => {
         const store = (window as any).__debugLiveStore?.[storeId]
         if (store === undefined) return false
 
-        store.shutdown()
+        await store.shutdownPromise()
         return true
       }, appStoreId),
     { label: 'shutdown' },
@@ -397,10 +411,6 @@ const shutdownTab = Effect.fn('shutdown-tab')(function* (tab: PW.Page, options?:
 
   if (didShutdown === false && options?.expectStore !== false) {
     return yield* Effect.die(new Error('Expected LiveStore debug store to be available for shutdown'))
-  }
-
-  if (didShutdown === true) {
-    yield* Playwright.withPage(() => tab.getByText('LiveStore Shutdown').waitFor())
   }
 })
 
@@ -427,15 +437,11 @@ test(
           // Click on the session in devtools to connect
           await tab1.devtools.locator(`a:text("${tabName}:${tabName}")`).describe('devtools:click-session').click()
 
-          const devtoolsVersion: string = await tab1.devtools.evaluate(() => {
-            return (window as any).__LIVESTORE_DEVTOOLS_VERSION__ ?? 'unknown'
-          })
-
           await checkProtocolMismatchOverlay({
             devtools: tab1.devtools,
             label: 'devtools-protocol-mismatch',
             expect: {
-              devtoolsVersion: devtoolsVersion !== 'unknown' ? devtoolsVersion : '0.4', // Partial match
+              appDevtoolsProtocolVersion: 999,
               appVersion: fakeAppVersion,
             },
           })

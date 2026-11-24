@@ -12,7 +12,7 @@ Draft.
 ```
 eventlog ──▶ materializer(event, ctx) ──▶ mutations ──▶ state ──▶ queries
    ▲              │ ctx.query (read current state)         │
-   └── rebuild ◀──┴──── rollback (session changesets) ◀────┘
+   └── rebuild ◀──┴─ rollback (materialization journal) ◀──┘
 ```
 
 ## Materializer Contract
@@ -35,10 +35,12 @@ type Materializer<TEventDef> = (
 - `context.currentFacts` is a constant empty `Map` today — facts are not
   wired into materialization (see the experimental marker in
   `../01-event-model/spec.md`).
-- In dev, materializer results are hashed; the leader compares an incoming
-  event's session hash against its own (`materialize-event.ts:78-84`) —
-  only when a session hash is present — raising
-  `MaterializerHashMismatchError` on divergence.
+- In dev, materializer results are hashed (`materialize-event.ts:89`). The
+  client session records its hash for each pending event and compares it
+  with the leader's hash when the leader confirms that event; it also
+  compares the leader's hash for events it materializes from a pull. Either
+  divergence raises `MaterializerHashMismatchError` (see
+  `../03-sync/02-processors/spec.md`).
 - Coverage is total at the type level: the `materializers()` builder
   requires a handler per non-derived event and excludes derived events
   (LS.SYS.STATE-R04).
@@ -46,9 +48,9 @@ type Materializer<TEventDef> = (
 ### Execution boundaries
 
 Leader-side batch materialization writes the state DB and the eventlog DB in
-two *coordinated* transactions — begun and committed in lockstep inside one
-uninterruptible Effect with a joint rollback finalizer
-(`LeaderSyncProcessor.ts:849-886`). This protects against errors and fiber
+two *coordinated* transactions — begun in lockstep and committed state-first
+inside one uninterruptible Effect with a joint rollback on failure
+(`LeaderPersistence.ts:184-224`). This protects against errors and fiber
 interruption, but is **not** atomic across the two databases under process
 crash; divergence heals via rebuild on next boot (state is derived). Batch
 mechanics live in `../03-sync/02-processors/`.
@@ -58,7 +60,7 @@ mechanics live in `../03-sync/02-processors/`.
 The classification is contract (LS.SYS.STATE-R07):
 
 | Failure | Kind |
-| --- | --- |
+| ---------------------------------------------------------------------------- | ---------------------------- |
 | `MaterializeError` (materializer threw / bad SQL) | recoverable tagged error |
 | `MaterializerHashMismatchError` (dev determinism check) | recoverable tagged error |
 | Unknown event definition on **write** (`eventlog.ts:228`) | defect (`shouldNeverHappen`) |
@@ -75,7 +77,7 @@ A realization supplies (LS.SYS.STATE-R05):
 | Mutation format | What a `MaterializerResult` is (e.g. SQL statement) |
 | Query surface | Typed read-only queries for app + live queries |
 | Rebuild | Recreate state from the full eventlog |
-| Rollback | Undo recent materializations for rebase (e.g. SQLite session changesets) |
+| Rollback | Undo recent materializations for rebase (e.g. SQLite's materialization journal) |
 | Schema drift handling | Detect definition changes, trigger rebuild |
 
 Realizations: [01-sqlite](./01-sqlite/spec.md) (primary, shipping).

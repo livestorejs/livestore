@@ -48,12 +48,15 @@ Current RFC state: RFC 0001 (multi-store API) is shipped and folded into
 [`02-system/05-store/`](../02-system/05-store/spec.md) — whose spec records
 where the implementation diverged from the proposal (e.g. `dispose()` vs the
 RFC's `clear()`, longest-wins cache-time); the RFC is retained as a historical
-record. RFC 0002 (command replay) is an active proposal (root LS-DQ1).
+record. RFC 0004 (serialized sync processors) is accepted and folded into
+[`02-system/03-sync/02-processors/`](../02-system/03-sync/02-processors/spec.md)
+(decision 0003 there); the RFC is retained as a historical record. RFC 0002
+(command replay) is an active proposal (root LS-DQ1).
 
 ## Contribution Scope Tiers (LS.CONTRIB-R04)
 
 | Tier | Content (today) |
-| --- | --- |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
 | Help wanted | wa-sqlite build maintainer, examples maintainer, Solid integration maintainer; `help wanted` issues |
 | Encouraged | Docs improvements, examples, test cases, bug fixes, benchmarking |
 | Potentially in scope | New features, larger core changes (RFC first), new integrations, monorepo/docs-site changes |
