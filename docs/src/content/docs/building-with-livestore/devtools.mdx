@@ -32,6 +32,8 @@ LiveStore DevTools is free for everyone. No license, trial, sponsorship, or sign
 
 Requires the `@livestore/devtools-vite` package to be installed and configured in your Vite config:
 
+With pnpm's `auto-install-peers=false`, also install `effect@4.1.4`, `@effect/platform-browser@4.1.4`, and `@effect/opentelemetry@4.1.4`, the plugin's peer dependencies.
+
 <ViteConfigSnippet />
 
 The devtools can be opened in a separate tab (via e.g. `localhost:3000/_livestore/web). You should see the Devtools URL logged in the browser console when running the app.
@@ -46,7 +48,7 @@ Please make sure to manually install the extension version matching the LiveStor
 
 To install the extension:
 
-1. **Unpack the ZIP file** (e.g. `livestore-devtools-chrome-0.3.0.zip`) into a folder on your computer.
+1. **Unpack the ZIP file** (`livestore-devtools-chrome-<version>.zip`, where `<version>` is your LiveStore version) into a folder on your computer.
 2. Navigate to `chrome://extensions/` and enable **Developer mode** (toggle in the top-right corner).
 3. Click **"Load unpacked"** and select the unpacked folder or drag and drop the folder onto the page.
 
