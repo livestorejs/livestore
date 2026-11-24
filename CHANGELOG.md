@@ -19,6 +19,11 @@ Install the development build with `npm install @livestore/livestore@dev`.
   Prereleases use `LiveStore Devtools (Dev Build)` and retain their full version in `version_name`
   ([#1744](https://github.com/livestorejs/livestore/pull/1744)).
 
+### Changed
+
+- **Examples and documentation:** Use published DevTools 0.5.1, including license-free
+  startup and version-skew fixes ([#1739](https://github.com/livestorejs/livestore/issues/1739)).
+
 ## 0.5.1
 
 See the [documentation](https://docs.livestore.dev) for current features.

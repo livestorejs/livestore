@@ -51,9 +51,9 @@ export type GetNullableColumnNamesForTable<
   TSchema extends SqliteDsl.DbSchema,
   TTableName extends keyof TSchema,
 > = keyof {
-  [K in keyof GetColumns<TSchema, TTableName> as GetColumn<TSchema, TTableName, K>['nullable'] extends true
-    ? K
-    : never]: {}
+  [
+    K in keyof GetColumns<TSchema, TTableName> as GetColumn<TSchema, TTableName, K>['nullable'] extends true ? K : never
+  ]: {}
 }
 
 export type GetColumns<

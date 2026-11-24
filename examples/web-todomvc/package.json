@@ -16,9 +16,12 @@
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
+    "@effect/opentelemetry": "4.1.4",
+    "@effect/platform-browser": "4.1.4",
+    "effect": "4.1.4",
     "@cloudflare/vite-plugin": "1.13.12",
     "@cloudflare/workers-types": "4.20251118.0",
-    "@livestore/devtools-vite": "0.4.0-dev.25",
+    "@livestore/devtools-vite": "0.5.1",
     "@playwright/test": "1.64.1",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",

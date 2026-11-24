@@ -83,17 +83,22 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6
+      - # v6.1.0
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - name: Install Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
+      - # v3.24.1
+        name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@92957199488000b908fdad19f63711000965d8f3
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           extra-conf: |
             experimental-features = nix-command flakes
             accept-flake-config = true
+            connect-timeout = 10
+            stalled-download-timeout = 60
+            download-attempts = 3
             extra-substituters = 
             extra-trusted-public-keys = 
             access-tokens = github.com=${{ github.token }}
@@ -106,14 +111,14 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           FIRST_PARTY_OWNERS_JSON: '["overengineeringstudio"]'
           DEFAULT_REF: main
-          DEFAULT_REFS_JSON: '{"overengineeringstudio/effect-utils":"published-effect-4.0"}'
+          DEFAULT_REFS_JSON: '{}'
           DEFAULT_REF_POLICIES_JSON: '{"overengineeringstudio/effect-utils":{"defaultRef":"published","acceptedRefs":["published","main"]}}'
           VERIFY_REACHABLE: '1'
           NORMALIZE_GIT_BRANCH_REFS: '1'
           ALLOW_LEGACY_MEMBER_COMMIT_REFS: '0'
         run: |
           set -euo pipefail
-          node_out="$(nix build --no-update-lock-file --no-link --print-out-paths 'github:NixOS/nixpkgs/4ba99f3209788ed04f01af38f77ddb803ad6ec63?narHash=sha256-QKzNhJrBkLagm1tF3ifpCptUygt5eBYUxjdNWRSgzHc%3D#nodejs_24')"
+          node_out="$(nix build --no-update-lock-file --no-link --print-out-paths 'github:NixOS/nixpkgs/f4a03c008967841f2a0b3cb7c436fc6fc31671f6?narHash=sha256-ziZn2PvCJE5JEEpqTdxXwJpPB%2BL3YqoCpTAMCzyaP3U%3D#nodejs_24')"
           "$node_out/bin/node" <<'NODE'
           const fs = require('node:fs')
           const path = require('node:path')
@@ -488,8 +493,9 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Checkout trusted package topology
-        uses: actions/checkout@v4
+      - # v4.4.0
+        name: Checkout trusted package topology
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
@@ -680,20 +686,23 @@ jobs:
           echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
           echo "run-attempt=$run_attempt" >> "$GITHUB_OUTPUT"
           echo "source-run-url=$source_run_url" >> "$GITHUB_OUTPUT"
-      - name: Checkout trusted validator only
-        uses: actions/checkout@v4
+      - # v4.4.0
+        name: Checkout trusted validator only
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
           sparse-checkout: |
             .github/scripts/pr-snapshot-artifact.mjs
             scripts/src/generated/release-topology.json
-      - name: Use pinned Node validator runtime
-        uses: actions/setup-node@v4
+      - # v4.4.0
+        name: Use pinned Node validator runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24.15.0
-      - name: Download exact-run snapshot candidate
-        uses: actions/download-artifact@v4
+      - # v4.3.0
+        name: Download exact-run snapshot candidate
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: 'pr-snapshot-${{ steps.identity.outputs.head-sha }}-${{ steps.identity.outputs.run-attempt }}'
           path: '${{ github.workspace }}/tmp/pr-snapshot-artifact'
@@ -724,8 +733,9 @@ jobs:
           echo "package-count=$(jq -r '.packageCount' <<<"$result")" >> "$GITHUB_OUTPUT"
           echo "release-run-attempt=$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
           cp "$PUBLISH_LIST" "$ARTIFACT_DIR/trusted-publish-list.tsv"
-      - name: Upload validated snapshot candidate
-        uses: actions/upload-artifact@v4
+      - # v4.6.2
+        name: Upload validated snapshot candidate
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: 'validated-pr-snapshot-${{ steps.identity.outputs.head-sha }}-${{ steps.identity.outputs.run-id }}-${{ steps.validate.outputs.release-run-attempt }}'
           path: '${{ github.workspace }}/tmp/pr-snapshot-artifact/'
@@ -748,8 +758,9 @@ jobs:
     outputs:
       promotion-attempt: ${{ steps.handoff.outputs.promotion-attempt }}
     steps:
-      - name: Download validated snapshot candidate
-        uses: actions/download-artifact@v4
+      - # v4.3.0
+        name: Download validated snapshot candidate
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: 'validated-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}-${{ needs.validate-pr-snapshot.outputs.release-run-attempt }}'
           path: '${{ github.workspace }}/tmp/validated-pr-snapshot'
@@ -767,16 +778,18 @@ jobs:
           test "$(sha256sum "$ARTIFACT_DIR/manifest.json" | cut -d' ' -f1)" = "$MANIFEST_DIGEST"
           echo "promotion-attempt=$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
           jq -n   --arg repository "$GITHUB_REPOSITORY"   --argjson prNumber "$PR_NUMBER"   --arg headSha "$HEAD_SHA"   --argjson sourceRunId "$SOURCE_RUN_ID"   --argjson sourceRunAttempt "$SOURCE_RUN_ATTEMPT"   --arg manifestSha256 "$MANIFEST_DIGEST"   --arg topologySha256 "$TOPOLOGY_DIGEST"   '{repository, prNumber, headSha, sourceRunId, sourceRunAttempt, manifestSha256, topologySha256}'   > "$RUNNER_TEMP/pr-snapshot-attestation.json"
-      - name: Attest validated snapshot candidate
-        uses: actions/attest@v4
+      - # v4.2.2
+        name: Attest validated snapshot candidate
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
         with:
           subject-path: |
             ${{ env.ARTIFACT_DIR }}/*.tgz
             ${{ env.ARTIFACT_DIR }}/manifest.json
           predicate-type: 'https://livestore.dev/attestations/pr-snapshot-candidate/v1'
           predicate-path: '${{ runner.temp }}/pr-snapshot-attestation.json'
-      - name: Upload attested promotion artifact
-        uses: actions/upload-artifact@v4
+      - # v4.6.2
+        name: Upload attested promotion artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: 'promotion-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}-${{ steps.handoff.outputs.promotion-attempt }}'
           path: '${{ github.workspace }}/tmp/validated-pr-snapshot/'
@@ -794,14 +807,16 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Checkout trusted validator only
-        uses: actions/checkout@v4
+      - # v4.4.0
+        name: Checkout trusted validator only
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
           sparse-checkout: .github/scripts/pr-snapshot-artifact.mjs
-      - name: Use pinned Node validator runtime
-        uses: actions/setup-node@v4
+      - # v4.4.0
+        name: Use pinned Node validator runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24.15.0
       - id: approval
@@ -853,18 +868,21 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Use pinned npm trusted-publishing client
-        uses: actions/setup-node@v4
+      - # v4.4.0
+        name: Use pinned npm trusted-publishing client
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24.15.0
-      - name: Checkout trusted validator only
-        uses: actions/checkout@v4
+      - # v4.4.0
+        name: Checkout trusted validator only
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
           sparse-checkout: .github/scripts/pr-snapshot-artifact.mjs
-      - name: Download validated promotion artifact
-        uses: actions/download-artifact@v4
+      - # v4.3.0
+        name: Download validated promotion artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: 'promotion-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}-${{ needs.attest-pr-snapshot.outputs.promotion-attempt }}'
           path: '${{ github.workspace }}/tmp/validated-pr-snapshot'
@@ -980,8 +998,9 @@ jobs:
           SOURCE_RUN_ATTEMPT: ${{ needs.validate-pr-snapshot.outputs.run-attempt }}
           SOURCE_RUN_ID: ${{ needs.validate-pr-snapshot.outputs.run-id }}
         run: jq -n   --arg repository "$GITHUB_REPOSITORY"   --argjson prNumber "$PR_NUMBER"   --arg headSha "$HEAD_SHA"   --argjson sourceRunId "$SOURCE_RUN_ID"   --argjson sourceRunAttempt "$SOURCE_RUN_ATTEMPT"   --arg version "$SNAPSHOT_VERSION"   --arg manifestSha256 "$MANIFEST_DIGEST"   '{repository, prNumber, headSha, sourceRunId, sourceRunAttempt, version, manifestSha256}'   > "$RUNNER_TEMP/verified-pr-snapshot.json"
-      - name: Upload trusted verification receipt
-        uses: actions/upload-artifact@v4
+      - # v4.6.2
+        name: Upload trusted verification receipt
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: 'verified-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}-${{ needs.validate-pr-snapshot.outputs.run-attempt }}'
           path: '${{ runner.temp }}/verified-pr-snapshot.json'
@@ -1025,14 +1044,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
-      - name: Install Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
+      - # v3.24.1
+        name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@92957199488000b908fdad19f63711000965d8f3
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           extra-conf: |
             experimental-features = nix-command flakes
             accept-flake-config = true
+            connect-timeout = 10
+            stalled-download-timeout = 60
+            download-attempts = 3
             extra-substituters = 
             extra-trusted-public-keys = 
             access-tokens = github.com=${{ github.token }}
@@ -1064,14 +1087,16 @@ jobs:
           set -euo pipefail
           out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
           echo "$out/bin" >> "$GITHUB_PATH"
-      - name: Enable Cachix cache
-        uses: cachix/cachix-action@v17
+      - # v17
+        name: Enable Cachix cache
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866
         with:
           name: livestore
           skipPush: true
-      - name: Restore megarepo store
+      - # v4.3.0
+        name: Restore megarepo store
         id: restore-megarepo-store
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: '${{ runner.temp }}/megarepo-store'
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
@@ -1094,9 +1119,10 @@ jobs:
 
           nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --worktree-mode commit --commit-all-members --lock-sync off'
         shell: bash
-      - name: Save megarepo store
-        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
+      - # v4.3.0
+        name: Save megarepo store
+        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' && github.event.pull_request.head.repo.fork != true }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: '${{ runner.temp }}/megarepo-store'
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
@@ -1229,17 +1255,22 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6
+      - # v6.1.0
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - name: Install Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
+      - # v3.24.1
+        name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@92957199488000b908fdad19f63711000965d8f3
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           extra-conf: |
             experimental-features = nix-command flakes
             accept-flake-config = true
+            connect-timeout = 10
+            stalled-download-timeout = 60
+            download-attempts = 3
             extra-substituters = 
             extra-trusted-public-keys = 
             access-tokens = github.com=${{ github.token }}
@@ -1271,14 +1302,16 @@ jobs:
           set -euo pipefail
           out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
           echo "$out/bin" >> "$GITHUB_PATH"
-      - name: Enable Cachix cache
-        uses: cachix/cachix-action@v17
+      - # v17
+        name: Enable Cachix cache
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866
         with:
           name: livestore
           skipPush: true
-      - name: Restore megarepo store
+      - # v4.3.0
+        name: Restore megarepo store
         id: restore-megarepo-store
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: '${{ runner.temp }}/megarepo-store'
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
@@ -1301,9 +1334,10 @@ jobs:
 
           nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --worktree-mode commit --commit-all-members --lock-sync off'
         shell: bash
-      - name: Save megarepo store
-        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
+      - # v4.3.0
+        name: Save megarepo store
+        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' && github.event.pull_request.head.repo.fork != true }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: '${{ runner.temp }}/megarepo-store'
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
@@ -1421,9 +1455,10 @@ jobs:
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run release:devtools-artifact:repack-dryrun:no-install' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false ${PIPELINE_RUN_PREFIX:+$PIPELINE_RUN_PREFIX }"${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:repack-dryrun:no-install'
-      - name: Upload Nix diagnostics artifact
+      - # v4.6.2
+        name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
           path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
@@ -1454,14 +1489,18 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
-      - name: Install Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
+      - # v3.24.1
+        name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@92957199488000b908fdad19f63711000965d8f3
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           extra-conf: |
             experimental-features = nix-command flakes
             accept-flake-config = true
+            connect-timeout = 10
+            stalled-download-timeout = 60
+            download-attempts = 3
             extra-substituters = 
             extra-trusted-public-keys = 
             access-tokens = github.com=${{ github.token }}
@@ -1493,14 +1532,16 @@ jobs:
           set -euo pipefail
           out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
           echo "$out/bin" >> "$GITHUB_PATH"
-      - name: Enable Cachix cache
-        uses: cachix/cachix-action@v17
+      - # v17
+        name: Enable Cachix cache
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866
         with:
           name: livestore
           skipPush: true
-      - name: Restore megarepo store
+      - # v4.3.0
+        name: Restore megarepo store
         id: restore-megarepo-store
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: '${{ runner.temp }}/megarepo-store'
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
@@ -1523,9 +1564,10 @@ jobs:
 
           nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --worktree-mode commit --commit-all-members --lock-sync off'
         shell: bash
-      - name: Save megarepo store
-        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
+      - # v4.3.0
+        name: Save megarepo store
+        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' && github.event.pull_request.head.repo.fork != true }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: '${{ runner.temp }}/megarepo-store'
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
@@ -1810,14 +1852,18 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
-      - name: Install Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
+      - # v3.24.1
+        name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@92957199488000b908fdad19f63711000965d8f3
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           extra-conf: |
             experimental-features = nix-command flakes
             accept-flake-config = true
+            connect-timeout = 10
+            stalled-download-timeout = 60
+            download-attempts = 3
             extra-substituters = 
             extra-trusted-public-keys = 
             access-tokens = github.com=${{ github.token }}
@@ -1849,14 +1895,16 @@ jobs:
           set -euo pipefail
           out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
           echo "$out/bin" >> "$GITHUB_PATH"
-      - name: Enable Cachix cache
-        uses: cachix/cachix-action@v17
+      - # v17
+        name: Enable Cachix cache
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866
         with:
           name: livestore
           skipPush: true
-      - name: Restore megarepo store
+      - # v4.3.0
+        name: Restore megarepo store
         id: restore-megarepo-store
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: '${{ runner.temp }}/megarepo-store'
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
@@ -1879,9 +1927,10 @@ jobs:
 
           nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --worktree-mode commit --commit-all-members --lock-sync off'
         shell: bash
-      - name: Save megarepo store
-        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
+      - # v4.3.0
+        name: Save megarepo store
+        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' && github.event.pull_request.head.repo.fork != true }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: '${{ runner.temp }}/megarepo-store'
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"

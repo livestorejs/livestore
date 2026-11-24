@@ -160,12 +160,14 @@ export const defineMaterializer = <TEventDef extends EventDef.AnyWithoutFn>(
 export const materializers = <TInputRecord extends Record<string, EventDef.AnyWithoutFn>>(
   _eventDefRecord: TInputRecord,
   handlers: {
-    [TEventName in TInputRecord[keyof TInputRecord]['name'] as Extract<
-      TInputRecord[keyof TInputRecord],
-      { name: TEventName }
-    >['options']['derived'] extends true
-      ? never
-      : TEventName]: Materializer<Extract<TInputRecord[keyof TInputRecord], { name: TEventName }>>
+    [
+      TEventName in TInputRecord[keyof TInputRecord]['name'] as Extract<
+        TInputRecord[keyof TInputRecord],
+        { name: TEventName }
+      >['options']['derived'] extends true
+        ? never
+        : TEventName
+    ]: Materializer<Extract<TInputRecord[keyof TInputRecord], { name: TEventName }>>
   },
 ) => {
   return handlers
