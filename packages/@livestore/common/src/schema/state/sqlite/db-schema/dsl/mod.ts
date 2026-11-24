@@ -214,11 +214,13 @@ export namespace FromColumns {
   }
 
   export type RequiredInsertColumns<TColumns extends Columns> = {
-    [K in keyof TColumns as TColumns[K]['nullable'] extends true
-      ? never
-      : TColumns[K]['default'] extends Option.Some<any>
+    [
+      K in keyof TColumns as TColumns[K]['nullable'] extends true
         ? never
-        : K]: {}
+        : TColumns[K]['default'] extends Option.Some<any>
+          ? never
+          : K
+    ]: {}
   }
 
   export type RequiredInsertColumnNames<TColumns extends Columns> = keyof RequiredInsertColumns<TColumns>

@@ -29,17 +29,22 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6
+      - # v6.1.0
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - name: Install Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
+      - # v3.24.1
+        name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@92957199488000b908fdad19f63711000965d8f3
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           extra-conf: |
             experimental-features = nix-command flakes
             accept-flake-config = true
+            connect-timeout = 10
+            stalled-download-timeout = 60
+            download-attempts = 3
             extra-substituters = 
             extra-trusted-public-keys = 
             access-tokens = github.com=${{ github.token }}
@@ -71,14 +76,16 @@ jobs:
           set -euo pipefail
           out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
           echo "$out/bin" >> "$GITHUB_PATH"
-      - name: Enable Cachix cache
-        uses: cachix/cachix-action@v17
+      - # v17
+        name: Enable Cachix cache
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866
         with:
           name: livestore
           skipPush: true
-      - name: Restore megarepo store
+      - # v4.3.0
+        name: Restore megarepo store
         id: restore-megarepo-store
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: '${{ runner.temp }}/megarepo-store'
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
@@ -101,9 +108,10 @@ jobs:
 
           nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --worktree-mode commit --commit-all-members --lock-sync off'
         shell: bash
-      - name: Save megarepo store
-        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
+      - # v4.3.0
+        name: Save megarepo store
+        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' && github.event.pull_request.head.repo.fork != true }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: '${{ runner.temp }}/megarepo-store'
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
@@ -152,9 +160,10 @@ jobs:
         env:
           MXBAI_API_KEY: ${{ secrets.MXBAI_API_KEY }}
           MXBAI_VECTOR_STORE_ID_DEV: ${{ secrets.MXBAI_VECTOR_STORE_ID_DEV }}
-      - name: Upload Nix diagnostics artifact
+      - # v4.6.2
+        name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
           path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
@@ -168,17 +177,22 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6
+      - # v6.1.0
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - name: Install Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
+      - # v3.24.1
+        name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@92957199488000b908fdad19f63711000965d8f3
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           extra-conf: |
             experimental-features = nix-command flakes
             accept-flake-config = true
+            connect-timeout = 10
+            stalled-download-timeout = 60
+            download-attempts = 3
             extra-substituters = 
             extra-trusted-public-keys = 
             access-tokens = github.com=${{ github.token }}
@@ -210,14 +224,16 @@ jobs:
           set -euo pipefail
           out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
           echo "$out/bin" >> "$GITHUB_PATH"
-      - name: Enable Cachix cache
-        uses: cachix/cachix-action@v17
+      - # v17
+        name: Enable Cachix cache
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866
         with:
           name: livestore
           skipPush: true
-      - name: Restore megarepo store
+      - # v4.3.0
+        name: Restore megarepo store
         id: restore-megarepo-store
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: '${{ runner.temp }}/megarepo-store'
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
@@ -240,9 +256,10 @@ jobs:
 
           nix run --no-write-lock-file "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --worktree-mode commit --commit-all-members --lock-sync off'
         shell: bash
-      - name: Save megarepo store
-        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
+      - # v4.3.0
+        name: Save megarepo store
+        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' && github.event.pull_request.head.repo.fork != true }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: '${{ runner.temp }}/megarepo-store'
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
@@ -291,9 +308,10 @@ jobs:
         env:
           MXBAI_API_KEY: ${{ secrets.MXBAI_API_KEY }}
           MXBAI_VECTOR_STORE_ID_PROD: ${{ secrets.MXBAI_VECTOR_STORE_ID_PROD }}
-      - name: Upload Nix diagnostics artifact
+      - # v4.6.2
+        name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
           path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}

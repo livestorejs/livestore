@@ -86,13 +86,11 @@ export const map: {
    * @category combinators
    */
   <A, E, R, B>(self: Subscribable<A, E, R>, f: (a: NoInfer<A>) => B): Subscribable<B, E, R>
-} = Function.dual(
-  2,
-  <A, E, R, B>(self: Subscribable<A, E, R>, f: (a: NoInfer<A>) => B): Subscribable<B, E, R> =>
-    make({
-      get: Effect.map(self.get, f),
-      changes: Stream.map(self.changes, f),
-    }),
+} = Function.dual(2, <A, E, R, B>(self: Subscribable<A, E, R>, f: (a: NoInfer<A>) => B): Subscribable<B, E, R> =>
+  make({
+    get: Effect.map(self.get, f),
+    changes: Stream.map(self.changes, f),
+  }),
 )
 
 /**
