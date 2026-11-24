@@ -9,7 +9,7 @@ sidebar:
 import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
 import { makeCreate, versionNpmSuffix } from '../../../data/data.ts'
 import { MIN_NODE_VERSION } from '@local/shared'
-import viteConfigCode from '../../../../../examples/web-todomvc-sync-cf/vite.config.js?raw'
+import viteConfigCode from '../../../../../examples/web-todomvc-sync-cf/vite.config.ts?raw'
 import SchemaSnippet from '../../_assets/code/getting-started/react-web/livestore/schema.ts?snippet'
 import WorkerSnippet from '../../_assets/code/getting-started/react-web/livestore.worker.ts?snippet'
 import StoreSnippet from '../../_assets/code/getting-started/react-web/store.ts?snippet'
@@ -39,6 +39,9 @@ export const manualInstallDepsStr = [
   '@livestore/peer-deps' + versionNpmSuffix,
   '@livestore/sync-cf' + versionNpmSuffix,
   '@livestore/devtools-vite' + versionNpmSuffix,
+  'effect@4.1.4',
+  '@effect/platform-browser@4.1.4',
+  '@effect/opentelemetry@4.1.4',
 ].join(' ')
 
 ## Prerequisites
