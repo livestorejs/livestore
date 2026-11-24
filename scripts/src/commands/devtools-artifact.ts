@@ -23,6 +23,7 @@ import { Effect } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
 import { runNpmPublish, submitNpmPackage, verifyNpmPackageVisibility } from '../shared/npm-publish.ts'
+import { materializeChromeZipAsset } from './chrome-release-zip.ts'
 
 type CompatibleLivestore =
   | { readonly kind: 'range'; readonly range: string }
@@ -600,12 +601,6 @@ const certifyArtifact = async (flags: Map<string, string | true>) => {
   console.log(JSON.stringify({ certificationPath: path.resolve(out), certification }, null, 2))
 }
 
-const materializeChromeZipAsset = (version: string, chromeZipPath: string, workDir: string) => {
-  const assetPath = path.join(workDir, `livestore-devtools-chrome-${version}.zip`)
-  writeFileSync(assetPath, readFileSync(chromeZipPath))
-  return assetPath
-}
-
 /**
  * Resolves the release notes file emitted by `mono release extract-release-notes`.
  * Returns `undefined` (with a warning) when the file is missing so DevTools-artifact
@@ -740,6 +735,8 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
   const repackedPath = path.join(workDir, `livestore-devtools-vite-${version}.tgz`)
   renameSync(path.join(workDir, firstPacked.filename), repackedPath)
 
+  const chromeZipAssetPath =
+    chromeZipPath === undefined ? undefined : materializeChromeZipAsset(version, chromeZipPath, workDir)
   const publishTag = publishTagForVersion(version)
   if (hasFlag(flags, 'dry-run') === true) {
     // npm publish --dry-run still pre-checks the registry and errors with
@@ -771,8 +768,7 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
         })
       }).pipe(Effect.provide(PlatformNode.NodeServices.layer)),
     )
-    if (chromeZipPath !== undefined) {
-      const chromeZipAssetPath = materializeChromeZipAsset(version, chromeZipPath, workDir)
+    if (chromeZipAssetPath !== undefined) {
       if (isSnapshotVersion(version) === true) {
         console.log(`Snapshot Chrome zip prepared for workflow artifact upload: ${chromeZipAssetPath}`)
       } else {
@@ -781,8 +777,6 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
     }
   }
 
-  const chromeZipAssetPath =
-    chromeZipPath === undefined ? undefined : materializeChromeZipAsset(version, chromeZipPath, workDir)
   if (outDir !== undefined) {
     const absoluteOutDir = path.resolve(outDir)
     mkdirSync(absoluteOutDir, { recursive: true })

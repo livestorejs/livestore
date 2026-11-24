@@ -39,6 +39,20 @@ release decision for artifacts shipped under LiveStore versions.
 The checked-in artifact pointer is long-lived state. Compatibility proof is
 release-candidate state.
 
+Chrome ZIP repack stamps the selected LiveStore version into the top-level
+`livestore-devtools-chrome-<version>/` directory and extension manifest.
+Stable versions retain their three numeric components. Prereleases append
+their final numeric identifier as a fourth component. Hash-based snapshot and
+CI release-validation channels always use `1`, even for all-digit Git hashes.
+The full release string is retained in `version_name`. Components must fit
+Chrome's 0 to 65535 range and cannot all be zero. Preparation reads back
+the packaged manifest and fails if its version or name fields do not match.
+The release name is `LiveStore Devtools` for stable versions and
+`LiveStore Devtools (Dev Build)` for prereleases, using the producer's exact
+strings. All other manifest fields and file contents remain unchanged.
+Description, icons, and payload references retain the producer's build
+identity rather than being rebuilt for each LiveStore release.
+
 ### Cadence Invariant
 
 LiveStore releases must not require `overeng` work when the selected
