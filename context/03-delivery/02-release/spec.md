@@ -203,10 +203,13 @@ policy itself are spec changes to this node.
 
 ## Ruleset Reconciliation
 
-An org-owned GitHub App applies both committed rulesets for `main`. Genie
-generates the required checks in `.github/repo-settings.json` from the CI job
-list. The App applies `.github/code-owner-review.json` first so the approval
-requirement stays in effect while it updates the existing ruleset.
+An org-owned GitHub App applies the committed rulesets for `main` and
+`docs/stable`, in the order declared by `.github/rulesets.json`. Each branch
+has separate branch-rules and code-owner-review rulesets, with owner review
+applied first. Genie derives the stable declarations from their corresponding
+main declarations, retaining the same required CI checks and bypass actors.
+The stable pull-request rules allow only merge commits, preserving ancestry.
+Main's declarations remain independent of that merge-method restriction.
 Decisions and rejected alternatives:
 [.decisions/0001](./.decisions/0001-ruleset-reconciliation.md); GitHub platform
 limits:
@@ -227,7 +230,9 @@ fork-PR contributor approval, apply the desired rulesets, then verify managed
 fields and fail with a diff on residual drift. The admin-token comparison
 includes bypass actors and suppresses GitHub-expanded pull-request defaults.
 No Nix/devenv setup, repository scripts, or PR plan job receives the key or token.
-Local `github:rulesets:{sync,plan,check}` tasks remain available for `main-branch-rules`.
+Local `github:rulesets:{sync,plan,check}` tasks use the same registry as the
+workflow. Drift verification compares allowed merge methods, normalizing only
+the omitted GitHub default (merge, squash, rebase).
 Ruleset reconciliation does not affect the `ci` conclusion or gate snapshot
 publication.
 

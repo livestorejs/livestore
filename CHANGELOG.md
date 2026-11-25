@@ -27,6 +27,15 @@ Install the development build with `npm install @livestore/livestore@dev`.
   the crashing development release
   ([livestore-contrib#112](https://github.com/livestorejs/livestore-contrib/issues/112)).
 
+### Internal Changes
+
+For maintainers and contributors:
+
+- **Repository governance:** Protected `docs/stable` with main's required checks
+  and code-owner review, and restricted it to merge commits to preserve ancestry
+  ([#1743](https://github.com/livestorejs/livestore/pull/1743),
+  [#1750](https://github.com/livestorejs/livestore/pull/1750)).
+
 ## 0.5.1
 
 See the [documentation](https://docs.livestore.dev) for current features.

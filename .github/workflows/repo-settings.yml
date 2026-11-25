@@ -7,12 +7,13 @@ on:
   push:
     branches: [main]
     paths:
-      [
-        .github/code-owner-review.json,
-        .github/repo-settings.json,
-        .github/workflows/repo-settings.yml,
-        .github/workflows/repo-settings.yml.genie.ts,
-      ]
+      - .github/code-owner-review.json
+      - .github/repo-settings.json
+      - .github/docs-stable-code-owner-review.json
+      - .github/docs-stable-branch-rules.json
+      - .github/rulesets.json
+      - .github/workflows/repo-settings.yml
+      - .github/workflows/repo-settings.yml.genie.ts
   schedule:
     - cron: 17 6 * * *
   workflow_dispatch: {}
@@ -61,7 +62,7 @@ jobs:
           set -euo pipefail
           tmp_dir="$(mktemp -d)"
           trap 'rm -rf "$tmp_dir"' EXIT
-          for ruleset_file in .github/code-owner-review.json .github/repo-settings.json; do
+          while IFS= read -r ruleset_file; do
             ruleset_name="$(jq -r .name "$ruleset_file")"
             ruleset_id="$(gh api --paginate "repos/$GITHUB_REPOSITORY/rulesets" | jq -r --arg name "$ruleset_name" '.[] | select(.name == $name) | .id')"
             if [[ -n "$ruleset_id" ]]; then
@@ -82,7 +83,8 @@ jobs:
                   .rules[]
                   | if .type == "pull_request" then
                       .parameters |= (
-                        del(.allowed_merge_methods, .required_reviewers)
+                        .allowed_merge_methods //= ["merge", "squash", "rebase"]
+                        | del(.required_reviewers)
                         | if .dismissal_restriction == { allowed_actors: [], enabled: false } then
                             del(.dismissal_restriction)
                           else
@@ -102,4 +104,4 @@ jobs:
               exit 1
             fi
             echo "Ruleset '$ruleset_name' is in sync with $ruleset_file."
-          done
+          done < <(jq -r '.[]' .github/rulesets.json)
