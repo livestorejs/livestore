@@ -54,6 +54,9 @@ rules:
       - .github/CODEOWNERS
       - .github/repo-settings.json
       - .github/code-owner-review.json
+      - .github/rulesets.json
+      - .github/docs-stable-branch-rules.json
+      - .github/docs-stable-code-owner-review.json
       - .github/reconcile-app-manifest.json
       - .github/workflows/**
       - .github/scripts/**

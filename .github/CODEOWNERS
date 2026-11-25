@@ -56,6 +56,9 @@
 /.github/CODEOWNERS @schickling @bohdanbirdie
 /.github/repo-settings.json @schickling @bohdanbirdie
 /.github/code-owner-review.json @schickling @bohdanbirdie
+/.github/rulesets.json @schickling @bohdanbirdie
+/.github/docs-stable-branch-rules.json @schickling @bohdanbirdie
+/.github/docs-stable-code-owner-review.json @schickling @bohdanbirdie
 /.github/reconcile-app-manifest.json @schickling @bohdanbirdie
 /.github/workflows/ @schickling @bohdanbirdie
 /.github/scripts/ @schickling @bohdanbirdie
