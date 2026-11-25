@@ -23,6 +23,9 @@ Install the development build with `npm install @livestore/livestore@dev`.
 
 - **Examples and documentation:** Use published DevTools 0.5.1, including license-free
   startup and version-skew fixes ([#1739](https://github.com/livestorejs/livestore/issues/1739)).
+- **Tutorial:** Starter project commands now use the latest published CLI instead of
+  the crashing development release
+  ([livestore-contrib#112](https://github.com/livestorejs/livestore-contrib/issues/112)).
 
 ## 0.5.1
 
