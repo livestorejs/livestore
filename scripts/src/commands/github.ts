@@ -14,7 +14,7 @@ const RulesetRequestBody = Schema.Struct({
   bypass_actors: Schema.Array(
     Schema.Struct({
       actor_id: Schema.Finite,
-      actor_type: Schema.Literals(['RepositoryRole', 'Team', 'Integration', 'OrganizationAdmin', 'DeployKey']),
+      actor_type: Schema.Literals(['RepositoryRole', 'Team', 'Integration', 'OrganizationAdmin', 'DeployKey', 'User']),
       bypass_mode: Schema.Literals(['always', 'pull_request', 'exempt']),
     }),
   ),
@@ -36,13 +36,19 @@ const RulesetRequestBody = Schema.Struct({
 
 type TRulesetRequestBody = typeof RulesetRequestBody.Type
 
-const getRulesetFilePath = () => path.join(process.env.WORKSPACE_ROOT ?? '.', '.github', 'repo-settings.json')
+const getRulesetFilePath = (file: string) => path.join(process.env.WORKSPACE_ROOT ?? '.', file)
 
-const loadRulesetBody = () =>
+const loadRulesetFiles = () =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
-    const filePath = getRulesetFilePath()
-    const raw = yield* fs.readFileString(filePath)
+    const raw = yield* fs.readFileString(getRulesetFilePath('.github/rulesets.json'))
+    return yield* Schema.decodeEffect(Schema.fromJsonString(Schema.Array(Schema.String)))(raw)
+  })
+
+const loadRulesetBody = (file: string) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const raw = yield* fs.readFileString(getRulesetFilePath(file))
     const parser = Schema.fromJsonString(RulesetRequestBody)
     return yield* Schema.decodeEffect(parser)(raw)
   })
@@ -203,36 +209,38 @@ const syncRulesetsCommand = Cli.Command.make(
   Effect.fn(function* ({ dryRun }) {
     yield* cmdText('gh --version', { stderr: 'pipe' }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
-    const body = yield* loadRulesetBody()
-    const existing = yield* getRulesetByName(body.name)
-    const live = existing === null ? null : yield* getRulesetDetails(existing.id).pipe(Effect.map(normalizeRuleset))
-    const diffs = live === null ? [] : collectDiffs(body as TJsonValue, live as TJsonValue)
+    for (const file of yield* loadRulesetFiles()) {
+      const body = yield* loadRulesetBody(file)
+      const existing = yield* getRulesetByName(body.name)
+      const live = existing === null ? null : yield* getRulesetDetails(existing.id).pipe(Effect.map(normalizeRuleset))
+      const diffs = live === null ? [] : collectDiffs(body as TJsonValue, live as TJsonValue)
 
-    if (dryRun === true) {
-      console.log(`Ruleset file: ${getRulesetFilePath()}`)
-      console.log(`Ruleset name: ${body.name}`)
-      console.log(`Existing: ${existing !== null ? `yes (id: ${existing.id})` : 'no'}`)
-      console.log(`Action: ${existing !== null ? 'update' : 'create'}`)
-      if (existing !== null) {
-        if (diffs.length === 0) {
-          console.log('Drift: none')
-        } else {
-          console.log('Drift:')
-          for (const diff of diffs) console.log(`- ${diff}`)
+      if (dryRun === true) {
+        console.log(`Ruleset file: ${getRulesetFilePath(file)}`)
+        console.log(`Ruleset name: ${body.name}`)
+        console.log(`Existing: ${existing !== null ? `yes (id: ${existing.id})` : 'no'}`)
+        console.log(`Action: ${existing !== null ? 'update' : 'create'}`)
+        if (existing !== null) {
+          if (diffs.length === 0) {
+            console.log('Drift: none')
+          } else {
+            console.log('Drift:')
+            for (const diff of diffs) console.log(`- ${diff}`)
+          }
         }
+        continue
       }
-      return
-    }
 
-    if (existing !== null) {
-      yield* updateRuleset(existing.id, body)
-      console.log(`Updated ruleset '${body.name}' (id: ${existing.id}) on ${OWNER}/${REPO}`)
-    } else {
-      yield* createRuleset(body)
-      console.log(`Created ruleset '${body.name}' on ${OWNER}/${REPO}`)
+      if (existing !== null) {
+        yield* updateRuleset(existing.id, body)
+        console.log(`Updated ruleset '${body.name}' (id: ${existing.id}) on ${OWNER}/${REPO}`)
+      } else {
+        yield* createRuleset(body)
+        console.log(`Created ruleset '${body.name}' on ${OWNER}/${REPO}`)
+      }
     }
   }),
-).pipe(Cli.Command.withDescription('Create or update repository ruleset from generated repo-settings file'))
+).pipe(Cli.Command.withDescription('Create or update repository rulesets from the managed file registry'))
 
 const checkRulesetsCommand = Cli.Command.make(
   'check',
@@ -240,38 +248,40 @@ const checkRulesetsCommand = Cli.Command.make(
   Effect.fn(function* () {
     yield* cmdText('gh --version', { stderr: 'pipe' }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
-    const body = yield* loadRulesetBody()
-    const existing = yield* getRulesetByName(body.name)
+    for (const file of yield* loadRulesetFiles()) {
+      const body = yield* loadRulesetBody(file)
+      const existing = yield* getRulesetByName(body.name)
 
-    if (existing === null) {
-      console.error(`No live ruleset found with name '${body.name}'`)
-      console.error("Run 'mono github rulesets sync' to create one.")
-      process.exitCode = 1
-      return
-    }
-
-    const live = yield* getRulesetDetails(existing.id).pipe(Effect.map(normalizeRuleset))
-    const viewerPermission = yield* getViewerPermission
-    const allDiffs = collectDiffs(body as TJsonValue, live as TJsonValue).filter(
-      (diff) => isGitHubExpandedDefaultDiff(diff) === false,
-    )
-    const diffs =
-      viewerPermission === 'ADMIN' ? allDiffs : allDiffs.filter((diff) => isBypassActorsDiff(diff) === false)
-
-    if (diffs.length === 0) {
-      console.log(`Ruleset '${body.name}' is in sync with ${getRulesetFilePath()}.`)
-      if (viewerPermission !== 'ADMIN' && allDiffs.some(isBypassActorsDiff) === true) {
-        console.log('Bypass actor visibility requires repository admin permission; skipped bypass_actors comparison.')
+      if (existing === null) {
+        console.error(`No live ruleset found with name '${body.name}'`)
+        console.error("Run 'mono github rulesets sync' to create one.")
+        process.exitCode = 1
+        continue
       }
-      return
-    }
 
-    console.error(`Ruleset '${body.name}' drift detected against ${getRulesetFilePath()}:`)
-    for (const diff of diffs) console.error(`- ${diff}`)
-    console.error("Run 'mono github rulesets sync' with admin permissions to reconcile it.")
-    process.exitCode = 1
+      const live = yield* getRulesetDetails(existing.id).pipe(Effect.map(normalizeRuleset))
+      const viewerPermission = yield* getViewerPermission
+      const allDiffs = collectDiffs(body as TJsonValue, live as TJsonValue).filter(
+        (diff) => isGitHubExpandedDefaultDiff(diff) === false,
+      )
+      const diffs =
+        viewerPermission === 'ADMIN' ? allDiffs : allDiffs.filter((diff) => isBypassActorsDiff(diff) === false)
+
+      if (diffs.length === 0) {
+        console.log(`Ruleset '${body.name}' is in sync with ${getRulesetFilePath(file)}.`)
+        if (viewerPermission !== 'ADMIN' && allDiffs.some(isBypassActorsDiff) === true) {
+          console.log('Bypass actor visibility requires repository admin permission; skipped bypass_actors comparison.')
+        }
+        continue
+      }
+
+      console.error(`Ruleset '${body.name}' drift detected against ${getRulesetFilePath(file)}:`)
+      for (const diff of diffs) console.error(`- ${diff}`)
+      console.error("Run 'mono github rulesets sync' with admin permissions to reconcile it.")
+      process.exitCode = 1
+    }
   }),
-).pipe(Cli.Command.withDescription('Check whether the live GitHub ruleset matches the generated source file'))
+).pipe(Cli.Command.withDescription('Check live GitHub rulesets against the managed source files'))
 
 const showRulesetsCommand = Cli.Command.make(
   'show',
@@ -279,22 +289,24 @@ const showRulesetsCommand = Cli.Command.make(
   Effect.fn(function* () {
     yield* cmdText('gh --version', { stderr: 'pipe' }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
-    const body = yield* loadRulesetBody()
-    const existing = yield* getRulesetByName(body.name)
+    for (const file of yield* loadRulesetFiles()) {
+      const body = yield* loadRulesetBody(file)
+      const existing = yield* getRulesetByName(body.name)
 
-    if (existing == null) {
-      console.log(`No ruleset found with name '${body.name}'`)
-      console.log(`Run 'mono github rulesets sync' to create one.`)
-      return
+      if (existing == null) {
+        console.log(`No ruleset found with name '${body.name}'`)
+        console.log(`Run 'mono github rulesets sync' to create one.`)
+        continue
+      }
+
+      console.log(`Ruleset: ${existing.name}`)
+      console.log(`ID: ${existing.id}`)
+      console.log(`Enforcement: ${existing.enforcement}`)
+
+      console.log('\nFull details:')
+      const details = yield* getRulesetDetails(existing.id)
+      console.dir(details, { depth: null })
     }
-
-    console.log(`Ruleset: ${existing.name}`)
-    console.log(`ID: ${existing.id}`)
-    console.log(`Enforcement: ${existing.enforcement}`)
-
-    console.log('\nFull details:')
-    const details = yield* getRulesetDetails(existing.id)
-    console.dir(details, { depth: null })
   }),
 ).pipe(Cli.Command.withDescription('Show current ruleset configuration'))
 

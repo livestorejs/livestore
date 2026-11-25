@@ -1,9 +1,10 @@
 /**
- * Reconciles the `main` branch ruleset from its committed desired-state file
+ * Reconciles the managed branch rulesets from their committed desired-state files
  * using only code-owned inline steps and an environment-scoped GitHub App key.
  * See `context/03-delivery/02-release/spec.md` for the reconciliation contract.
  */
 import { bashShellDefaults, defaultActionlintConfig, githubWorkflow } from '../../genie/repo.ts'
+import rulesetFiles from '../rulesets.json' with { type: 'json' }
 
 // App ID of the org-owned `livestore-ruleset-reconciler` GitHub App.
 const RECONCILE_APP_ID = '4312996'
@@ -19,8 +20,8 @@ export default githubWorkflow({
     push: {
       branches: ['main'],
       paths: [
-        '.github/code-owner-review.json',
-        '.github/repo-settings.json',
+        ...rulesetFiles,
+        '.github/rulesets.json',
         '.github/workflows/repo-settings.yml',
         '.github/workflows/repo-settings.yml.genie.ts',
       ],
@@ -80,7 +81,7 @@ export default githubWorkflow({
           run: `set -euo pipefail
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
-for ruleset_file in .github/code-owner-review.json .github/repo-settings.json; do
+while IFS= read -r ruleset_file; do
   ruleset_name="$(jq -r .name "$ruleset_file")"
   ruleset_id="$(gh api --paginate "repos/$GITHUB_REPOSITORY/rulesets" | jq -r --arg name "$ruleset_name" '.[] | select(.name == $name) | .id')"
   if [[ -n "$ruleset_id" ]]; then
@@ -101,7 +102,8 @@ for ruleset_file in .github/code-owner-review.json .github/repo-settings.json; d
         .rules[]
         | if .type == "pull_request" then
             .parameters |= (
-              del(.allowed_merge_methods, .required_reviewers)
+              .allowed_merge_methods //= ["merge", "squash", "rebase"]
+              | del(.required_reviewers)
               | if .dismissal_restriction == { allowed_actors: [], enabled: false } then
                   del(.dismissal_restriction)
                 else
@@ -121,7 +123,7 @@ for ruleset_file in .github/code-owner-review.json .github/repo-settings.json; d
     exit 1
   fi
   echo "Ruleset '$ruleset_name' is in sync with $ruleset_file."
-done`,
+done < <(jq -r '.[]' .github/rulesets.json)`,
         },
       ],
     },

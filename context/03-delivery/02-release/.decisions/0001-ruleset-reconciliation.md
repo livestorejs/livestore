@@ -2,9 +2,11 @@
 
 Status: accepted (2026-07-17) — design agreed and implemented via livestorejs/livestore#1424; absorbed into this node 2026-07-18.
 
-Durable decisions behind reconciling the repository branch ruleset from the
-committed desired-state file (`.github/repo-settings.json`) using an org-owned
-GitHub App as the privileged identity.
+Durable decisions behind reconciling the repository branch rulesets from the
+committed desired-state files listed in `.github/rulesets.json`, using an
+org-owned GitHub App as the privileged identity. Core manages separate pairs
+for `main` and `docs/stable`; stable inherits main's checks and bypass actors
+but restricts pull requests to merge commits to preserve ancestry.
 
 ## Reconcile Via a GitHub App, Not a Stored Admin PAT
 
@@ -68,9 +70,10 @@ documented rather than ambient.
 ## Reconcile-On-Merge Is the Authority; Drop the Hard Drift-Gate
 
 A dedicated `repo-settings` workflow (sole holder of the App secret) applies the
-desired ruleset on push to `main` path-filtered to `.github/repo-settings.json`,
-plus a scheduled backstop for out-of-band console edits. PRs run a non-gating
-dry-run plan. The former `ruleset-drift-check` job is removed from `ci.yml` — it
+desired rulesets on push to `main` path-filtered to the registry and its
+declared files, plus a scheduled backstop for out-of-band console edits.
+Local dry-run plans use the same registry without writing GitHub settings.
+The former `ruleset-drift-check` job is removed from `ci.yml` — it
 was never a required status check (absent from `requiredCIJobs`), so it never
 blocked merges; it wedged releases only by setting the `ci` run conclusion to
 `failure`, which `publish-snapshot-version` gates on.
