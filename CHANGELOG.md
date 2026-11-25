@@ -13,6 +13,9 @@
 - **Stable documentation and examples:** Promote the published 0.5.1 source and
   pin embedded DevTools to `@livestore/devtools-vite@0.5.1` rather than the
   pre-release build retained in the release source.
+- **Tutorial:** Starter project commands now use the latest published CLI instead of
+  the crashing development release
+  ([livestore-contrib#112](https://github.com/livestorejs/livestore-contrib/issues/112)).
 
 ## 0.5.1
 
